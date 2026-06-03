@@ -1,10 +1,23 @@
 import { NextResponse } from 'next/server';
+import { verifyAdminAuth } from '@/middleware/adminAuth';
+import { isAllowedExternalApiUrl } from '@/lib/mockTestUtils';
 
 export async function POST(request) {
+  const { isAdmin, error: authError } = await verifyAdminAuth();
+  if (!isAdmin) {
+    return NextResponse.json({ success: false, error: authError || 'Admin access required' }, { status: 403 });
+  }
+
   try {
     const { action, questionsApiUrl, solutionsApiUrl, apiKey, questions, solutions } = await request.json();
 
     if (action === 'fetch-questions') {
+      if (!isAllowedExternalApiUrl(questionsApiUrl)) {
+        return NextResponse.json({
+          success: false,
+          error: 'URL not allowed. Set MOCK_TEST_API_ALLOWLIST env (comma-separated hostnames).',
+        }, { status: 400 });
+      }
       // Fetch questions from external API
       const headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
@@ -59,6 +72,12 @@ export async function POST(request) {
     }
 
     if (action === 'fetch-solutions') {
+      if (!isAllowedExternalApiUrl(solutionsApiUrl)) {
+        return NextResponse.json({
+          success: false,
+          error: 'URL not allowed. Set MOCK_TEST_API_ALLOWLIST env (comma-separated hostnames).',
+        }, { status: 400 });
+      }
       // Fetch solutions from external API
       const headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
@@ -118,21 +137,8 @@ export async function POST(request) {
           });
         }
 
-        // Import Supabase client
-        const { createClient } = require('@supabase/supabase-js');
-        
-        // Initialize Supabase client
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-        const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-        
-        if (!supabaseUrl || !supabaseKey) {
-          return NextResponse.json({ 
-            success: false, 
-            error: 'Supabase configuration missing. Please check your environment variables.' 
-          });
-        }
-
-        const supabase = createClient(supabaseUrl, supabaseKey);
+        const { getSupabaseServer } = require('@/lib/supabaseServer');
+        const supabase = getSupabaseServer(true);
 
         // Prepare questions for database insertion
         const questionsToInsert = questions.map(q => ({

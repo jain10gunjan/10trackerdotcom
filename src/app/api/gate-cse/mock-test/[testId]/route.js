@@ -1,34 +1,30 @@
 import { NextResponse } from 'next/server';
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
+import { getSupabaseServer } from '@/lib/supabaseServer';
+import { toLegacyGateTestShape } from '@/lib/mockTestQueries';
 
 export async function GET(request, { params }) {
   try {
-    const testId = parseInt(params.testId);
+    const { testId } = await params;
+    const supabase = getSupabaseServer();
 
     const { data: test, error } = await supabase
-      .from('gate_cse_tests')
-      .select(`
-        *,
-        gate_cse_test_instances(count)
-      `)
+      .from('mock_tests')
+      .select('*')
       .eq('id', testId)
+      .eq('is_active', true)
       .single();
 
-    if (error) {
-      console.error('Supabase error:', error);
-      return NextResponse.json(
-        { error: 'Test not found' },
-        { status: 404 }
-      );
+    if (error || !test) {
+      return NextResponse.json({ error: 'Test not found' }, { status: 404 });
     }
 
-    // Transform data to match expected format
-    const transformedTest = {
+    const { count } = await supabase
+      .from('user_test_attempts')
+      .select('id', { count: 'exact', head: true })
+      .eq('test_id', testId)
+      .eq('is_completed', true);
+
+    const shaped = toLegacyGateTestShape({
       id: test.id,
       name: test.name,
       description: test.description,
@@ -37,20 +33,13 @@ export async function GET(request, { params }) {
       difficulty: test.difficulty,
       createdAt: test.created_at,
       questionCount: test.total_questions,
-      attemptCount: test.gate_cse_test_instances?.[0]?.count || 0,
-      isActive: test.is_active
-    };
-
-    return NextResponse.json({
-      success: true,
-      test: transformedTest
+      attemptCount: count || 0,
+      isActive: test.is_active,
     });
 
+    return NextResponse.json({ success: true, test: shaped });
   } catch (error) {
     console.error('Error fetching test:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

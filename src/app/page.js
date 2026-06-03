@@ -1,7 +1,5 @@
 // import Cattracker from "@/components/Cattracker";
-import ComingSoon from "@/components/ComingSoon";
-import HomePage from "@/components/HomePage";
-import LmsPlatform from "@/components/LmsPlatform";
+import HomePageRouter from "@/components/HomePageRouter";
 import { createClient } from "@supabase/supabase-js";
 // import ReactPlayerComponent from "@/components/ReactPlayer";
 // import Image from "next/image";
@@ -145,5 +143,5 @@ export default async function Home() {
     // home still renders without news section
   }
 
-  return <HomePage categorySections={categorySections} />;
+  return <HomePageRouter categorySections={categorySections} />;
 }

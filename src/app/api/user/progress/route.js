@@ -15,7 +15,7 @@ const getCachedUserProgress = unstable_cache(
       const { data, error } = await supabase
         .from('user_progress')
         .select('area, topic, completedquestions, correctanswers, points')
-        .eq('user_id', userId)
+        .or(`user_id.eq.${userId},email.eq.${userId}`)
         .not('area', 'is', null);
 
       if (error) throw error;

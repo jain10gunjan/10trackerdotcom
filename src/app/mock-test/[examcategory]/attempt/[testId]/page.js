@@ -12,6 +12,7 @@ import React, {
 } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/app/context/AuthContext';
+import { consumeCreditOnClient } from '@/lib/credits/consumeCreditClient';
 import { createClient } from "@supabase/supabase-js";
 import { MathJax, MathJaxContext } from "better-react-mathjax";
 import {
@@ -21,9 +22,19 @@ import {
   RefreshCw, Wifi, WifiOff, Battery, Signal, ArrowLeft, Home,
   Calendar, User, CheckSquare, AlertCircle
 } from "lucide-react";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
+import { toastPromise } from "@/lib/toastAsync";
 import Navbar from "@/components/Navbar";
 import MetaDataJobs from "@/components/Seo";
+import MockTestBreadcrumb from '@/components/mock-test/MockTestBreadcrumb';
+import {
+  categoryMatches,
+  isAnswerCorrect,
+  getCategoryVariants,
+  formatDurationShort,
+  calculateMockTestStats,
+  usesGateMarking,
+} from '@/lib/mockTestUtils';
 
 // Supabase configuration
 const supabase = createClient(
@@ -48,58 +59,6 @@ const sanitizeData = (value, type = 'string', defaultValue = null) => {
     default:
       return String(value).trim();
   }
-};
-
-const calculateComprehensiveStats = (answerHistory, questionsQueue, markedForReview, timeData) => {
-  const totalQuestions = sanitizeData(questionsQueue?.length, 'number', 0);
-  const answers = sanitizeData(answerHistory, 'array', []);
-  const marked = sanitizeData(markedForReview, 'array', []);
-  
-  const attempted = answers.length;
-  const correct = answers.filter(a => a?.isCorrect === true).length;
-  const incorrect = answers.filter(a => a?.isCorrect === false).length;
-  const skipped = Math.max(0, totalQuestions - attempted);
-  const markedCount = marked.length;
-  
-  const score = correct * 100;
-  const percentage = totalQuestions > 0 ? Math.round((correct / totalQuestions) * 10000) / 100 : 0;
-  const attemptPercentage = totalQuestions > 0 ? Math.round((attempted / totalQuestions) * 10000) / 100 : 0;
-  
-  // Subject-wise analysis
-  const subjectStats = {};
-  answers.forEach(answer => {
-    if (answer?.subject) {
-      const subject = answer.subject;
-      if (!subjectStats[subject]) {
-        subjectStats[subject] = { attempted: 0, correct: 0, incorrect: 0, totalTime: 0 };
-      }
-      subjectStats[subject].attempted++;
-      if (answer.isCorrect) subjectStats[subject].correct++;
-      else subjectStats[subject].incorrect++;
-      subjectStats[subject].totalTime += sanitizeData(answer.timeSpent, 'number', 0);
-    }
-  });
-  
-  Object.keys(subjectStats).forEach(subject => {
-    const stats = subjectStats[subject];
-    stats.percentage = stats.attempted > 0 ? Math.round((stats.correct / stats.attempted) * 10000) / 100 : 0;
-    stats.avgTime = stats.attempted > 0 ? Math.round(stats.totalTime / stats.attempted) : 0;
-  });
-  
-  return {
-    totalQuestions,
-    attempted,
-    correct,
-    incorrect,
-    skipped,
-    markedCount,
-    score,
-    percentage,
-    attemptPercentage,
-    subjectStats,
-    timeSpent: sanitizeData(timeData?.totalTimeSpent, 'number', 0),
-    avgTimePerQuestion: attempted > 0 ? Math.round(timeData?.totalTimeSpent / attempted) : 0
-  };
 };
 
 // Enhanced state management with better mobile handling
@@ -495,7 +454,7 @@ const PreviousAttemptCard = memo(({ attempt, onViewResult, onRetakeTest }) => (
         <div className="text-neutral-600 text-xs">Attempted</div>
       </div>
       <div className="text-center p-3 bg-neutral-50 rounded-lg border border-neutral-200">
-        <div className="text-xl font-bold text-neutral-900">{attempt.duration_taken ?? 0}m</div>
+        <div className="text-xl font-bold text-neutral-900">{formatDurationShort(attempt.duration_taken)}</div>
         <div className="text-neutral-600 text-xs">Time</div>
       </div>
     </div>
@@ -523,7 +482,7 @@ PreviousAttemptCard.displayName = 'PreviousAttemptCard';
 export default function EnhancedMobileMockTestPage() {
     const { examcategory, testId } = useParams();
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [state, dispatch] = useReducer(reducer, initialState);
   const [testInfo, setTestInfo] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -532,7 +491,6 @@ export default function EnhancedMobileMockTestPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [networkError, setNetworkError] = useState(false);
   const [previousAttempt, setPreviousAttempt] = useState(null);
-  const [allowRetake, setAllowRetake] = useState(false);
   const autoSubmitOnceRef = useRef(false);
 
  // Optimized MathJax config
@@ -561,13 +519,16 @@ export default function EnhancedMobileMockTestPage() {
   }, []);
 
   // Memoized calculations
-  const currentStats = useMemo(() => 
-    calculateComprehensiveStats(
-      state.answerHistory, 
-      state.questionsQueue, 
-      state.markedForReview,
-      { totalTimeSpent: state.totalTime }
-    ), [state.answerHistory, state.questionsQueue, state.markedForReview, state.totalTime]
+  const currentStats = useMemo(
+    () =>
+      calculateMockTestStats({
+        answerHistory: state.answerHistory,
+        totalQuestions: state.questionsQueue?.length || 0,
+        examcategory,
+        markedForReview: state.markedForReview,
+        timeData: { totalTimeSpent: state.totalTime },
+      }),
+    [state.answerHistory, state.questionsQueue, state.markedForReview, state.totalTime, examcategory]
   );
 
   // Touch/Swipe handlers for mobile navigation
@@ -622,7 +583,7 @@ export default function EnhancedMobileMockTestPage() {
       user?.email ||
       null
     );
-  }, [user]);
+  }, [user?.email, user?.primaryEmailAddress?.emailAddress]);
 
   const checkPreviousAttempts = useCallback(async () => {
     if (!userEmail || !testId) return;
@@ -644,7 +605,6 @@ export default function EnhancedMobileMockTestPage() {
 
       if (attempts?.length > 0) {
         setPreviousAttempt(attempts[0]);
-        setAllowRetake(true);
       }
     } catch (error) {
       console.error('Error checking previous attempts:', error);
@@ -708,40 +668,54 @@ export default function EnhancedMobileMockTestPage() {
       duration: timeRemaining <= 60 ? 8000 : timeRemaining <= 300 ? 4000 : 3000 
     });
   }, []);
-  // Load test data
+  // Load test metadata (does not require sign-in)
   useEffect(() => {
-    if (testId && user) {
-      fetchTestInfo();
-    }
-  }, [testId, user]);
+    if (authLoading || !testId) return;
+    fetchTestInfo();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetch when test/category ready only
+  }, [authLoading, testId, examcategory]);
 
-  // Check previous attempts on load
+  // Previous attempts need a signed-in email
   useEffect(() => {
-    if (testId && user) {
-      checkPreviousAttempts();
+    if (authLoading || !testId || !userEmail) {
+      if (!authLoading && !userEmail) setPreviousAttempt(null);
+      return;
     }
-  }, [testId, user, checkPreviousAttempts]);
+    checkPreviousAttempts();
+  }, [authLoading, testId, userEmail, checkPreviousAttempts]);
 
   const fetchTestInfo = async () => {
+    setIsLoading(true);
     try {
-      setIsLoading(true);
-      
-      const { data: testData, error: testError } = await supabase
-        .from('mock_tests')
-        .select(`
-          id, name, description, duration, total_questions, difficulty, category
-        `)
-        .eq('id', testId)
-        .eq('is_active', true)
-        .single();
+      await toastPromise(
+        async () => {
+          const { data: testData, error: testError } = await supabase
+            .from('mock_tests')
+            .select(`
+              id, name, description, duration, total_questions, difficulty, category
+            `)
+            .eq('id', testId)
+            .eq('is_active', true)
+            .single();
 
-      if (testError) throw testError;
+          if (testError) throw testError;
 
-      setTestInfo(testData);
-      await fetchQuestions(testData);
+          if (!categoryMatches(testData.category, examcategory)) {
+            router.push(`/mock-test/${examcategory}`);
+            throw new Error('This test does not belong to the selected exam category');
+          }
+
+          setTestInfo(testData);
+          await fetchQuestions(testData);
+        },
+        {
+          loading: 'Loading test…',
+          success: 'Test ready',
+          error: (err) => err?.message || 'Failed to load test',
+        }
+      );
     } catch (error) {
       console.error('Error fetching test:', error);
-      toast.error('Failed to load test');
       router.push(`/mock-test/${examcategory}`);
     } finally {
       setIsLoading(false);
@@ -824,32 +798,76 @@ export default function EnhancedMobileMockTestPage() {
   };
 
   const startTestAttempt = async () => {
+    if (!userEmail) {
+      toast.error("Please sign in again to start the test.");
+      return;
+    }
+
     try {
-      if (!userEmail) {
-        toast.error("Please sign in again to start the test.");
-        return;
-      }
-      const { data: attemptData, error: attemptError } = await supabase
-        .from('user_test_attempts')
-        .insert({
-          test_id: testId,
-          user_email: sanitizeData(userEmail, 'string', 'anonymous@test.com'),
-          total_questions: state.questionsQueue.length,
-          started_at: new Date().toISOString(),
-          status: 'in_progress'
-        })
-        .select()
-        .single();
+      await toastPromise(
+        async () => {
+          const { data: existingInProgress } = await supabase
+            .from('user_test_attempts')
+            .select('id')
+            .eq('test_id', testId)
+            .eq('user_email', userEmail)
+            .eq('is_completed', false)
+            .eq('status', 'in_progress')
+            .order('started_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
 
-      if (attemptError) throw attemptError;
+          if (existingInProgress?.id) {
+            setAttemptId(existingInProgress.id);
+            dispatch({ type: "START_TEST", payload: { testStarted: true } });
+            autoSubmitOnceRef.current = false;
+            return 'Resuming your in-progress attempt';
+          }
 
-      setAttemptId(attemptData.id);
-      dispatch({ type: "START_TEST", payload: { testStarted: true } });
-      autoSubmitOnceRef.current = false;
-      toast.success('🚀 Test started!', { duration: 2000 });
+          const creditCheck = await consumeCreditOnClient('mock_test', {
+            referenceId: String(testId),
+            idempotencyKey: `mock_test:${userEmail}:${testId}`,
+            user: { email: userEmail, id: user?.id },
+          });
+          if (!creditCheck.ok) {
+            if (creditCheck.needsSubscription) {
+              router.push('/pricing');
+              throw new Error('Not enough credits for a new mock test. View plans on Pricing.');
+            }
+            throw new Error('Could not start test. Please sign in and try again.');
+          }
+
+          const categoryTag =
+            getCategoryVariants(examcategory)[0] || String(examcategory || '').toUpperCase();
+
+          const { data: attemptData, error: attemptError } = await supabase
+            .from('user_test_attempts')
+            .insert({
+              test_id: testId,
+              user_email: sanitizeData(userEmail, 'string', 'anonymous@test.com'),
+              total_questions: state.questionsQueue.length,
+              started_at: new Date().toISOString(),
+              status: 'in_progress',
+              examcategory: categoryTag,
+            })
+            .select()
+            .single();
+
+          if (attemptError) throw attemptError;
+
+          setAttemptId(attemptData.id);
+          dispatch({ type: "START_TEST", payload: { testStarted: true } });
+          autoSubmitOnceRef.current = false;
+          return '🚀 Test started!';
+        },
+        {
+          loading: 'Starting test…',
+          success: (msg) => msg,
+          error: (err) => err?.message || 'Failed to start test',
+        }
+      );
     } catch (error) {
       console.error('Error starting test:', error);
-      toast.error('Failed to start test');
     }
   };
 
@@ -857,7 +875,7 @@ export default function EnhancedMobileMockTestPage() {
     if (!state.currentQuestion || !selectedAnswer) return;
 
     const questionId = state.currentQuestion.id;
-    const isCorrect = selectedAnswer === state.currentQuestion.correct_option;
+    const isCorrect = isAnswerCorrect(selectedAnswer, state.currentQuestion.correct_option);
     const timeSpent = state.timeSpent;
     const currentTime = Date.now();
 
@@ -1009,10 +1027,9 @@ export default function EnhancedMobileMockTestPage() {
     if (isSubmitting) return;
     setIsSubmitting(true);
 
-    try {
+    const runSubmit = async () => {
       const stats = currentStats;
-      const elapsedSeconds = sanitizeData(state.totalTime, "number", 0);
-      const timeSpentMinutes = Math.max(1, Math.round(elapsedSeconds / 60));
+      const elapsedSeconds = Math.max(1, Math.round(sanitizeData(state.totalTime, "number", 0)));
 
       // Create answered questions lookup map
       const answeredMap = new Map();
@@ -1069,6 +1086,9 @@ export default function EnhancedMobileMockTestPage() {
         score: stats.score,
         percentage: stats.percentage,
         subjectStats: stats.subjectStats,
+        markingScheme: stats.markingScheme,
+        maxMarks: stats.maxMarks,
+        netMarks: stats.netMarks,
         timeMetrics: {
           totalTime: state.totalTime,
           avgTimePerQuestion: stats.avgTimePerQuestion
@@ -1078,7 +1098,7 @@ export default function EnhancedMobileMockTestPage() {
       // Main submission with optimized data structure
       const submissionData = {
         submitted_at: new Date().toISOString(),
-        duration_taken: timeSpentMinutes,
+        duration_taken: elapsedSeconds,
         attempted_questions: stats.attempted,
         correct_answers: stats.correct,
         wrong_answers: stats.incorrect,
@@ -1100,6 +1120,9 @@ export default function EnhancedMobileMockTestPage() {
           progress: stats.attemptPercentage,
           score: stats.score,
           percentage: stats.percentage,
+          markingScheme: stats.markingScheme,
+          maxMarks: stats.maxMarks,
+          netMarks: stats.netMarks,
           subjects: Object.keys(stats.subjectStats),
           topSubject: Object.entries(stats.subjectStats)
             .sort((a, b) => b[1].percentage - a[1].percentage)[0]?.[0] || 'None'
@@ -1147,17 +1170,21 @@ export default function EnhancedMobileMockTestPage() {
         is_unanswered: !question.isAttempted
       }));
 
-      // Upsert responses in batches (idempotent)
       const batchSize = 50;
+      const responseErrors = [];
       for (let i = 0; i < responses.length; i += batchSize) {
         const batch = responses.slice(i, i + batchSize);
         const { error: batchError } = await supabase
           .from('user_question_responses')
           .upsert(batch, { onConflict: 'attempt_id,question_id' });
-        
+
         if (batchError) {
+          responseErrors.push(batchError);
           console.error(`Batch ${i / batchSize + 1} error:`, batchError);
         }
+      }
+      if (responseErrors.length > 0) {
+        throw new Error('Failed to save some question responses. Please try again.');
       }
 
       // Success message based on performance
@@ -1170,20 +1197,28 @@ export default function EnhancedMobileMockTestPage() {
         message = `🎯 Excellent! ${stats.percentage}% score!`;
       } else if (stats.percentage >= 60) {
         message = `👍 Good job! ${stats.percentage}% score!`;
+      } else if (stats.markingScheme === 'gate') {
+        message = `📊 Test completed! ${stats.netMarks} / ${stats.maxMarks} marks (${stats.percentage}%)`;
       } else {
         message = `📊 Test completed! ${stats.percentage}% score`;
       }
 
-      toast.success(message, { duration: 4000 });
-      
-      // Clear local storage backup
-      localStorage.removeItem(`test_backup_${attemptId}`);
-      
-      router.push(`/mock-test/${examcategory}/results/${attemptId}`);
+      return message;
+    };
 
+    try {
+      const message = await toastPromise(runSubmit, {
+        loading: isAutoSubmit ? 'Submitting test…' : 'Saving your answers…',
+        success: (msg) => msg,
+        error: (err) => err?.message || 'Submission failed',
+      });
+
+      localStorage.removeItem(`test_backup_${attemptId}`);
+      router.push(`/mock-test/${examcategory}/results/${attemptId}`);
+      return message;
     } catch (error) {
       console.error('Submission error:', error);
-      
+
       // Create comprehensive backup
       const backup = {
         attemptId,
@@ -1207,11 +1242,10 @@ export default function EnhancedMobileMockTestPage() {
       };
       
       localStorage.setItem(`test_backup_${attemptId}`, JSON.stringify(backup));
-      
-      toast.error('Submission failed but data is backed up locally. Please contact support.', { 
-        duration: 10000 
-      });
-      
+      toast.error(
+        'Submission failed but data is backed up locally. Please contact support.',
+        { duration: 10000, id: 'submit-backup' }
+      );
       router.push(`/mock-test/${examcategory}/results/${attemptId}?backup=true`);
       
     } finally {
@@ -1244,7 +1278,7 @@ export default function EnhancedMobileMockTestPage() {
   // Loading state
   const categoryLabel = (examcategory?.toUpperCase?.() || 'GATE CSE').replace(/-/g, ' ');
 
-  if (isLoading) {
+  if (authLoading || isLoading) {
     return (
       <div className="min-h-screen bg-neutral-50">
         <Navbar />
@@ -1311,6 +1345,13 @@ export default function EnhancedMobileMockTestPage() {
         <MetaDataJobs seoTitle={testInfo.name} seoDescription={`Take ${testInfo.name} - ${categoryLabel} mock test.`} />
         <div className="pt-24 min-h-screen">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
+            <div className="hidden md:block mb-4">
+              <MockTestBreadcrumb
+                examcategory={examcategory}
+                categoryLabel={categoryLabel}
+                current={testInfo.name}
+              />
+            </div>
             {/* Mobile Header */}
             <div className="flex items-center justify-between mb-6 md:hidden">
               <button onClick={() => router.back()} className="p-2 text-neutral-600 hover:bg-neutral-100 rounded-lg" aria-label="Back">
@@ -1377,8 +1418,17 @@ export default function EnhancedMobileMockTestPage() {
           <div className="flex items-center space-x-2 md:space-x-3">
             <Award className="h-6 w-6 text-neutral-600 flex-shrink-0" />
             <div>
-              <p className="text-xs md:text-sm text-neutral-600">Max score</p>
-              <p className="text-lg md:text-xl font-bold text-neutral-900">{testInfo.total_questions * 100}</p>
+              <p className="text-xs md:text-sm text-neutral-600">
+                {usesGateMarking(examcategory) ? 'Max marks' : 'Max score'}
+              </p>
+              <p className="text-lg md:text-xl font-bold text-neutral-900">
+                {usesGateMarking(examcategory)
+                  ? testInfo.total_questions
+                  : testInfo.total_questions * 100}
+              </p>
+              {usesGateMarking(examcategory) ? (
+                <p className="text-[10px] text-neutral-500">+1 / −⅓ marking</p>
+              ) : null}
             </div>
           </div>
         </div>
@@ -1430,7 +1480,9 @@ export default function EnhancedMobileMockTestPage() {
           <Play className="h-5 w-5 mr-2" />
           Start {testInfo.total_questions} question test
         </button>
-        <p className="mt-2 text-xs text-neutral-500">Test starts immediately. Progress is auto-saved.</p>
+        <p className="mt-2 text-xs text-neutral-500">
+          Test starts immediately. Progress is auto-saved.
+        </p>
       </div>
     </div>
   </>
@@ -1818,34 +1870,6 @@ export default function EnhancedMobileMockTestPage() {
       </div>
     )}
 
-    {/* Mobile-optimized Toast */}
-    <Toaster 
-      position="top-center"
-      toastOptions={{
-        duration: 2000,
-        style: {
-          background: '#fff',
-          color: '#333',
-          borderRadius: '8px',
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-          fontSize: '14px',
-          padding: '12px 16px',
-          maxWidth: '90vw',
-        },
-        success: {
-          iconTheme: {
-            primary: '#10b981',
-            secondary: '#fff',
-          },
-        },
-        error: {
-          iconTheme: {
-            primary: '#ef4444',
-            secondary: '#fff',
-          },
-        },
-      }}
-    />
   </div>
 )
 }

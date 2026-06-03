@@ -26,7 +26,7 @@ import {
   Clock,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useUser } from '@clerk/nextjs';
+import { useAuth } from '@/app/context/AuthContext';
 import RichTextEditor from '@/components/RichTextEditor';
 import { useArticleCategories, clearCategoriesCache } from '@/lib/hooks/useArticleCategories';
 import EmbedManager from '@/components/EmbedManager';
@@ -44,7 +44,7 @@ const SARKARI_CATEGORIES = [
 ];
 
 const AdminArticlesPage = () => {
-  const { user, isLoaded } = useUser();
+  const { user, loading: authLoading, isAdmin } = useAuth();
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
   
@@ -119,8 +119,6 @@ const AdminArticlesPage = () => {
   const [tweetPostSuccess, setTweetPostSuccess] = useState(null);
   const [scheduledTweets, setScheduledTweets] = useState([]);
 
-  // Check if user is admin
-  const isAdmin = user?.emailAddresses?.[0]?.emailAddress === 'jain10gunjan@gmail.com';
 
   // Fetch articles
   useEffect(() => {
@@ -787,7 +785,7 @@ const AdminArticlesPage = () => {
     });
   };
 
-  if (!isLoaded) {
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
         <div className="bg-white p-8 rounded-lg shadow-sm border border-neutral-200">

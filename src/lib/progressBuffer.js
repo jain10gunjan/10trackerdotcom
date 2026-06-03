@@ -1,3 +1,5 @@
+import { getProgressUserId } from "@/lib/progressIdentity";
+
 const PROGRESS_BUFFER_VERSION = 1;
 
 export const POINTS_PER_CORRECT_ANSWER = 100;
@@ -51,7 +53,7 @@ export async function saveProgressBufferToSupabase({
   user,
   onMissingTopic,
 } = {}) {
-  const userId = user?.id;
+  const userId = getProgressUserId(user);
   if (!supabase || !upsertUserProgress) throw new Error("Missing supabase or upsertUserProgress");
   if (!userId) throw new Error("Missing user");
 
@@ -138,7 +140,7 @@ export async function saveProgressBufferToSupabase({
 
       return {
         user_id: userId,
-        email: user?.primaryEmailAddress?.emailAddress ?? user?.emailAddresses?.[0]?.emailAddress ?? null,
+        email: user?.email ?? user?.primaryEmailAddress?.emailAddress ?? userId,
         topic,
         area,
         completedquestions: mergedCompleted,

@@ -11,7 +11,7 @@ export const examData = [
     description: 'Graduate Aptitude Test in Engineering - Computer Science',
     category: 'Engineering',
     count: 2500, // Hardcoded question count
-    active: true, // Active exam
+    active: false,
   },
   {
     slug: 'gate-ec',
@@ -22,7 +22,7 @@ export const examData = [
     description: 'Graduate Aptitude Test in Engineering - Computer Science',
     category: 'Engineering',
     count: 2550, // Hardcoded question count
-    active: true, // Active exam
+    active: false,
   },
   {
     slug: 'gate-ee',
@@ -33,7 +33,7 @@ export const examData = [
     description: 'Graduate Aptitude Test in Engineering - Computer Science',
     category: 'Engineering',
     count: 2800, // Hardcoded question count
-    active: true, // Active exam
+    active: false,
   },
   {
     slug: 'jee-main',
@@ -44,7 +44,7 @@ export const examData = [
     description: 'Joint Entrance Examination for Engineering',
     category: 'Engineering',
     count: 3200, // Hardcoded question count
-    active: true, // Active exam
+    active: false,
   },
   {
     slug: 'mht-cet',
@@ -55,7 +55,7 @@ export const examData = [
     description: 'Maharashtra Common Entrance Test',
     category: 'State Level',
     count: 2240, // Hardcoded question count
-    active: true, // Active exam
+    active: false,
   },
   {
     slug: 'upsc-prelims',
@@ -67,7 +67,7 @@ export const examData = [
     description: 'Union Public Service Commission - Civil Services Prelims Exam',
     category: 'Civil Services',
     count: 14000, // Hardcoded question count
-    active: true, // Inactive exam - will be grayed out
+    active: true,
   },
   {
     slug: 'bitsat',
@@ -79,7 +79,7 @@ export const examData = [
     description: 'Birla Institute of Technology and Science, Pilani',
     category: 'Engineering',
     count: 1500, // Hardcoded question count
-    active: true, // Inactive exam - will be grayed out
+    active: false,
   },
   {
     slug: 'general-aptitude',
@@ -91,7 +91,7 @@ export const examData = [
     description: 'General Aptitude and Reasoning Practice. Quantitative Aptitude and Verbal Ability.',
     category: 'General',
     count: 24000, // Hardcoded question count
-    active: true, // Inactive exam - will be grayed out
+    active: true,
   },
   // {
   //   slug: 'neet-ug',

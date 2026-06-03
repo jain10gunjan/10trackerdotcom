@@ -24,7 +24,7 @@ const MobileBottomMenu = () => {
   const [showMenu, setShowMenu] = useState(false);
   const [toast, setToast] = useState(null); // { message: string }
   const pathname = usePathname();
-  const { user, setShowProfileModal } = useAuth();
+  const { user } = useAuth();
   const isActive = (path) => pathname === path;
 
   const showToast = (message) => {
@@ -83,16 +83,16 @@ const MobileBottomMenu = () => {
 
               {user ? (
                 <Link
-                  href="/user-progress"
+                  href="/"
                   className={`flex flex-col items-center justify-center transition-colors min-w-0 py-2 ${
-                    isActive('/user-progress') ? 'text-neutral-900' : 'text-neutral-500'
+                    isActive('/') && pathname === '/' ? 'text-neutral-900' : 'text-neutral-500'
                   }`}
                 >
                   <BarChart2 className="w-5 h-5 flex-shrink-0" />
                   <span className="text-[10px] font-medium mt-0.5 truncate w-full text-center">Progress</span>
                   <span
                     className={`mt-1 h-0.5 w-6 rounded-full ${
-                      isActive('/user-progress') ? 'bg-neutral-900' : 'bg-transparent'
+                      isActive('/') && pathname === '/' ? 'bg-neutral-900' : 'bg-transparent'
                     }`}
                   />
                 </Link>
@@ -198,7 +198,7 @@ const MobileBottomMenu = () => {
                     {user ? (
                       <>
                         <Link
-                          href="/user-progress"
+                          href="/"
                           onClick={() => setShowMenu(false)}
                           className="flex items-center gap-3 px-3 py-3 rounded-xl text-neutral-800 hover:bg-neutral-100 transition-colors"
                         >
@@ -206,18 +206,15 @@ const MobileBottomMenu = () => {
                           <span className="text-sm font-medium flex-1">My Progress</span>
                           <ChevronRight className="w-4 h-4 text-neutral-400" />
                         </Link>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowMenu(false);
-                            setShowProfileModal(true);
-                          }}
-                          className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-neutral-800 hover:bg-neutral-100 transition-colors"
+                        <Link
+                          href="/profile"
+                          onClick={() => setShowMenu(false)}
+                          className="flex items-center gap-3 px-3 py-3 rounded-xl text-neutral-800 hover:bg-neutral-100 transition-colors"
                         >
                           <User className="w-5 h-5 text-neutral-500 flex-shrink-0" />
-                          <span className="text-sm font-medium flex-1 text-left">Profile</span>
+                          <span className="text-sm font-medium flex-1">Edit profile</span>
                           <ChevronRight className="w-4 h-4 text-neutral-400" />
-                        </button>
+                        </Link>
                       </>
                     ) : (
                       <Link

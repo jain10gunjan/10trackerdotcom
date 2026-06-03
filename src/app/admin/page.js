@@ -58,6 +58,13 @@ const CARDS = [
     icon: GraduationCap,
     accent: "from-neutral-700 to-neutral-900",
   },
+  {
+    href: "/admin/platform-exams",
+    title: "Platform exams",
+    desc: "Enable or disable exams shown on profile signup and home.",
+    icon: GraduationCap,
+    accent: "from-cyan-600 to-blue-600",
+  },
 ];
 
 export default function AdminDashboardPage() {

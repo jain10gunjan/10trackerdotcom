@@ -18,14 +18,16 @@ import {
   GraduationCap,
   Newspaper,
   Briefcase,
+  Coins,
 } from "lucide-react";
 import { useAuth } from "@/app/context/AuthContext";
+import WalletBar from "@/components/credits/WalletBar";
 import logo from "@/assests/10tracker.png";
 
 const Navbar = () => {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
-  const { user, signOut, setShowAuthModal, isAdmin, setShowProfileModal } = useAuth();
+  const { user, signOut, setShowAuthModal, isAdmin } = useAuth();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   const toggleMenu = () => {
@@ -107,6 +109,7 @@ const Navbar = () => {
                 {typeof window !== "undefined" && user ? (
                   <div className="relative">
                     <div className="flex items-center gap-3">
+                      <WalletBar compact />
                       <div className="w-9 h-9 rounded-full bg-neutral-700 flex items-center justify-center text-sm font-semibold text-white">
                         {(user?.fullName?.[0] || user?.primaryEmailAddress?.emailAddress?.[0] || '').toUpperCase()}
                       </div>
@@ -126,7 +129,7 @@ const Navbar = () => {
                         className="absolute right-0 mt-2 py-2 w-48 bg-white rounded-md shadow-lg z-50"
                       >
                         <Link
-                          href="/user-progress"
+                          href="/"
                           className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                         >
                           <div className="flex items-center">
@@ -134,15 +137,25 @@ const Navbar = () => {
                             My Progress
                           </div>
                         </Link>
-                        <button
-                          onClick={() => setShowProfileModal(true)}
+                        <Link
+                          href="/pricing"
+                          className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          onClick={() => setUserMenuOpen(false)}
+                        >
+                          <div className="flex items-center">
+                            <Coins size={16} className="mr-2" />
+                            Plans & credits
+                          </div>
+                        </Link>
+                        <Link
+                          href="/profile"
                           className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                         >
                           <div className="flex items-center">
                             <User size={16} className="mr-2" />
-                            Profile Settings
+                            Edit profile
                           </div>
-                        </button>
+                        </Link>
                         {isAdmin && (
                           <Link
                             href="/admin"
@@ -186,7 +199,8 @@ const Navbar = () => {
             </div>
 
             {/* Mobile menu button */}
-            <div className="flex md:hidden items-center pr-1">
+            <div className="flex md:hidden items-center gap-2 pr-1">
+              {user && <WalletBar compact />}
               <button
                 onClick={toggleMenu}
                 className="inline-flex items-center justify-center p-2 rounded-lg text-neutral-700 hover:text-neutral-900 hover:bg-neutral-100 focus:outline-none transition-colors"
@@ -223,7 +237,7 @@ const Navbar = () => {
 
               {/* User Progress - Show for all users */}
               <Link
-                href="/user-progress"
+                href="/"
                 onClick={() => setIsOpen(false)}
                 className="flex items-center px-4 py-3 rounded-lg text-base font-medium text-gray-800 hover:text-gray-900 hover:bg-gray-50 transition-all duration-200 active:bg-gray-100"
               >
@@ -250,16 +264,25 @@ const Navbar = () => {
                       </p>
                     </div>
                   </div>
-                  <button
-                    onClick={() => {
-                      setShowProfileModal(true);
-                      setIsOpen(false);
-                    }}
+                  <div className="px-4 py-2">
+                    <WalletBar />
+                  </div>
+                  <Link
+                    href="/pricing"
+                    onClick={() => setIsOpen(false)}
+                    className="flex items-center w-full px-4 py-3 rounded-lg text-base font-medium text-gray-800 hover:bg-gray-50 transition-all duration-200 active:bg-gray-100"
+                  >
+                    <Coins size={18} className="mr-3 text-gray-600" />
+                    Plans & credits
+                  </Link>
+                  <Link
+                    href="/profile"
+                    onClick={() => setIsOpen(false)}
                     className="flex items-center w-full px-4 py-3 rounded-lg text-base font-medium text-gray-800 hover:bg-gray-50 transition-all duration-200 active:bg-gray-100"
                   >
                     <User size={18} className="mr-3 text-gray-600" />
-                    Profile Settings
-                  </button>
+                    Edit profile
+                  </Link>
                   {isAdmin && (
                     <Link
                       href="/admin"

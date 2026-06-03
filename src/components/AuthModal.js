@@ -243,7 +243,7 @@ const AuthModal = ({ isOpen, onClose, onGoogleSignIn, categoryName = "exam" }) =
             {/* Sign In Section */}
             <div className="px-4 py-4 bg-white border-t border-slate-100">
               
-              {/* Sign in (Clerk modal handles email + Google etc) */}
+              {/* Sign in with Google via NextAuth */}
               <button
                 onClick={handleGoogleSignIn}
                 className={`w-full py-4 px-6 rounded-xl sm:rounded-2xl flex items-center justify-center gap-3 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 ${

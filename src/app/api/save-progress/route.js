@@ -86,6 +86,7 @@ export async function POST(request) {
       correctanswers: merged.correct,
       points: merged.points,
       area: area,
+      updated_at: new Date().toISOString(),
     };
 
     let { error: saveError } = await upsertUserProgress(supabase, progressData);
@@ -104,6 +105,7 @@ export async function POST(request) {
             correctanswers: merged.correct,
             points: merged.points,
             email: email || null,
+            updated_at: new Date().toISOString(),
           })
           .eq("user_id", userId)
           .eq("topic", topic)

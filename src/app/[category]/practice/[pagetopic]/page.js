@@ -6,7 +6,13 @@ import { useParams, useSearchParams, useRouter, usePathname } from "next/navigat
 import { supabase } from "@/app/lib/supabase";
 import dynamic from "next/dynamic";
 import { useAuth } from "@/app/context/AuthContext";
+import { usePracticeCreditGate } from "@/lib/credits/usePracticeCreditGate";
+import { useCredits } from "@/context/CreditsContext";
+import { normalizeQuestionId } from "@/lib/credits/practiceCreditUtils";
+import { showPracticeAnswerToast } from "@/lib/credits/practiceAnswerToast";
+import { applyPracticeProgressUpdate } from "@/lib/credits/recordPracticeProgress";
 import { upsertUserProgress } from "@/lib/userProgressUpsert";
+import { applyProgressUserFilter, mergeProgressRows } from "@/lib/progressIdentity";
 import {
   readProgressBuffer,
   writeProgressBuffer,
@@ -114,6 +120,8 @@ const Pagetracker = memo(() => {
   const router = useRouter();
   const pathname = usePathname();
   const { user, setShowAuthModal } = useAuth();
+  const { chargeForQuestion, canAttemptPractice } = usePracticeCreditGate();
+  const { setShowPaywall } = useCredits();
 
   // State
   const [questions, setQuestions] = useState([]);
@@ -130,6 +138,10 @@ const Pagetracker = memo(() => {
     correct: [],
     points: 0
   });
+  const progressRef = useRef(progress);
+  useEffect(() => {
+    progressRef.current = progress;
+  }, [progress]);
   const [difficultyQuestionIds, setDifficultyQuestionIds] = useState(new Set()); // Store question IDs for current difficulty
 
   // Single source of truth: derive page from URL to avoid duplicate state + sync effect re-renders
@@ -293,23 +305,22 @@ const Pagetracker = memo(() => {
     }
 
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("user_progress")
         .select("completedquestions, correctanswers, points")
-        .eq("user_id", user.id)
         .eq("topic", pagetopic)
-        .eq("area", category)
-        .maybeSingle();
+        .eq("area", category);
+      query = applyProgressUserFilter(query, user);
+
+      const { data, error } = await query;
 
       if (error && error.code !== "PGRST116") {
         throw error;
       }
 
-      const completed = Array.isArray(data?.completedquestions) ? data.completedquestions : [];
-      const correct = Array.isArray(data?.correctanswers) ? data.correctanswers : [];
-      const points = typeof data?.points === 'number' ? data.points : 0;
-
-      setProgress({ completed, correct, points });
+      const rows = Array.isArray(data) ? data : data ? [data] : [];
+      const merged = mergeProgressRows(rows);
+      setProgress(merged);
     } catch (error) {
       handleError(error, "Failed to load progress", "Error fetching user progress:");
       setProgress({ completed: [], correct: [], points: 0 });
@@ -318,23 +329,21 @@ const Pagetracker = memo(() => {
 
   // Helper: Fetch existing progress from database
   const fetchExistingProgress = useCallback(async () => {
-    const { data, error } = await supabase
+    let query = supabase
       .from("user_progress")
       .select("completedquestions, correctanswers, points")
-      .eq("user_id", user.id)
       .eq("topic", pagetopic)
-      .eq("area", category)
-      .maybeSingle();
+      .eq("area", category);
+    query = applyProgressUserFilter(query, user);
+
+    const { data, error } = await query;
 
     if (error && error.code !== "PGRST116") {
       throw error;
     }
 
-    return {
-      completed: Array.isArray(data?.completedquestions) ? data.completedquestions : [],
-      correct: Array.isArray(data?.correctanswers) ? data.correctanswers : [],
-      points: typeof data?.points === 'number' ? data.points : 0
-    };
+    const rows = Array.isArray(data) ? data : data ? [data] : [];
+    return mergeProgressRows(rows);
   }, [user, pagetopic, category]);
 
   const refreshUnsavedCount = useCallback(() => {
@@ -411,52 +420,50 @@ const Pagetracker = memo(() => {
     }
   }, [user, setShowAuthModal, fetchUserProgress, refreshUnsavedCount]);
 
-  // Handle answer
-  const handleAnswer = useCallback((questionId, isCorrect) => {
-    if (!user) {
-      setShowAuthModal(true);
-      return;
-    }
-
-    // If this question is already marked completed, do not re-award points or re-save
-    if (progress.completed.includes(questionId)) {
-      return;
-    }
-
-    // Optimistic update
-    setProgress(prev => {
-      // Double-guard inside state update in case progress changed between renders
-      if (prev.completed.includes(questionId)) {
-        return prev;
+  const persistAttempt = useCallback(
+    (questionId, isCorrect, { withCredit }) => {
+      if (!user) {
+        setShowAuthModal(true);
+        return;
       }
-      return {
-        completed: [...new Set([...prev.completed, questionId])],
-        correct: isCorrect 
-          ? [...new Set([...prev.correct, questionId])]
-          : prev.correct.filter(id => id !== questionId),
-        points: prev.points + (isCorrect ? POINTS_PER_CORRECT_ANSWER : 0)
-      };
-    });
 
-    // Buffer locally (cross-route) instead of saving per-click
-    try {
-      const userId = user.id;
-      const buffer = readProgressBuffer(userId);
-      const entries = buffer.entries ?? {};
-      entries[String(questionId)] = {
-        completed: true,
-        correct: !!isCorrect,
-        points: isCorrect ? POINTS_PER_CORRECT_ANSWER : 0,
-        topic: String(pagetopic ?? "").trim(),
-        area: String(category ?? "").trim().toLowerCase(),
-        updatedAt: Date.now(),
-      };
-      writeProgressBuffer(userId, { ...buffer, entries });
-      setUnsavedCount(Object.keys(entries).length);
-    } catch (_) {
-      /* ignore */
-    }
-  }, [user, setShowAuthModal, progress.completed, pagetopic, category]);
+      const qid = normalizeQuestionId(questionId);
+      const area = String(category ?? "").trim().toLowerCase();
+      const topic = String(pagetopic ?? "").trim();
+
+      if (withCredit) {
+        const creditCharge = chargeForQuestion({
+          user,
+          questionId: qid,
+          completedIds: progressRef.current.completed,
+          area,
+          topic,
+        });
+
+        if (!creditCharge.ok) return;
+        if (creditCharge.skipped) return;
+
+        showPracticeAnswerToast(isCorrect);
+      }
+
+      const unsaved = applyPracticeProgressUpdate({
+        userId: user.id,
+        questionId: qid,
+        isCorrect,
+        area,
+        topic,
+        pointsPerCorrect: POINTS_PER_CORRECT_ANSWER,
+        setProgress,
+      });
+      if (typeof unsaved === "number") setUnsavedCount(unsaved);
+    },
+    [user, setShowAuthModal, category, pagetopic, chargeForQuestion]
+  );
+
+  const handleAnswer = useCallback(
+    (questionId, isCorrect) => persistAttempt(questionId, isCorrect, { withCredit: true }),
+    [persistAttempt]
+  );
 
   // Restore last difficulty when opening a new topic/chapter link that omits ?difficulty=
   useLayoutEffect(() => {
@@ -821,9 +828,11 @@ const Pagetracker = memo(() => {
                           index={index}
                           questionId={question._id}
                           onAnswer={handleAnswer}
-                          isCompleted={effectiveProgress.completed.includes(question._id)}
-                          isCorrect={effectiveProgress.correct.includes(question._id)}
+                          isCompleted={effectiveProgress.completed.map(String).includes(String(question._id))}
+                          isCorrect={effectiveProgress.correct.map(String).includes(String(question._id))}
                           isAdmin={user?.email === ADMIN_EMAIL || user?.primaryEmailAddress?.emailAddress === ADMIN_EMAIL}
+                          creditsLocked={Boolean(user) && !canAttemptPractice}
+                          onRequireCredits={() => setShowPaywall(true)}
                         />
                       ))}
                       {/* Pagination controls */}

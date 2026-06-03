@@ -10,7 +10,7 @@ import toast, { Toaster } from 'react-hot-toast';
 export default function CreateYearwiseTestPage() {
   const router = useRouter();
   const params = useParams();
-  const { user } = useAuth();
+  const { user, isAdmin, loading: authLoading } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [questions, setQuestions] = useState([]);
   const [filteredQuestions, setFilteredQuestions] = useState([]);
@@ -30,8 +30,6 @@ export default function CreateYearwiseTestPage() {
   const [questionsPerPage] = useState(20);
 
   // Check if user is admin
-  const isAdmin = user?.email === 'jain10gunjan@gmail.com';
-
   // Memoized unique values for filters
   const years = useMemo(() => 
     [...new Set(questions.map(q => q.year))]

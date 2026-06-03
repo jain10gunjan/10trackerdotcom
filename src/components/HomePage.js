@@ -102,13 +102,13 @@ function ExamCard({ exam }) {
             >
               {exam.name}
             </h3>
-            <ChevronRight
-              className={`w-5 h-5 flex-shrink-0 transition-all ${
-                isActive
-                  ? "text-neutral-400 group-hover:text-neutral-700 group-hover:translate-x-0.5"
-                  : "text-neutral-300"
-              }`}
-            />
+            {!isActive ? (
+              <span className="text-[10px] font-semibold text-neutral-400 bg-white border border-neutral-200 px-2 py-0.5 rounded-full whitespace-nowrap flex-shrink-0">
+                Coming soon
+              </span>
+            ) : (
+              <ChevronRight className="w-5 h-5 flex-shrink-0 text-neutral-400 group-hover:text-neutral-700 group-hover:translate-x-0.5 transition-all" />
+            )}
           </div>
           <p className="text-xs text-neutral-500 line-clamp-1 mt-0.5">
             {isActive
@@ -154,7 +154,12 @@ export default function HomePage({ categorySections = [] }) {
         const hay = `${e.name || ""} ${e.slug || ""} ${e.description || ""}`.toLowerCase();
         return hay.includes(q);
       })
-      .slice(0, 9);
+      .sort((a, b) => {
+        const aActive = a.active !== false;
+        const bActive = b.active !== false;
+        if (aActive !== bActive) return aActive ? -1 : 1;
+        return (b.count || 0) - (a.count || 0);
+      });
   }, [examCategories, examQuery, activeCategory]);
 
   return (

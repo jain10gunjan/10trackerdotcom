@@ -1,26 +1,19 @@
 import { NextResponse } from 'next/server';
+import { verifyAdminAuth } from '@/middleware/adminAuth';
 
 export async function POST(request) {
+  const { isAdmin, error: authError } = await verifyAdminAuth();
+  if (!isAdmin) {
+    return NextResponse.json({ success: false, error: authError || 'Admin access required' }, { status: 403 });
+  }
+
   try {
     const { action, examCategory } = await request.json();
 
     if (action === 'fetch-all-questions') {
       try {
-        // Import Supabase client
-        const { createClient } = require('@supabase/supabase-js');
-        
-        // Initialize Supabase client
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-        const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-        
-        if (!supabaseUrl || !supabaseKey) {
-          return NextResponse.json({ 
-            success: false, 
-            error: 'Supabase configuration missing. Please check your environment variables.' 
-          });
-        }
-
-        const supabase = createClient(supabaseUrl, supabaseKey);
+        const { getSupabaseServer } = require('@/lib/supabaseServer');
+        const supabase = getSupabaseServer(true);
 
         // Fetch questions from examtracker table
         let query = supabase

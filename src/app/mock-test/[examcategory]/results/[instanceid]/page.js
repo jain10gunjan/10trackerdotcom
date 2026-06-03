@@ -1,7 +1,13 @@
 "use client";
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import {
+  categoryMatches,
+  formatDurationShort,
+  formatDurationLong,
+  usesGateMarking,
+} from '@/lib/mockTestUtils';
 import { useAuth } from '@/app/context/AuthContext';
 import { createClient } from "@supabase/supabase-js";
 import { MathJax, MathJaxContext } from "better-react-mathjax";
@@ -19,6 +25,9 @@ import {
 import toast, { Toaster } from 'react-hot-toast';
 import Navbar from '@/components/Navbar';
 import MetaDataJobs from '@/components/Seo';
+import MockTestBreadcrumb from '@/components/mock-test/MockTestBreadcrumb';
+import ShareResultsCard from '@/components/mock-test/ShareResultsCard';
+import TestRankSummary from '@/components/mock-test/TestRankSummary';
 
 // MathJax 3 config (same as attempt page) so $...$ and $$...$$ are processed
 const MATHJAX_CONFIG = {
@@ -80,7 +89,9 @@ const FILTER_TABS = [
 export default function TestResultPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { instanceid: attemptId, examcategory } = useParams();
+  const isBackupMode = searchParams.get('backup') === 'true';
 
   const userEmail = useMemo(
     () =>
@@ -114,8 +125,56 @@ export default function TestResultPage() {
         router.push(`/mock-test/${examcategory}?tab=progress`);
         return;
       }
+      if (
+        attemptData.mock_tests?.category &&
+        !categoryMatches(attemptData.mock_tests.category, examcategory)
+      ) {
+        toast.error('This result does not match the selected exam category');
+        router.push(`/mock-test/${examcategory}?tab=progress`);
+        return;
+      }
+
       setAttempt(attemptData);
       setTestInfo(attemptData.mock_tests);
+
+      const backupKey = `test_backup_${attemptId}`;
+      if (isBackupMode && typeof window !== 'undefined') {
+        try {
+          const raw = localStorage.getItem(backupKey);
+          if (raw?.trim()) {
+            let backup;
+            try {
+              backup = JSON.parse(raw);
+            } catch {
+              backup = null;
+            }
+            if (!backup) {
+              /* ignore corrupt backup */
+            } else {
+            toast('Showing locally backed-up answers (submission may be incomplete)', {
+              icon: '⚠️',
+              duration: 6000,
+            });
+            if (backup.stats) {
+              setAttempt((prev) =>
+                prev
+                  ? {
+                      ...prev,
+                      score: backup.stats.score ?? prev.score,
+                      percentage: backup.stats.percentage ?? prev.percentage,
+                      correct_answers: backup.stats.correct ?? prev.correct_answers,
+                      wrong_answers: backup.stats.incorrect ?? prev.wrong_answers,
+                      unanswered: backup.stats.skipped ?? prev.unanswered,
+                    }
+                  : prev
+              );
+            }
+            }
+          }
+        } catch (e) {
+          console.warn('Could not read local backup', e);
+        }
+      }
 
       const questionIds = (attemptData.all_questions || []).map((q) => q.id).filter(Boolean);
       if (questionIds.length === 0) {
@@ -145,7 +204,6 @@ export default function TestResultPage() {
           console.warn(`Fetch completed in ${duration}ms`);
         }
       }
-      toast.success('Results loaded');
     } catch (err) {
       console.error('Error in fetchAttemptDetails:', err);
       toast.error('Failed to load test results');
@@ -153,7 +211,7 @@ export default function TestResultPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [attemptId, userEmail, examcategory, router]);
+  }, [attemptId, userEmail, examcategory, router, isBackupMode]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -181,6 +239,8 @@ export default function TestResultPage() {
         is_completed,
         answers,
         all_questions,
+        quick_stats,
+        final_stats,
         mock_tests (
           name,
           duration,
@@ -394,6 +454,18 @@ export default function TestResultPage() {
   }
 
   const testName = testInfo?.name || 'Test result';
+  const gateMarking =
+    attempt?.quick_stats?.markingScheme === 'gate' ||
+    attempt?.final_stats?.markingScheme === 'gate' ||
+    usesGateMarking(examcategory);
+  const netMarks =
+    attempt?.quick_stats?.netMarks ??
+    attempt?.final_stats?.netMarks ??
+    attempt?.score;
+  const maxMarks =
+    attempt?.quick_stats?.maxMarks ??
+    attempt?.final_stats?.maxMarks ??
+    attempt?.total_questions;
 
   return (
     <>
@@ -428,6 +500,24 @@ export default function TestResultPage() {
                   <span className="px-2.5 py-1 bg-neutral-100 text-neutral-700 rounded-full text-xs font-medium">
                     {testInfo.difficulty || '—'}
                   </span>
+                  {gateMarking ? (
+                    <span className="px-2.5 py-1 bg-amber-50 text-amber-800 rounded-full text-xs font-medium">
+                      GATE +1 / −⅓
+                    </span>
+                  ) : null}
+                </div>
+                <div className="mb-4 sm:mb-6 p-4 rounded-xl bg-neutral-900 text-white">
+                  <p className="text-xs text-neutral-300 uppercase tracking-wide mb-1">Overall</p>
+                  {gateMarking ? (
+                    <p className="text-2xl sm:text-3xl font-bold">
+                      {netMarks} <span className="text-lg font-medium text-neutral-300">/ {maxMarks} marks</span>
+                      <span className="block text-sm font-normal text-neutral-400 mt-1">
+                        ({attempt.percentage}% of max)
+                      </span>
+                    </p>
+                  ) : (
+                    <p className="text-2xl sm:text-3xl font-bold">{attempt.percentage}%</p>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
@@ -456,11 +546,27 @@ export default function TestResultPage() {
                     <div className="flex items-center justify-between mb-1">
                       <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-neutral-600 flex-shrink-0" />
                       <span className="text-lg sm:text-2xl font-bold text-neutral-900">
-                        {Math.floor(attempt.duration_taken / 60)}m
+                        {formatDurationShort(attempt.duration_taken)}
                       </span>
                     </div>
                     <div className="text-xs sm:text-sm font-medium text-neutral-700">Time</div>
                   </div>
+                </div>
+
+                <div className="mt-4 sm:mt-6 grid gap-4 sm:grid-cols-1 lg:grid-cols-2">
+                  <TestRankSummary
+                    examcategory={examcategory}
+                    testId={attempt.test_id}
+                    user={user}
+                    testName={testName}
+                  />
+                  <ShareResultsCard
+                    testName={testName}
+                    scoreLabel={gateMarking ? `${netMarks}/${maxMarks} marks` : `${attempt.percentage}%`}
+                    percentage={attempt.percentage}
+                    examcategory={examcategory}
+                    attemptId={attemptId}
+                  />
                 </div>
 
                 <div className="mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-neutral-200">
@@ -479,7 +585,7 @@ export default function TestResultPage() {
                     </div>
                     <div>
                       <span className="font-medium text-neutral-500">Duration</span>
-                      <div className="text-neutral-800">{Math.floor(attempt.duration_taken / 60)}m {attempt.duration_taken % 60}s</div>
+                      <div className="text-neutral-800">{formatDurationLong(attempt.duration_taken)}</div>
                     </div>
                   </div>
                 </div>

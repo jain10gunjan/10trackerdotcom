@@ -1,61 +1,41 @@
 import { NextResponse } from 'next/server';
+import { verifyAdminAuth } from '@/middleware/adminAuth';
+import { getCategoryVariants } from '@/lib/mockTestUtils';
+import { getSupabaseServer } from '@/lib/supabaseServer';
 
 export async function POST(request) {
+  const { isAdmin, userEmail, error: authError } = await verifyAdminAuth();
+  if (!isAdmin) {
+    return NextResponse.json({ success: false, error: authError || 'Admin access required' }, { status: 403 });
+  }
+
   try {
-    const { action, examCategory, testConfig, questionIds, selectedYear, selectedCategory, selectedSubject } = await request.json();
+    const { action, examCategory, testConfig, questionIds, selectedYear, selectedCategory, selectedSubject, selectedTopic } = await request.json();
 
     if (action === 'create-yearwise-test') {
+      if (!examCategory || !testConfig?.testName || !Array.isArray(questionIds) || questionIds.length === 0) {
+        return NextResponse.json(
+          { success: false, error: 'examCategory, testConfig.testName, and questionIds are required' },
+          { status: 400 }
+        );
+      }
       try {
-        // Import Supabase client
-        const { createClient } = require('@supabase/supabase-js');
-        
-        // Initialize Supabase client
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-        const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-        
-        if (!supabaseUrl || !supabaseKey) {
-          return NextResponse.json({ 
-            success: false, 
-            error: 'Supabase configuration missing. Please check your environment variables.' 
-          });
-        }
+        const supabase = getSupabaseServer(true);
+        const category = getCategoryVariants(examCategory)[0] || String(examCategory).toUpperCase();
+        const topicMeta = selectedTopic || selectedCategory || 'general';
+        const subjectMeta = selectedSubject || 'general';
 
-        const supabase = createClient(supabaseUrl, supabaseKey);
-
-        // Generate unique test ID
-        const testId = `test_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-
-        // Create test configuration
-        const testData = {
-          _id: testId,
-          examCategory: examCategory,
-          testName: testConfig.testName,
-          testType: 'yearwise',
-          duration: testConfig.duration,
-          totalMarks: testConfig.totalMarks,
-          passingMarks: testConfig.passingMarks,
-          instructions: testConfig.instructions,
-          questionCount: questionIds.length,
-          selectedYear: selectedYear,
-          selectedCategory: selectedCategory,
-          selectedSubject: selectedSubject,
-          status: 'active',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        };
-
-        // Insert test into mock_tests table
         const { data: insertData, error: insertError } = await supabase
           .from('mock_tests')
           .insert([{
-            name: testData.testName,
+            name: testConfig.testName,
             description: `Year-wise test for ${selectedYear || 'all years'}`,
-            duration: testData.duration,
-            total_questions: testData.questionCount,
+            duration: testConfig.duration,
+            total_questions: questionIds.length,
             difficulty: 'mixed',
             is_active: true,
-            created_by: 'admin', // Add the required created_by field
-            category: examCategory.toUpperCase() // Add category from examCategory params in uppercase
+            created_by: userEmail || 'admin',
+            category,
           }])
           .select();
 
@@ -85,8 +65,8 @@ export async function POST(request) {
           test_id: insertedTestId,
           question_id: questionId,
           question_order: index + 1,
-          subject: selectedSubject || 'general',
-          topic: selectedCategory || 'general',
+          subject: subjectMeta,
+          topic: topicMeta,
           difficulty: 'medium'
         }));
 

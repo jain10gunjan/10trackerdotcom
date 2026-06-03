@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import MetaDataJobs from '@/components/Seo';
 import Navbar from '@/components/Navbar';
+import { examData } from '@/data/examData';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -147,7 +148,7 @@ QuickStats.displayName = 'QuickStats';
 
 // ─── PracticePathCards ────────────────────────────────────────────────────────
 
-const PATH_CARDS = (category) => [
+const PATH_CARDS = (category, { mockTestsLive = false } = {}) => [
   {
     id: 'pyq',
     href: '#practice-content',
@@ -173,7 +174,7 @@ const PATH_CARDS = (category) => [
     desc: 'Full-length simulated exams with detailed analytics.',
     icon: ClipboardCheck,
     badge: 'Simulate exam',
-    comingSoon: true,
+    comingSoon: !mockTestsLive,
   },
   {
     id: 'daily',
@@ -186,8 +187,8 @@ const PATH_CARDS = (category) => [
   },
 ];
 
-const PracticePathCards = memo(({ category }) => {
-  const cards = useMemo(() => PATH_CARDS(category), [category]);
+const PracticePathCards = memo(({ category, mockTestsLive = false }) => {
+  const cards = useMemo(() => PATH_CARDS(category, { mockTestsLive }), [category, mockTestsLive]);
 
   const notifyInProgress = useCallback((title) => {
     toast(`${title} is in progress. Stay tuned!`, {
@@ -621,6 +622,10 @@ export default function ExamTracker() {
   const apiURL   = `/api/allsubtopics?category=${encodeURIComponent(safeCategory.toUpperCase())}`;
 
   const formattedCat = useMemo(() => titleCase(safeCategory), [safeCategory]);
+  const mockTestsLive = useMemo(
+    () => examData.some((e) => e.slug === safeCategory && e.active),
+    [safeCategory]
+  );
   const reduced      = useReducedMotion();
   const vars         = useMemo(() => makeVariants(reduced), [reduced]);
 
@@ -897,7 +902,7 @@ export default function ExamTracker() {
 
             {/* Path cards */}
             <div className="mt-8">
-              <PracticePathCards category={safeCategory} />
+              <PracticePathCards category={safeCategory} mockTestsLive={mockTestsLive} />
             </div>
           </div>
         </section>

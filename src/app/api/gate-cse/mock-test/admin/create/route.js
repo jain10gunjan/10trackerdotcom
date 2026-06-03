@@ -1,12 +1,16 @@
 import { NextResponse } from 'next/server';
-import { createClient } from "@supabase/supabase-js";
+import { verifyAdminAuth } from '@/middleware/adminAuth';
+import { getCategoryVariants } from '@/lib/mockTestUtils';
+import { getSupabaseServer } from '@/lib/supabaseServer';
+import { fetchMockTestsForCategory } from '@/lib/mockTestQueries';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
-
+/** Creates rows in mock_tests (not gate_cse_tests) */
 export async function POST(request) {
+  const { isAdmin, userEmail, error: authError } = await verifyAdminAuth();
+  if (!isAdmin) {
+    return NextResponse.json({ error: authError || 'Admin access required' }, { status: 403 });
+  }
+
   try {
     const body = await request.json();
     const {
@@ -15,14 +19,9 @@ export async function POST(request) {
       totalQuestions,
       duration,
       difficulty,
-      includeGeneralAptitude,
-      includeEngineeringMath,
-      customWeightage,
-      weightageConfig,
-      questionDistribution
+      examCategory = 'gate-cse',
     } = body;
 
-    // Validate required fields
     if (!name || !totalQuestions || !duration) {
       return NextResponse.json(
         { error: 'Missing required fields: name, totalQuestions, duration' },
@@ -30,77 +29,51 @@ export async function POST(request) {
       );
     }
 
-    // Create test in Supabase
+    const supabase = getSupabaseServer(true);
+    const category = getCategoryVariants(examCategory)[0] || 'GATE-CSE';
+
     const { data: test, error } = await supabase
-      .from('gate_cse_tests')
+      .from('mock_tests')
       .insert({
         name,
         description: description || '',
         total_questions: totalQuestions,
         duration,
-        difficulty,
-        include_general_aptitude: includeGeneralAptitude,
-        include_engineering_math: includeEngineeringMath,
-        custom_weightage: customWeightage,
-        weightage_config: weightageConfig,
-        question_distribution: questionDistribution,
-        created_by: 'jain10gunjan@gmail.com', // TODO: Get from session
-        is_active: true
+        difficulty: difficulty || 'mixed',
+        category,
+        created_by: userEmail || 'admin',
+        is_active: true,
       })
       .select()
       .single();
 
     if (error) {
       console.error('Supabase error:', error);
-      return NextResponse.json(
-        { error: 'Failed to create test' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Failed to create test' }, { status: 500 });
     }
 
     return NextResponse.json({
       success: true,
       message: 'Test created successfully',
-      test: {
-        id: test.id,
-        name: test.name,
-        createdAt: test.created_at
-      }
+      test: { id: test.id, name: test.name, createdAt: test.created_at },
     });
-
   } catch (error) {
     console.error('Error creating test:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
 export async function GET() {
+  const { isAdmin, error: authError } = await verifyAdminAuth();
+  if (!isAdmin) {
+    return NextResponse.json({ error: authError || 'Admin access required' }, { status: 403 });
+  }
+
   try {
-    const { data: tests, error } = await supabase
-      .from('gate_cse_tests')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Supabase error:', error);
-      return NextResponse.json(
-        { error: 'Failed to fetch tests' },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json({
-      success: true,
-      tests: tests || []
-    });
+    const tests = await fetchMockTestsForCategory('gate-cse', { useServiceRole: true });
+    return NextResponse.json({ success: true, tests });
   } catch (error) {
     console.error('Error fetching tests:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

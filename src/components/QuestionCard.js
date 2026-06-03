@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, memo, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { MathJax, MathJaxContext } from "better-react-mathjax";
 import { motion, AnimatePresence } from "framer-motion";
 import { CheckCircle, BookOpen, X, Check, AlertTriangle, Clock, Edit3 } from "lucide-react";
@@ -245,7 +246,8 @@ const renderHtmlWithCodeBlocks = (html, isUpscPrelims) => {
 };
 
 // Memoized QuestionCard component
-const QuestionCard = memo(({ question, category, index, onAnswer, questionId: questionIdProp, isCompleted, isCorrect, onReport, onEdit, isEditing, onStartEditing, isAdmin, quizLayout = false }) => {
+const QuestionCard = memo(({ question, category, index, onAnswer, onSkip, questionId: questionIdProp, isCompleted, isCorrect, onReport, onEdit, isEditing, onStartEditing, isAdmin, quizLayout = false, embedded = false, creditsLocked = false, onRequireCredits }) => {
+  const richLayout = quizLayout || embedded;
   const { user } = useAuth();
   const questionId = questionIdProp ?? question._id ?? question.id;
   // When questionId prop is passed, call onAnswer(questionId, isCorrect); otherwise onAnswer(isCorrect) for backward compat
@@ -294,6 +296,11 @@ const QuestionCard = memo(({ question, category, index, onAnswer, questionId: qu
     }));
   }, [isCompleted, isCorrect]);
 
+  const mayViewSolution =
+    isCompleted || (state.isAnswered && state.showFeedback);
+
+  const interactionBlocked = creditsLocked && !isCompleted;
+
 // Optimized MathJax config
   const config = useMemo(() => ({
   "fast-preview": { disabled: false },
@@ -315,25 +322,66 @@ const QuestionCard = memo(({ question, category, index, onAnswer, questionId: qu
 
   // Memoized handlers
   const handleOptionClick = useCallback((option) => {
+    if (interactionBlocked) {
+      onRequireCredits?.();
+      return;
+    }
     if (state.isAnswered) return;
     setState((prev) => ({ ...prev, selectedOption: option }));
-  }, [state.isAnswered]);
+  }, [state.isAnswered, interactionBlocked, onRequireCredits]);
 
   const handleSubmit = useCallback(() => {
+    if (interactionBlocked) {
+      onRequireCredits?.();
+      return;
+    }
     if (!state.selectedOption || state.isAnswered) return;
     const isCorrect = state.selectedOption === question.correct_option;
     setState((prev) => ({ ...prev, isCorrect, showFeedback: true, isAnswered: true }));
     setTimeout(() => reportAnswer(isCorrect), 800);
-  }, [state.selectedOption, state.isAnswered, question.correct_option, reportAnswer]);
+  }, [state.selectedOption, state.isAnswered, question.correct_option, reportAnswer, interactionBlocked, onRequireCredits]);
 
   const handleSkip = useCallback(() => {
-    setState((prev) => ({ ...prev, isAnswered: true }));
-    reportAnswer(false);
-  }, [reportAnswer]);
+    if (interactionBlocked) {
+      onRequireCredits?.();
+      return;
+    }
+    setState((prev) => ({
+      ...prev,
+      isAnswered: true,
+      showFeedback: false,
+      showSolution: false,
+    }));
+    if (onSkip && questionId != null) {
+      onSkip(questionId);
+    }
+  }, [onSkip, questionId, interactionBlocked, onRequireCredits]);
+
+  const closeReportModal = useCallback(() => {
+    setState((prev) => ({ ...prev, showReportForm: false, reportReason: "" }));
+  }, []);
 
   const handleReport = useCallback(() => {
-    setState((prev) => ({ ...prev, showReportForm: !prev.showReportForm }));
+    setState((prev) => ({ ...prev, showReportForm: true }));
   }, []);
+
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [portalMounted, setPortalMounted] = useState(false);
+  useEffect(() => setPortalMounted(true), []);
+
+  useEffect(() => {
+    if (!state.showReportForm) return;
+    const onKey = (e) => {
+      if (e.key === "Escape" && !reportSubmitting) closeReportModal();
+    };
+    document.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [state.showReportForm, reportSubmitting, closeReportModal]);
 
   const handleReportSubmit = useCallback(async () => {
     if (!state.reportReason.trim()) {
@@ -343,27 +391,21 @@ const QuestionCard = memo(({ question, category, index, onAnswer, questionId: qu
 
     const questionId = question._id || question.id;
     const topic = question.topic || question.chapter || category;
+    const reason = state.reportReason.trim();
 
-    if (onReport) {
-      // Use the provided onReport callback
-      onReport(questionId, state.reportReason.trim(), topic);
-      setState((prev) => ({ 
-        ...prev, 
-        showReportForm: false, 
-        reportReason: "" 
-      }));
-      toast.success("Question reported successfully");
-    } else {
-      // Default behavior: report directly to Supabase
-      try {
+    setReportSubmitting(true);
+    try {
+      if (onReport) {
+        onReport(questionId, reason, topic);
+        closeReportModal();
+        toast.success("Question reported successfully");
+      } else {
         if (!user) {
           toast.error("Please sign in to report questions");
           return;
         }
 
-        // Get user email from Clerk user object
         const userEmail = user?.primaryEmailAddress?.emailAddress || user?.email;
-        
         if (!userEmail) {
           toast.error("Unable to get user email. Please sign in again.");
           return;
@@ -373,24 +415,22 @@ const QuestionCard = memo(({ question, category, index, onAnswer, questionId: qu
           question_id: questionId,
           topic: topic || category || "unknown",
           user_id: userEmail,
-          reason: state.reportReason.trim(),
+          reason,
           reported_at: new Date().toISOString(),
         });
 
         if (error) throw error;
 
-        setState((prev) => ({ 
-          ...prev, 
-          showReportForm: false, 
-          reportReason: "" 
-        }));
+        closeReportModal();
         toast.success("Question reported successfully");
-      } catch (error) {
-        console.error("Report error:", error);
-        toast.error("Failed to report question. Please try again.");
       }
+    } catch (error) {
+      console.error("Report error:", error);
+      toast.error("Failed to report question. Please try again.");
+    } finally {
+      setReportSubmitting(false);
     }
-  }, [onReport, question, category, state.reportReason]);
+  }, [onReport, question, category, state.reportReason, user, closeReportModal]);
 
   const handleSaveEdit = useCallback(async () => {
     if (!isAdmin) return;
@@ -474,24 +514,40 @@ const QuestionCard = memo(({ question, category, index, onAnswer, questionId: qu
   // Reusable question card renderer
   const renderQuestionCard = useCallback((questionData, questionIndex) => (
       <motion.div
-      initial={quizLayout ? false : { opacity: 0, y: 10 }}
-        animate={quizLayout ? false : { opacity: 1, y: 0 }}
-      whileHover={quizLayout ? undefined : { y: -2 }}
+      initial={richLayout ? false : { opacity: 0, y: 10 }}
+        animate={richLayout ? false : { opacity: 1, y: 0 }}
+      whileHover={richLayout ? undefined : { y: -2 }}
         transition={{ duration: 0.2 }}
-      className={`bg-white overflow-hidden ${
-        quizLayout
-          ? `rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_12px_40px_-12px_rgba(15,23,42,0.18)] border border-slate-200/80 ${isCompleted ? "ring-2 ring-emerald-500/25" : ""}`
-          : `rounded-xl shadow-md border border-gray-100/50 ${isCompleted ? "ring-2 ring-emerald-500/20" : "hover:shadow-lg"}`
-      }`}
+      className={
+        embedded
+          ? `w-full overflow-hidden ${isCompleted ? "ring-2 ring-emerald-500/20 ring-inset" : ""}`
+          : `bg-white overflow-hidden ${
+              quizLayout
+                ? `rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_12px_40px_-12px_rgba(15,23,42,0.18)] border border-slate-200/80 ${isCompleted ? "ring-2 ring-emerald-500/25" : ""}`
+                : `rounded-xl shadow-md border border-gray-100/50 ${isCompleted ? "ring-2 ring-emerald-500/20" : "hover:shadow-lg"}`
+            }`
+      }
     >
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <MathJaxContext config={config}>
-        <div className={`${quizLayout ? "bg-gradient-to-b from-slate-50 to-white p-4 sm:p-5 border-0 border-slate-200/70" : "bg-gray-50 p-4 border-0 border-gray-100/60"}`}>
+        <div className={
+          embedded
+            ? "bg-neutral-50 p-4 sm:p-5 border-b border-neutral-200"
+            : quizLayout
+              ? "bg-gradient-to-b from-slate-50 to-white p-4 sm:p-5 border-0 border-slate-200/70"
+              : "bg-gray-50 p-4 border-0 border-gray-100/60"
+        }>
           <div className="flex items-start justify-between flex-wrap gap-3">
             <div className="flex items-center space-x-3 min-w-0">
-              <div className={`rounded-xl text-white flex items-center justify-center font-bold ${quizLayout ? "w-9 h-9 sm:w-10 sm:h-10 text-sm sm:text-base bg-slate-900 shadow-inner" : "w-8 h-8 rounded-lg bg-gradient-to-br from-gray-800 to-gray-900 text-sm"}`}>{questionIndex + 1}</div>
+              <div className={`rounded-xl text-white flex items-center justify-center font-bold ${
+                embedded
+                  ? "w-9 h-9 sm:w-10 sm:h-10 text-sm sm:text-base bg-neutral-900"
+                  : quizLayout
+                    ? "w-9 h-9 sm:w-10 sm:h-10 text-sm sm:text-base bg-slate-900 shadow-inner"
+                    : "w-8 h-8 rounded-lg bg-gradient-to-br from-gray-800 to-gray-900 text-sm"
+              }`}>{questionIndex + 1}</div>
               <div className="flex flex-col space-y-1">
-                <span className="text-xs font-medium text-gray-500 uppercase">Difficulty</span>
+                <span className={`text-xs font-medium uppercase ${embedded ? "text-neutral-500" : "text-gray-500"}`}>Difficulty</span>
                 <div className="flex space-x-1">
                   {[1, 2, 3].map((level) => (
                     <div key={level} className={`w-2 h-2 rounded-full ${level <= state.difficulty ? getDifficultyColor(level) : "bg-gray-200"}`} />
@@ -514,7 +570,16 @@ const QuestionCard = memo(({ question, category, index, onAnswer, questionId: qu
                 </button>
               )}
               {isAdmin && !isEditing && (
-                <button onClick={onStartEditing} className="px-2 py-1 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 text-white text-xs font-semibold flex items-center space-x-1">
+                <button
+                  onClick={() => {
+                    if (onEdit) {
+                      onEdit(questionData);
+                      return;
+                    }
+                    onStartEditing?.();
+                  }}
+                  className="px-2 py-1 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 text-white text-xs font-semibold flex items-center space-x-1"
+                >
                   <Edit3 size={12} />
                   <span>Edit</span>
                 </button>
@@ -549,7 +614,7 @@ const QuestionCard = memo(({ question, category, index, onAnswer, questionId: qu
             </div>
           </div>
         </div>
-        <div className={`overflow-x-auto ${quizLayout ? "p-4 sm:p-6 md:p-8" : "p-4"}`}>
+        <div className={`overflow-x-auto ${embedded ? "p-4 sm:p-6" : quizLayout ? "p-4 sm:p-6 md:p-8" : "p-4"}`}>
           {isEditing && isAdmin ? (
             <textarea
               value={state.editData.question}
@@ -559,7 +624,13 @@ const QuestionCard = memo(({ question, category, index, onAnswer, questionId: qu
             />
           ) : (
             <MathJax hideUntilTypeset={"first"} inline dynamic>
-              <div className={`text-gray-800 break-words overflow-x-auto [&_*]:max-w-full [&_table]:max-w-full [&_table]:overflow-x-auto [&_img]:max-w-full [&_img]:h-auto ${quizLayout ? "text-base sm:text-[1.05rem] leading-[1.65] font-medium text-slate-900" : "text-sm leading-relaxed"}`}>
+              <div className={`break-words overflow-x-auto [&_*]:max-w-full [&_table]:max-w-full [&_table]:overflow-x-auto [&_img]:max-w-full [&_img]:h-auto ${
+                embedded
+                  ? "text-base sm:text-[1.0625rem] leading-relaxed text-neutral-900 [&_p]:text-neutral-900 [&_li]:text-neutral-900"
+                  : quizLayout
+                    ? "text-base sm:text-[1.05rem] leading-[1.65] font-medium text-slate-900"
+                    : "text-sm leading-relaxed text-gray-800"
+              }`}>
                 {questionData.directionHTML && questionData.directionHTML !== null && (
                   <div className="mb-4 p-3 bg-blue-50 border-l-4 border-blue-500 rounded-r break-words [&_*]:max-w-full [&_table]:max-w-full [&_table]:overflow-x-auto [&_img]:max-w-full [&_img]:h-auto" dangerouslySetInnerHTML={{ __html: convertNewlinesToBreaks(convertLatexTags(convertRelativeImageUrls(questionData.directionHTML)), isUpscPrelims) }} />
                 )}
@@ -606,22 +677,28 @@ const QuestionCard = memo(({ question, category, index, onAnswer, questionId: qu
             if (!hasOptions) return null;
             
             return (
-              <div className={`mt-4 ${quizLayout ? "space-y-3 sm:space-y-3.5" : "space-y-2"}`}>
+              <div className={`mt-4 ${richLayout ? "space-y-3 sm:space-y-3.5" : "space-y-2"}`}>
                 {["A", "B", "C", "D"].map((opt, optIndex) => {
                   const optionText = questionData[`options_${opt}`];
                   if (!optionText || String(optionText).trim().length === 0) return null;
                 const isSelected = state.selectedOption === opt;
                 const isCorrectOption = opt === questionData.correct_option;
-                const optionClass = quizLayout
+                const optionClass = richLayout
                   ? state.isAnswered && state.showFeedback
                     ? isCorrectOption
                       ? "border-2 border-emerald-500/90 bg-emerald-50/80 shadow-[inset_0_0_0_1px_rgba(16,185,129,0.15)]"
                       : isSelected && !isCorrectOption
                       ? "border-2 border-rose-500/90 bg-rose-50/70 shadow-[inset_0_0_0_1px_rgba(244,63,94,0.12)]"
-                      : "border border-slate-200/90 bg-slate-50/40 opacity-80"
+                      : embedded
+                        ? "border border-neutral-200 bg-neutral-50/60 opacity-80"
+                        : "border border-slate-200/90 bg-slate-50/40 opacity-80"
                     : isSelected
-                    ? "border-2 border-slate-900 bg-slate-100 shadow-md ring-2 ring-slate-900/10"
-                    : "border border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/90 active:scale-[0.998]"
+                    ? embedded
+                      ? "border-2 border-neutral-900 bg-neutral-100 shadow-sm ring-2 ring-neutral-900/10"
+                      : "border-2 border-slate-900 bg-slate-100 shadow-md ring-2 ring-slate-900/10"
+                    : embedded
+                      ? "border border-neutral-200 bg-white hover:border-neutral-300 hover:bg-neutral-50 active:scale-[0.998]"
+                      : "border border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/90 active:scale-[0.998]"
                   : state.isAnswered && state.showFeedback
                   ? isCorrectOption
                     ? "border-emerald-500 bg-emerald-50/50"
@@ -642,20 +719,40 @@ const QuestionCard = memo(({ question, category, index, onAnswer, questionId: qu
                       />
                     ) : (
                       <motion.button
-                        initial={quizLayout ? { opacity: 0, y: 6 } : { opacity: 0, x: -10 }}
+                        initial={richLayout ? { opacity: 0, y: 6 } : { opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0, y: 0 }}
                         transition={{ delay: optIndex * 0.04, duration: 0.2 }}
                         onClick={() => handleOptionClick(opt)}
-                        disabled={state.isAnswered}
+                        disabled={state.isAnswered || interactionBlocked}
                         type="button"
-                        className={`w-full text-left rounded-xl transition-[transform,box-shadow,border-color,background-color] duration-200 ease-out ${quizLayout ? "p-3.5 sm:p-4 min-h-[3rem] sm:min-h-[3.25rem] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/25 focus-visible:ring-offset-2" : "p-3 rounded-lg"} ${optionClass} ${state.isAnswered ? "cursor-default" : "cursor-pointer"} overflow-x-auto`}
+                        className={`w-full text-left rounded-xl transition-[transform,box-shadow,border-color,background-color] duration-200 ease-out ${richLayout ? "p-3.5 sm:p-4 min-h-[3rem] sm:min-h-[3.25rem] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 " + (embedded ? "focus-visible:ring-neutral-900/25" : "focus-visible:ring-slate-900/25") : "p-3 rounded-lg"} ${optionClass} ${state.isAnswered ? "cursor-default" : "cursor-pointer"} overflow-x-auto`}
                       >
                         <div className="flex items-start gap-3 min-w-0">
-                          <div className={`rounded-lg flex items-center justify-center font-bold flex-shrink-0 ${quizLayout ? `w-8 h-8 sm:w-9 sm:h-9 text-xs sm:text-sm ${isSelected && !state.isAnswered ? "bg-slate-900 text-white" : state.isAnswered && state.showFeedback && isCorrectOption ? "bg-emerald-600 text-white" : state.isAnswered && state.showFeedback && isSelected && !isCorrectOption ? "bg-rose-600 text-white" : "bg-slate-100 text-slate-700 border border-slate-200"}` : `w-6 h-6 rounded-md text-xs ${isSelected ? "bg-gray-800 text-white" : "bg-gray-100 text-gray-600"}`}`}>
+                          <div className={`rounded-lg flex items-center justify-center font-bold flex-shrink-0 ${
+                            richLayout
+                              ? `w-8 h-8 sm:w-9 sm:h-9 text-xs sm:text-sm ${
+                                  isSelected && !state.isAnswered
+                                    ? embedded ? "bg-neutral-900 text-white" : "bg-slate-900 text-white"
+                                    : state.isAnswered && state.showFeedback && isCorrectOption
+                                      ? "bg-emerald-600 text-white"
+                                      : state.isAnswered && state.showFeedback && isSelected && !isCorrectOption
+                                        ? "bg-rose-600 text-white"
+                                        : embedded
+                                          ? "bg-neutral-100 text-neutral-700 border border-neutral-200"
+                                          : "bg-slate-100 text-slate-700 border border-slate-200"
+                                }`
+                              : `w-6 h-6 rounded-md text-xs ${isSelected ? "bg-gray-800 text-white" : "bg-gray-100 text-gray-600"}`
+                          }`}>
                             {opt}
                           </div>
                           <MathJax hideUntilTypeset={"first"} inline dynamic>
-                            <div className={`flex-grow break-words min-w-0 [&_*]:max-w-full [&_table]:max-w-full [&_table]:overflow-x-auto [&_img]:max-w-full [&_img]:h-auto ${quizLayout ? "text-sm sm:text-[0.9375rem] leading-snug text-slate-800" : "text-xs"}`} dangerouslySetInnerHTML={{ __html: convertNewlinesToBreaks(convertLatexTags(convertRelativeImageUrls(optionText)), isUpscPrelims) }} />
+                            <div className={`flex-grow break-words min-w-0 [&_*]:max-w-full [&_table]:max-w-full [&_table]:overflow-x-auto [&_img]:max-w-full [&_img]:h-auto ${
+                              embedded
+                                ? "text-sm sm:text-[0.9375rem] leading-relaxed text-neutral-800"
+                                : quizLayout
+                                  ? "text-sm sm:text-[0.9375rem] leading-snug text-slate-800"
+                                  : "text-xs text-gray-800"
+                            }`} dangerouslySetInnerHTML={{ __html: convertNewlinesToBreaks(convertLatexTags(convertRelativeImageUrls(optionText)), isUpscPrelims) }} />
                           </MathJax>
                           <div className="flex-shrink-0">
                             {state.isAnswered && state.showFeedback && isCorrectOption && <Check size={14} className="text-green-500" />}
@@ -733,19 +830,39 @@ const QuestionCard = memo(({ question, category, index, onAnswer, questionId: qu
               </button>
                   </div>
           )}
+          {interactionBlocked && (
+            <div className="mt-4 p-3 rounded-xl bg-amber-50 border border-amber-200 text-sm text-amber-900">
+              <p className="font-medium">You&apos;re out of credits</p>
+              <p className="text-amber-800/90 mt-1 text-xs">
+                Subscribe for unlimited practice or wait until your balance syncs.
+              </p>
+              <button
+                type="button"
+                onClick={() => onRequireCredits?.()}
+                className="mt-2 w-full sm:w-auto px-4 py-2 rounded-lg bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-800"
+              >
+                View plans & subscribe
+              </button>
+            </div>
+          )}
+
           {!isEditing && (
-            <div className={`mt-4 flex flex-col sm:flex-row gap-2 sm:gap-3 ${quizLayout ? "sm:mt-6" : ""}`}>
+            <div className={`mt-4 flex flex-col sm:flex-row gap-2 sm:gap-3 ${richLayout ? "sm:mt-6" : ""}`}>
               {!state.isAnswered && questionData.options_A && (
                 <button
                   onClick={handleSubmit}
-                  disabled={!state.selectedOption}
+                  disabled={!state.selectedOption || interactionBlocked}
                   type="button"
                   className={`flex-1 font-semibold transition-all duration-200 ${
-                    quizLayout
+                    richLayout
                       ? `py-3.5 sm:py-3 rounded-xl text-sm sm:text-base ${
                           state.selectedOption
-                            ? "bg-slate-900 text-white hover:bg-slate-800 shadow-lg shadow-slate-900/15"
-                            : "bg-slate-200 text-slate-400 cursor-not-allowed"
+                            ? embedded
+                              ? "bg-neutral-900 text-white hover:bg-neutral-800 shadow-md"
+                              : "bg-slate-900 text-white hover:bg-slate-800 shadow-lg shadow-slate-900/15"
+                            : embedded
+                              ? "bg-neutral-200 text-neutral-400 cursor-not-allowed"
+                              : "bg-slate-200 text-slate-400 cursor-not-allowed"
                         }`
                       : `py-2.5 rounded-lg text-sm ${
                     state.selectedOption 
@@ -757,15 +874,20 @@ const QuestionCard = memo(({ question, category, index, onAnswer, questionId: qu
                   Submit Answer
                 </button>
               )}
+              {mayViewSolution && (
               <button
                 type="button"
                 onClick={() => setState((prev) => ({ ...prev, showSolution: !prev.showSolution }))}
                 className={`flex-1 font-semibold transition-colors flex items-center justify-center gap-2 ${
-                  quizLayout
+                  richLayout
                     ? `py-3.5 sm:py-3 rounded-xl text-sm sm:text-base ${
                         state.showSolution
-                          ? "bg-slate-100 text-slate-800 border-2 border-slate-300"
-                          : "bg-white text-slate-800 border-2 border-slate-200 hover:border-slate-300 hover:bg-slate-50"
+                          ? embedded
+                            ? "bg-neutral-100 text-neutral-800 border-2 border-neutral-300"
+                            : "bg-slate-100 text-slate-800 border-2 border-slate-300"
+                          : embedded
+                            ? "bg-white text-neutral-800 border-2 border-neutral-200 hover:border-neutral-300 hover:bg-neutral-50"
+                            : "bg-white text-slate-800 border-2 border-slate-200 hover:border-slate-300 hover:bg-slate-50"
                       }`
                     : `py-2.5 rounded-lg text-sm ${
                   state.showSolution 
@@ -774,9 +896,10 @@ const QuestionCard = memo(({ question, category, index, onAnswer, questionId: qu
                 }`
                 }`}
               >
-                <BookOpen size={quizLayout ? 18 : 16} />
+                <BookOpen size={richLayout ? 18 : 16} />
                 <span>{state.showSolution ? "Hide Solution" : "Show Solution"}</span>
               </button>
+              )}
             </div>
           )}
               <AnimatePresence>
@@ -809,7 +932,7 @@ const QuestionCard = memo(({ question, category, index, onAnswer, questionId: qu
                   </motion.div>
                 )}
               </AnimatePresence>
-              {state.showSolution && (
+              {mayViewSolution && state.showSolution && (
                 <div className="mt-3 p-3 rounded-lg bg-gradient-to-r from-indigo-50 to-blue-50 border-l-4 border-indigo-500 transition-all duration-300 ease-in-out overflow-x-auto">
                   <h3 className="font-bold mb-1 text-indigo-800 text-sm flex items-center">
                     <BookOpen size={14} className="mr-1 flex-shrink-0" />
@@ -849,51 +972,106 @@ const QuestionCard = memo(({ question, category, index, onAnswer, questionId: qu
         </div>
       </MathJaxContext>
     </motion.div>
-  ), [state, question, isEditing, isAdmin, onStartEditing, handleOptionClick, handleSubmit, handleSkip, handleSaveEdit, getDifficultyColor, jsonLd, config, isCompleted, quizLayout]);
+  ), [state, question, isEditing, isAdmin, onStartEditing, handleOptionClick, handleSubmit, handleSkip, handleSaveEdit, getDifficultyColor, jsonLd, config, isCompleted, quizLayout, embedded, richLayout]);
+
+  const reportModal = state.showReportForm && portalMounted
+    ? createPortal(
+        <AnimatePresence>
+          <motion.div
+            key="report-overlay"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="report-question-title"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-[10050] flex items-center justify-center bg-neutral-900/50 backdrop-blur-sm p-4 sm:p-6"
+            onClick={() => !reportSubmitting && closeReportModal()}
+          >
+            <motion.div
+              key="report-panel"
+              initial={{ opacity: 0, scale: 0.96, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 12 }}
+              transition={{ duration: 0.2 }}
+              className="relative w-full max-w-md bg-white rounded-xl shadow-xl border border-neutral-200 overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-neutral-200 bg-neutral-50">
+                <div className="flex items-start gap-3 min-w-0">
+                  <div className="flex-shrink-0 w-10 h-10 rounded-full bg-red-50 border border-red-100 flex items-center justify-center">
+                    <AlertTriangle size={20} className="text-red-600" />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 id="report-question-title" className="text-base font-semibold text-neutral-900">
+                      Report question
+                    </h3>
+                    <p className="text-sm text-neutral-500 mt-0.5">
+                      Question {index + 1}
+                      {question.topic ? ` · ${question.topic}` : ""}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeReportModal}
+                  disabled={reportSubmitting}
+                  className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center text-neutral-500 hover:text-neutral-900 hover:bg-neutral-200/80 transition-colors disabled:opacity-50"
+                  aria-label="Close"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="px-5 py-4">
+                <label htmlFor="report-reason" className="block text-sm font-medium text-neutral-700 mb-2">
+                  What&apos;s wrong with this question?
+                </label>
+                <textarea
+                  id="report-reason"
+                  value={state.reportReason}
+                  onChange={(e) => setState((prev) => ({ ...prev, reportReason: e.target.value }))}
+                  placeholder="E.g. incorrect answer, unclear wording, typo, outdated syllabus…"
+                  disabled={reportSubmitting}
+                  className="w-full min-h-[120px] p-3 text-sm text-neutral-900 placeholder:text-neutral-400 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-neutral-900 focus:border-neutral-900 resize-y disabled:opacity-60"
+                  rows={4}
+                  autoFocus
+                />
+                <p className="text-xs text-neutral-500 mt-2">
+                  We review reports within 48 hours and fix issues when confirmed.
+                </p>
+              </div>
+
+              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 px-5 py-4 border-t border-neutral-200 bg-neutral-50">
+                <button
+                  type="button"
+                  onClick={closeReportModal}
+                  disabled={reportSubmitting}
+                  className="w-full sm:w-auto px-4 py-2.5 text-sm font-medium text-neutral-700 bg-white border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleReportSubmit}
+                  disabled={reportSubmitting || !state.reportReason.trim()}
+                  className="w-full sm:w-auto px-4 py-2.5 text-sm font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {reportSubmitting ? "Submitting…" : "Submit report"}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        </AnimatePresence>,
+        document.body
+      )
+    : null;
 
   return (
-    <div className={quizLayout ? "space-y-4" : "space-y-4 mb-8"}>
+    <div className={embedded ? "space-y-0" : quizLayout ? "space-y-4" : "space-y-4 mb-8"}>
       {renderQuestionCard(question, index)}
-      <AnimatePresence>
-        {state.showReportForm && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.2 }}
-            className="m-4 p-4 bg-red-50 border border-red-200 rounded-lg"
-          >
-            <h3 className="text-sm font-semibold text-red-800 mb-2 flex items-center">
-              <AlertTriangle size={14} className="mr-2" />
-              Report Question
-            </h3>
-            <p className="text-xs text-red-700 mb-3">
-              Please provide a reason for reporting this question. This helps us improve the quality of our content.
-            </p>
-            <textarea
-              value={state.reportReason}
-              onChange={(e) => setState((prev) => ({ ...prev, reportReason: e.target.value }))}
-              placeholder="E.g., Incorrect answer, unclear question, typo, etc."
-              className="w-full p-3 border-2 border-red-200 rounded-lg focus:ring-2 focus:ring-red-300/30 focus:border-red-400 bg-white text-sm resize-none"
-              rows={4}
-            />
-            <div className="flex items-center justify-end gap-2 mt-3">
-              <button
-                onClick={handleReport}
-                className="px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleReportSubmit}
-                className="px-3 py-1.5 text-xs font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
-              >
-                Submit Report
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {reportModal}
     </div>
   );
 });

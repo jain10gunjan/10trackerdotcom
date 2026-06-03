@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { currentUser } from "@clerk/nextjs/server";
+import { auth } from "@/auth";
 import { randomUUID } from "crypto";
 
 const ALLOWED_KEYS = new Set([
@@ -38,12 +38,8 @@ function parseAdminEmails() {
 
 function isAdminUser(user) {
   const adminEmails = parseAdminEmails();
-  if (!user || adminEmails.length === 0) return false;
-  const emails = user.emailAddresses || [];
-  return emails.some(
-    (e) =>
-      e.emailAddress && adminEmails.includes(e.emailAddress.toLowerCase())
-  );
+  if (!user?.email || adminEmails.length === 0) return false;
+  return adminEmails.includes(user.email.toLowerCase());
 }
 
 function normalizeRow(raw, defaults = {}) {
@@ -129,7 +125,8 @@ function normalizeRow(raw, defaults = {}) {
  */
 export async function POST(request) {
   try {
-    const user = await currentUser();
+    const session = await auth();
+    const user = session?.user;
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

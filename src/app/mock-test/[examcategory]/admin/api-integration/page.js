@@ -17,7 +17,7 @@ import toast, { Toaster } from 'react-hot-toast';
 
 export default function ApiIntegrationPage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, isAdmin, loading: authLoading } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [questions, setQuestions] = useState([]);
   const [solutions, setSolutions] = useState({});
@@ -34,8 +34,6 @@ export default function ApiIntegrationPage() {
   const [savedConfigs, setSavedConfigs] = useState([]);
   const [selectedConfig, setSelectedConfig] = useState('');
 
-  // Check if user is admin
-  const isAdmin = true;
 
   // Filter questions based on search and filters
   useEffect(() => {

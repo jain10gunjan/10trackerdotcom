@@ -1,10 +1,6 @@
 import { NextResponse } from 'next/server';
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
+import { verifyAdminAuth } from '@/middleware/adminAuth';
+import { getSupabaseServer } from '@/lib/supabaseServer';
 
 /** Normalize exam category for DB: e.g. "gate-cse" -> "GATE-CSE" */
 function normalizeCategory(param) {
@@ -13,7 +9,13 @@ function normalizeCategory(param) {
 }
 
 export async function GET(request) {
+  const { isAdmin, error: authError } = await verifyAdminAuth();
+  if (!isAdmin) {
+    return NextResponse.json({ error: authError || 'Admin access required' }, { status: 403 });
+  }
+
   try {
+    const supabase = getSupabaseServer(true);
     const { searchParams } = new URL(request.url);
     const categoryParam = searchParams.get('category');
     const category = normalizeCategory(categoryParam);

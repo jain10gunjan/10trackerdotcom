@@ -1,6 +1,12 @@
 import { NextResponse } from 'next/server';
+import { verifyAdminAuth } from '@/middleware/adminAuth';
 
 export async function GET() {
+  const { isAdmin, error: authError } = await verifyAdminAuth();
+  if (!isAdmin) {
+    return NextResponse.json({ success: false, error: authError || 'Admin access required' }, { status: 403 });
+  }
+
   try {
     const { createClient } = require('@supabase/supabase-js');
     

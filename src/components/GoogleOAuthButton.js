@@ -1,17 +1,9 @@
 'use client';
 
 import { useState } from "react";
-import { useClerk } from "@clerk/nextjs";
+import { signIn } from "next-auth/react";
 
-/**
- * Prefer Clerk's built-in OAuth (Google) so sessions are consistent
- * across the app (middleware, `useUser`, etc).
- *
- * Note: This component is currently not referenced elsewhere, but is kept
- * as a safe drop-in button if needed.
- */
 export default function GoogleOAuthButton({ redirect = "/" }) {
-  const { openSignIn } = useClerk();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -19,9 +11,9 @@ export default function GoogleOAuthButton({ redirect = "/" }) {
     setError(null);
     setIsLoading(true);
     try {
-      await openSignIn({ afterSignInUrl: redirect, afterSignUpUrl: redirect });
+      await signIn("google", { callbackUrl: redirect });
     } catch (err) {
-      console.error("Clerk sign-in failed:", err);
+      console.error("Google sign-in failed:", err);
       setError("Sign-in failed. Please try again.");
       setIsLoading(false);
     }
@@ -56,12 +48,12 @@ export default function GoogleOAuthButton({ redirect = "/" }) {
               r="10"
               stroke="currentColor"
               strokeWidth="4"
-            ></circle>
+            />
             <path
               className="opacity-75"
               fill="currentColor"
               d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-            ></path>
+            />
           </svg>
         ) : (
           <svg
@@ -88,7 +80,7 @@ export default function GoogleOAuthButton({ redirect = "/" }) {
             />
           </svg>
         )}
-        {isLoading ? "Signing in..." : "Continue"}
+        {isLoading ? "Signing in..." : "Continue with Google"}
       </button>
     </div>
   );

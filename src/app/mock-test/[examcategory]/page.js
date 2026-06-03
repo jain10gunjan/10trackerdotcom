@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useMemo, useCallback, memo, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, memo, Suspense } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/app/context/AuthContext';
@@ -10,10 +10,26 @@ import {
   History, FileText, PieChart, Lock, BarChart, BarChart3, TrendingUp as TrendingUpIcon,
   Gauge, Activity, Zap, Brain, RefreshCw, Eye, Calendar, Hexagon, Layers, AlertCircle
 } from 'lucide-react';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import Navbar from '@/components/Navbar';
 import MetaDataJobs from '@/components/Seo';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import {
+  getCategoryVariants,
+  computeConsecutiveDayStreak,
+  durationTakenToSeconds,
+  categoryMatches,
+  formatDurationShort,
+  fetchActiveMockTests,
+} from '@/lib/mockTestUtils';
+import MockTestBreadcrumb from '@/components/mock-test/MockTestBreadcrumb';
+import MockTestPageHeader from '@/components/mock-test/MockTestPageHeader';
+import ResumeTestBanner from '@/components/mock-test/ResumeTestBanner';
+import PreflightModal from '@/components/mock-test/PreflightModal';
+import TestListToolbar from '@/components/mock-test/TestListToolbar';
+import LeaderboardPanel from '@/components/mock-test/LeaderboardPanel';
+import TestLeaderboardInline from '@/components/mock-test/TestLeaderboardInline';
+import { useMockTestProfile } from '@/components/mock-test/useMockTestProfile';
 
 // Supabase configuration with connection pooling
 const supabase = createClient(
@@ -58,23 +74,36 @@ const debounce = (func, wait) => {
   return executedFunction;
 };
 
-// Ultra-fast loading components
-const FullPageLoader = (() => (
-  <div className="fixed inset-0 bg-neutral-50 flex items-center justify-center z-50 p-3 sm:p-4">
-    <div className="text-center max-w-xs w-full">
-      <div className="relative mb-4 sm:mb-6">
-        <div className="w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 border-3 sm:border-4 border-neutral-200 rounded-full animate-pulse mx-auto"></div>
-        <div className="absolute inset-0 w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 border-3 sm:border-4 border-neutral-700 rounded-full border-t-transparent animate-spin mx-auto"></div>
+function FullPageLoader() {
+  return (
+    <div className="fixed inset-0 bg-neutral-50 flex items-center justify-center z-50 p-3 sm:p-4">
+      <div className="text-center max-w-xs w-full">
+        <div className="relative mb-4 sm:mb-6">
+          <div className="w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 border-3 sm:border-4 border-neutral-200 rounded-full animate-pulse mx-auto"></div>
+          <div className="absolute inset-0 w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 border-3 sm:border-4 border-neutral-700 rounded-full border-t-transparent animate-spin mx-auto"></div>
+        </div>
+        <h3 className="text-sm sm:text-base lg:text-lg font-semibold text-neutral-800 mb-1">Loading</h3>
+        <p className="text-xs sm:text-sm text-neutral-600">Preparing...</p>
       </div>
-      <h3 className="text-sm sm:text-base lg:text-lg font-semibold text-neutral-800 mb-1">Loading</h3>
-      <p className="text-xs sm:text-sm text-neutral-600">Preparing...</p>
     </div>
-  </div>
-));
+  );
+}
+
+const isTopicWiseTest = (test) => {
+  const desc = String(test?.description || '').trim().toLowerCase();
+  if (desc.startsWith('topic-wise test')) return true;
+  const mode = String(test?.creation_mode || '').trim().toLowerCase();
+  if (mode === 'topic_auto' || mode === 'topic_wise') return true;
+  const name = String(test?.name || '').trim().toLowerCase();
+  if (name.includes('topic test')) return true;
+  return false;
+};
 
 const MOCK_TEST_TABS = [
   { id: 'dashboard', label: 'Dashboard', icon: Grid, requiresAuth: false },
   { id: 'tests', label: 'Mock Tests', icon: BookOpen, requiresAuth: false },
+  { id: 'topic-tests', label: 'Topic-wise', icon: Layers, requiresAuth: false },
+  { id: 'leaderboard', label: 'Overall rank', icon: Trophy, requiresAuth: false },
   { id: 'progress', label: 'My Progress', icon: BarChart3, requiresAuth: true },
 ];
 
@@ -120,6 +149,11 @@ const TabNavigation = memo(function TabNavigation({ activeTab, onTabChange, isAu
 const PublicDashboard = memo(function PublicDashboard({ tests, examcategory, signInHref }) {
   const categoryLabel = (examcategory?.toUpperCase?.() || 'GATE CSE').replace(/-/g, ' ');
   const href = signInHref || `/sign-in?redirect=${encodeURIComponent(`/mock-test/${examcategory || 'gate-cse'}`)}`;
+  const totalQuestions = tests.reduce((sum, t) => sum + (t.total_questions || 0), 0);
+  const avgDurationMin =
+    tests.length > 0
+      ? Math.round(tests.reduce((sum, t) => sum + (t.duration || 0), 0) / tests.length)
+      : 0;
   return (
     <div className="space-y-6">
       {/* Welcome Section - neutral */}
@@ -157,7 +191,7 @@ const PublicDashboard = memo(function PublicDashboard({ tests, examcategory, sig
               <Target className="h-5 w-5 text-neutral-700" />
             </div>
             <div>
-              <p className="text-xl sm:text-2xl font-bold text-neutral-900">1000+</p>
+              <p className="text-xl sm:text-2xl font-bold text-neutral-900">{totalQuestions.toLocaleString()}</p>
               <p className="text-xs sm:text-sm text-neutral-600">Questions</p>
             </div>
           </div>
@@ -168,7 +202,7 @@ const PublicDashboard = memo(function PublicDashboard({ tests, examcategory, sig
               <Clock className="h-5 w-5 text-neutral-700" />
             </div>
             <div>
-              <p className="text-xl sm:text-2xl font-bold text-neutral-900">180m</p>
+              <p className="text-xl sm:text-2xl font-bold text-neutral-900">{avgDurationMin > 0 ? `${avgDurationMin}m` : '—'}</p>
               <p className="text-xs sm:text-sm text-neutral-600">Avg Duration</p>
             </div>
           </div>
@@ -179,8 +213,10 @@ const PublicDashboard = memo(function PublicDashboard({ tests, examcategory, sig
               <Trophy className="h-5 w-5 text-neutral-700" />
             </div>
             <div>
-              <p className="text-xl sm:text-2xl font-bold text-neutral-900">95%</p>
-              <p className="text-xs sm:text-sm text-neutral-600">Success Rate</p>
+              <p className="text-xl sm:text-2xl font-bold text-neutral-900">
+                {tests.length > 0 ? Math.round(totalQuestions / tests.length) : '—'}
+              </p>
+              <p className="text-xs sm:text-sm text-neutral-600">Avg Q / test</p>
             </div>
           </div>
         </div>
@@ -258,6 +294,8 @@ const AuthenticatedDashboard = memo(function AuthenticatedDashboard({
   examcategory,
   categoryLabel,
   onStartTest,
+  onViewResults,
+  onRetakeTest,
   onOpenProgress,
 }) {
   const suggestedTests = useMemo(() => {
@@ -319,17 +357,32 @@ const AuthenticatedDashboard = memo(function AuthenticatedDashboard({
                 <div key={test.id} className="bg-neutral-50 rounded-xl p-4 border border-neutral-200 hover:border-neutral-300 transition-colors">
                   <h4 className="font-semibold text-neutral-900 text-sm sm:text-base truncate mb-1">{test.name}</h4>
                   <p className="text-xs text-neutral-600 mb-3">{test.total_questions} Q · {test.duration} min</p>
-                  <button
-                    type="button"
-                    onClick={() => onStartTest(test)}
-                    className="w-full py-2 rounded-lg text-sm font-medium bg-neutral-900 text-white hover:bg-neutral-800 transition-colors flex items-center justify-center gap-2"
-                  >
-                    {test.userCompleted ? (
-                      <> <CheckCircle className="h-4 w-4" /> View result </>
-                    ) : (
-                      <> <Play className="h-4 w-4" /> Start test </>
-                    )}
-                  </button>
+                  {test.userCompleted ? (
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => onViewResults(test)}
+                        className="py-2 rounded-lg text-sm font-medium bg-neutral-800 text-white hover:bg-neutral-700 transition-colors flex items-center justify-center gap-1"
+                      >
+                        <CheckCircle className="h-4 w-4" /> Results
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onRetakeTest(test)}
+                        className="py-2 rounded-lg text-sm font-medium border border-neutral-300 text-neutral-800 hover:bg-neutral-100 transition-colors flex items-center justify-center gap-1"
+                      >
+                        <RefreshCw className="h-4 w-4" /> Retake
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => onStartTest(test)}
+                      className="w-full py-2 rounded-lg text-sm font-medium bg-neutral-900 text-white hover:bg-neutral-800 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <Play className="h-4 w-4" /> Start test
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
@@ -598,7 +651,14 @@ const AnimatedStatsCard = memo(function AnimatedStatsCard({
 });
 
 // Mobile-optimized test list item
-const TestListItem = memo(function TestListItem({ test, onStartTest, onPreview, examcategory }) {
+const TestListItem = memo(function TestListItem({
+  test,
+  onStartTest,
+  onViewResults,
+  onRetakeTest,
+  examcategory,
+  user,
+}) {
   const getDifficultyColor = useMemo(() => {
     switch (test.difficulty?.toLowerCase()) {
       case 'easy': return 'text-green-600 bg-green-100';
@@ -631,7 +691,14 @@ const TestListItem = memo(function TestListItem({ test, onStartTest, onPreview, 
                   <span className={`px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-xs font-semibold ${getDifficultyColor}`}>
                     {test.difficulty || 'Mixed'}
                   </span>
-                  {test.userCompleted && <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 lg:h-5 lg:w-5 text-green-500" />}
+                  {test.userInProgress && (
+                    <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800">
+                      In progress
+                    </span>
+                  )}
+                  {test.userCompleted && !test.userInProgress && (
+                    <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 lg:h-5 lg:w-5 text-green-500" />
+                  )}
                 </div>
               </div>
             </div>
@@ -665,20 +732,40 @@ const TestListItem = memo(function TestListItem({ test, onStartTest, onPreview, 
         )}
         
         {/* Action buttons - mobile optimized */}
-        <div className="grid grid-cols-2 gap-2 sm:flex sm:gap-3 pt-2">
-          {test.userCompleted ? (
+        <div className="grid grid-cols-2 gap-2 pt-2">
+          {test.userInProgress ? (
             <button
+              type="button"
               onClick={() => onStartTest(test)}
-              className="flex items-center justify-center w-full bg-neutral-800 text-white px-3 py-2.5 rounded-lg text-xs sm:text-sm font-medium hover:bg-neutral-700 transition-colors"
+              className="col-span-2 flex items-center justify-center bg-amber-600 text-white px-3 py-2.5 rounded-lg text-xs sm:text-sm font-medium hover:bg-amber-700 transition-colors"
             >
-              <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 flex-shrink-0" />
-              View results
-              <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4 ml-1 sm:ml-2 flex-shrink-0" />
+              <Play className="h-3 w-3 sm:h-4 sm:w-4 mr-1 flex-shrink-0" />
+              Continue test
             </button>
+          ) : test.userCompleted ? (
+            <>
+              <button
+                type="button"
+                onClick={() => onViewResults(test)}
+                className="flex items-center justify-center bg-neutral-800 text-white px-3 py-2.5 rounded-lg text-xs sm:text-sm font-medium hover:bg-neutral-700 transition-colors"
+              >
+                <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-1 flex-shrink-0" />
+                Results
+              </button>
+              <button
+                type="button"
+                onClick={() => onRetakeTest(test)}
+                className="flex items-center justify-center border border-neutral-300 text-neutral-800 px-3 py-2.5 rounded-lg text-xs sm:text-sm font-medium hover:bg-neutral-50 transition-colors"
+              >
+                <RefreshCw className="h-3 w-3 sm:h-4 sm:w-4 mr-1 flex-shrink-0" />
+                Retake
+              </button>
+            </>
           ) : (
             <button
+              type="button"
               onClick={() => onStartTest(test)}
-              className="flex items-center justify-center w-full bg-neutral-900 text-white px-3 py-2.5 rounded-lg text-xs sm:text-sm font-medium hover:bg-neutral-800 transition-colors"
+              className="col-span-2 flex items-center justify-center bg-neutral-900 text-white px-3 py-2.5 rounded-lg text-xs sm:text-sm font-medium hover:bg-neutral-800 transition-colors"
             >
               <Play className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 flex-shrink-0" />
               Start test
@@ -686,6 +773,14 @@ const TestListItem = memo(function TestListItem({ test, onStartTest, onPreview, 
             </button>
           )}
         </div>
+
+        <TestLeaderboardInline
+          examcategory={examcategory}
+          testId={test.id}
+          testName={test.name}
+          user={user}
+          attemptCount={test.attemptCount}
+        />
       </div>
     </div>
   );
@@ -699,13 +794,6 @@ const RecentTestSession = memo(function RecentTestSession({ attempt, examcategor
     if (validScore >= 60) return 'bg-yellow-500 text-white';
     if (validScore >= 40) return 'bg-orange-500 text-white';
     return 'bg-red-500 text-white';
-  }, []);
-
-  const formatDuration = useCallback((minutes) => {
-    const validMinutes = sanitizeData(minutes, 'number', 0);
-    const hours = Math.floor(validMinutes / 60);
-    const mins = validMinutes % 60;
-    return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
   }, []);
 
   const {
@@ -762,7 +850,7 @@ const RecentTestSession = memo(function RecentTestSession({ attempt, examcategor
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-xs sm:text-sm space-y-1 sm:space-y-0">
         <div className="flex items-center text-gray-600">
           <Clock className="h-3 w-3 sm:h-4 sm:w-4 mr-1 flex-shrink-0" />
-          Duration: {formatDuration(durationTaken)}
+          Duration: {formatDurationShort(durationTaken)}
         </div>
         <Link
           href={`/mock-test/${examcategory}/results/${attempt.id}`}
@@ -1067,17 +1155,20 @@ const analyzeSubjectPerformance = (allUserAttempts, testNameLookup) => {
   return { subjectWisePerformance, overallStats };
 };
 
-// Main optimized dashboard component
-export default function OptimizedMockTestDashboard() {
-  const { user } = useAuth();
+function OptimizedMockTestDashboard() {
+  const { user, loading: authLoading } = useAuth();
+  const { displayName: profileDisplayName } = useMockTestProfile(user);
   const { examcategory } = useParams();
   const router = useRouter();
+  const dataLoadedForRef = React.useRef('');
   
   const searchParams = useSearchParams();
   const tabParam = searchParams.get('tab');
   const normalizedTab = useMemo(() => {
     if (tabParam === 'results' || tabParam === 'sessions' || tabParam === 'subjects') return 'progress';
-    return ['dashboard', 'tests', 'progress'].includes(tabParam) ? tabParam : 'dashboard';
+    return ['dashboard', 'tests', 'topic-tests', 'leaderboard', 'progress'].includes(tabParam)
+      ? tabParam
+      : 'dashboard';
   }, [tabParam]);
   const [activeTab, setActiveTab] = useState(() => normalizedTab);
   const prevTabParamRef = React.useRef(tabParam);
@@ -1115,6 +1206,10 @@ export default function OptimizedMockTestDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [difficultyFilter, setDifficultyFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('newest');
+  const [inProgressByTestId, setInProgressByTestId] = useState({});
+  const [preflight, setPreflight] = useState({ open: false, test: null, isRetake: false });
   const [currentPage, setCurrentPage] = useState(1);
   const testsPerPage = 10;
 
@@ -1154,47 +1249,54 @@ export default function OptimizedMockTestDashboard() {
   // Highly optimized fetch functions with better error handling
   const fetchAvailableTests = useCallback(async () => {
     try {
-      const normalized = examcategory?.toUpperCase?.() || '';
-      const normalizedAlt = normalized.replace('-', '_');
-      // Always fetch basic test data for public access
-      const testsResponse = await supabase
-        .from('mock_tests')
-        .select('id, name, description, duration, total_questions, difficulty, category, created_at')
-        .eq('is_active', true)
-        .in('category', [normalized, normalizedAlt])
-        .order('created_at', { ascending: false });
+      const { data: testRows, error: testsError } = await fetchActiveMockTests(
+        supabase,
+        examcategory
+      );
 
-      if (testsResponse.error) throw testsResponse.error;
+      if (testsError) throw testsError;
 
-      let testsWithDetails = (testsResponse.data || []).map(test => ({
+      let testsWithDetails = (testRows || []).map((test) => ({
         ...test,
         attemptCount: 0,
         userBestScore: null,
-        userCompleted: false
+        userCompleted: false,
+        isTopicWise: isTopicWiseTest(test),
       }));
 
 
-      // If user is authenticated, fetch additional data (DB-friendly: limit by test IDs)
+      // If user is authenticated, enrich with attempt data (non-fatal if this fails)
       if (userEmail) {
         const testIdsArr = testsWithDetails.map((t) => t.id).filter(Boolean);
-        const [userAttemptsResponse, allAttemptsResponse] = await Promise.all([
-          supabase
-            .from('user_test_attempts')
-            .select('id, test_id, score, percentage, submitted_at')
-            .eq('user_email', userEmail)
-            .eq('is_completed', true)
-            .order('submitted_at', { ascending: false }),
-          testIdsArr.length > 0
-            ? supabase
-                .from('user_test_attempts')
-                .select('test_id')
-                .eq('is_completed', true)
-                .in('test_id', testIdsArr)
-            : { data: [], error: null }
-        ]);
+        let userAttemptsResponse = { data: [], error: null };
+        let allAttemptsResponse = { data: [], error: null };
 
-        if (userAttemptsResponse.error) throw userAttemptsResponse.error;
-        if (allAttemptsResponse?.error) throw allAttemptsResponse.error;
+        try {
+          [userAttemptsResponse, allAttemptsResponse] = await Promise.all([
+            supabase
+              .from('user_test_attempts')
+              .select('id, test_id, score, percentage, submitted_at')
+              .eq('user_email', userEmail)
+              .eq('is_completed', true)
+              .order('submitted_at', { ascending: false }),
+            testIdsArr.length > 0
+              ? supabase
+                  .from('user_test_attempts')
+                  .select('test_id')
+                  .eq('is_completed', true)
+                  .in('test_id', testIdsArr)
+              : { data: [], error: null },
+          ]);
+        } catch (attemptFetchErr) {
+          console.warn('Could not load attempt metadata for test list:', attemptFetchErr);
+        }
+
+        if (userAttemptsResponse.error) {
+          console.warn('User attempts fetch:', userAttemptsResponse.error);
+        }
+        if (allAttemptsResponse?.error) {
+          console.warn('Attempt counts fetch:', allAttemptsResponse.error);
+        }
 
         // Get test IDs for current category
         const currentCategoryTestIds = new Set(testsWithDetails.map(test => test.id));
@@ -1239,19 +1341,58 @@ export default function OptimizedMockTestDashboard() {
         // Create a set of all attempted test IDs (regardless of score)
         const attemptedTestIds = new Set(filteredUserAttempts.map(attempt => attempt.test_id));
 
-        testsWithDetails = testsWithDetails.map(test => ({
+        const inProgressMap = {};
+        if (testIdsArr.length > 0) {
+          try {
+            let inProgressQuery = await supabase
+              .from('user_test_attempts')
+              .select(
+                'id, test_id, attempted_questions, current_question_index, total_questions, time_spent, started_at'
+              )
+              .eq('user_email', userEmail)
+              .eq('is_completed', false)
+              .in('test_id', testIdsArr);
+
+            if (
+              inProgressQuery.error &&
+              (inProgressQuery.error.code === 'PGRST204' ||
+                /time_spent|current_question_index/i.test(inProgressQuery.error.message || ''))
+            ) {
+              inProgressQuery = await supabase
+                .from('user_test_attempts')
+                .select('id, test_id, attempted_questions, total_questions, started_at')
+                .eq('user_email', userEmail)
+                .eq('is_completed', false)
+                .in('test_id', testIdsArr);
+            }
+
+            (inProgressQuery.data || []).forEach((row) => {
+              if (row?.test_id) inProgressMap[row.test_id] = row;
+            });
+          } catch (inProgressErr) {
+            console.warn('In-progress attempts fetch:', inProgressErr);
+          }
+        }
+        setInProgressByTestId(inProgressMap);
+
+        testsWithDetails = testsWithDetails.map((test) => ({
           ...test,
           attemptCount: attemptCounts[test.id] || 0,
           userBestScore: userBestScores[test.id] || null,
           userCompleted: attemptedTestIds.has(test.id),
-          userLatestAttemptId: userLatestAttempts[test.id] || null
+          userLatestAttemptId: userLatestAttempts[test.id] || null,
+          userInProgress: Boolean(inProgressMap[test.id]),
+          userInProgressAttempt: inProgressMap[test.id] || null,
         }));
+      } else {
+        setInProgressByTestId({});
       }
 
       setTests(testsWithDetails);
     } catch (error) {
       console.error('Error fetching tests:', error);
-      toast.error('Failed to load tests');
+      const detail = error?.message || error?.details || '';
+      toast.error(detail ? `Failed to load tests: ${detail}` : 'Failed to load tests');
       setTests([]);
     }
   }, [userEmail, examcategory]);
@@ -1260,8 +1401,7 @@ export default function OptimizedMockTestDashboard() {
     if (!userEmail) return;
 
     try {
-      const normalized = examcategory?.toUpperCase?.() || '';
-      const normalizedAlt = normalized.replace(/-/g, '_');
+      const categoryVariants = getCategoryVariants(examcategory);
       const { data: rawAttempts, error: allAttemptsError } = await supabase
         .from('user_test_attempts')
         .select('id, test_id, score, percentage, duration_taken, attempted_questions, correct_answers, wrong_answers, unanswered, all_questions, created_at, submitted_at, examcategory')
@@ -1272,12 +1412,10 @@ export default function OptimizedMockTestDashboard() {
 
       if (allAttemptsError) throw allAttemptsError;
 
-      const allUserAttempts = (rawAttempts || []).filter(
-        (a) =>
-          a?.examcategory === normalized ||
-          a?.examcategory === normalizedAlt ||
-          !a?.examcategory
-      );
+      const allUserAttempts = (rawAttempts || []).filter((a) => {
+        if (!a?.examcategory) return false;
+        return categoryVariants.some((v) => categoryMatches(a.examcategory, v));
+      });
 
       if (allUserAttempts.length === 0) {
         setUserStats({
@@ -1322,15 +1460,16 @@ export default function OptimizedMockTestDashboard() {
       const totalAttempts = allUserAttempts.length;
       const uniqueTests = testIds.length;
       
-      const scores = allUserAttempts
-        .map((attempt) => sanitizeData(attempt?.percentage ?? attempt?.score, 'number', 0))
-        .filter((score) => score > 0);
+      const scores = allUserAttempts.map((attempt) =>
+        sanitizeData(attempt?.percentage ?? attempt?.score, 'number', 0)
+      );
       
       const averageScore = scores.length > 0 ? scores.reduce((sum, score) => sum + score, 0) / scores.length : 0;
       const bestScore = scores.length > 0 ? Math.max(...scores) : 0;
       
-      const totalStudyTime = allUserAttempts.reduce((sum, attempt) => 
-        sum + sanitizeData(attempt?.duration_taken, 'number', 0), 0
+      const totalStudyTimeSeconds = allUserAttempts.reduce(
+        (sum, attempt) => sum + durationTakenToSeconds(attempt?.duration_taken),
+        0
       );
       
       const totalQuestionsFromAttempts = allUserAttempts.reduce((sum, attempt) => 
@@ -1354,11 +1493,9 @@ export default function OptimizedMockTestDashboard() {
         olderHalf.reduce((sum, a) => sum + sanitizeData(a?.percentage || a?.score, 'number', 0), 0) / olderHalf.length : 0;
       const improvement = olderAvg > 0 ? Math.round(((recentAvg - olderAvg) / olderAvg) * 100) : 0;
 
-      const uniqueDays = [...new Set(allUserAttempts
-        .map(a => a?.created_at ? new Date(a.created_at).toDateString() : null)
-        .filter(Boolean)
-      )];
-      const streak = uniqueDays.length;
+      const streak = computeConsecutiveDayStreak(
+        allUserAttempts.map((a) => a?.submitted_at || a?.created_at).filter(Boolean)
+      );
 
       // Add test names to attempts with null checks
       const attemptsWithNames = allUserAttempts.map(attempt => ({
@@ -1373,7 +1510,7 @@ export default function OptimizedMockTestDashboard() {
         completedTests: uniqueTests,
         averageScore: Math.round(averageScore * 100) / 100,
         bestScore: Math.round(bestScore * 100) / 100,
-        totalStudyTime: Math.round(totalStudyTime / 60),
+        totalStudyTime: Math.round((totalStudyTimeSeconds / 3600) * 10) / 10,
         recentAttempts: attemptsWithNames.slice(0, 3),
         totalQuestions: totalQuestionsFromAttempts,
         improvement: Math.round(improvement),
@@ -1383,7 +1520,7 @@ export default function OptimizedMockTestDashboard() {
       setExamTrackerStats({
         totalAttempts,
         averageAccuracy: overallStats?.overallAccuracy || 0,
-        totalTimeSpent: Math.round(totalStudyTime),
+        totalTimeSpent: Math.round(totalStudyTimeSeconds / 60),
         questionsAttempted: overallStats?.totalAttempted || 0,
         subjectWisePerformance,
         recentAttempts: attemptsWithNames.slice(0, 8),
@@ -1398,21 +1535,44 @@ export default function OptimizedMockTestDashboard() {
     }
   }, [userEmail, examcategory]);
 
-  // Optimized data fetching with better loading states and memory leak prevention
+  // Fetch after auth is resolved; avoid refetch when only the user object reference changes
   useEffect(() => {
+    if (authLoading || !examcategory) return;
+
+    const loadKey = `${examcategory}::${userEmail || 'guest'}`;
+    const isFirstLoad = dataLoadedForRef.current !== loadKey;
     let isMounted = true;
-    
+
     const fetchData = async () => {
       if (!isMounted) return;
-      
-      setIsLoading(true);
+      if (isFirstLoad) setIsLoading(true);
+
       try {
-        // Always fetch tests (public data)
         await fetchAvailableTests();
-        
-        // Only fetch user stats if we have a resolved user email
         if (userEmail && isMounted) {
           await fetchOptimizedUserStats();
+        } else if (isMounted) {
+          setUserStats({
+            completedTests: 0,
+            averageScore: 0,
+            totalStudyTime: 0,
+            bestScore: 0,
+            recentAttempts: [],
+            totalQuestions: 0,
+            improvement: 0,
+            streak: 0,
+          });
+          setExamTrackerStats({
+            totalAttempts: 0,
+            averageAccuracy: 0,
+            totalTimeSpent: 0,
+            questionsAttempted: 0,
+            subjectWisePerformance: [],
+            recentAttempts: [],
+            strongestSubject: '',
+            weakestSubject: '',
+            overallStats: null,
+          });
         }
       } catch (error) {
         if (isMounted) {
@@ -1422,66 +1582,141 @@ export default function OptimizedMockTestDashboard() {
       } finally {
         if (isMounted) {
           setIsLoading(false);
+          dataLoadedForRef.current = loadKey;
         }
       }
     };
-    
+
     fetchData();
-    
+
     return () => {
       isMounted = false;
     };
-  }, [user, userEmail, fetchAvailableTests, fetchOptimizedUserStats]);
+  }, [authLoading, examcategory, userEmail, fetchAvailableTests, fetchOptimizedUserStats]);
 
   // Memoized event handlers
-  const handleStartTest = useCallback((test) => {
-    if (!test?.id) return;
+  const handleStartTest = useCallback(
+    (test) => {
+      if (!test?.id) return;
+      const attemptUrl = `/mock-test/${examcategory}/attempt/${test.id}`;
+      if (!user) {
+        router.push(`/sign-in?redirect=${encodeURIComponent(attemptUrl)}`);
+        toast.success('Sign in to continue');
+        return;
+      }
+      if (test.userInProgress) {
+        router.push(attemptUrl);
+        return;
+      }
+      setPreflight({ open: true, test, isRetake: false });
+    },
+    [router, examcategory, user]
+  );
 
-    const attemptUrl = `/mock-test/${examcategory}/attempt/${test.id}`;
+  const handleViewResults = useCallback((test) => {
+    if (!test?.userLatestAttemptId) return;
     const resultsUrl = `/mock-test/${examcategory}/results/${test.userLatestAttemptId}`;
-
     if (!user) {
-      const redirect = test.userCompleted && test.userLatestAttemptId ? resultsUrl : attemptUrl;
-      router.push(`/sign-in?redirect=${encodeURIComponent(redirect)}`);
-      toast.success('Sign in to continue');
+      router.push(`/sign-in?redirect=${encodeURIComponent(resultsUrl)}`);
       return;
     }
-
-    if (test.userCompleted && test.userLatestAttemptId) {
-      toast.success(`Opening ${test.name} results...`);
-      router.push(resultsUrl);
-    } else {
-      toast.success(`Starting ${test.name}...`);
-      router.push(attemptUrl);
-    }
+    router.push(resultsUrl);
   }, [router, examcategory, user]);
 
-  const handlePreviewTest = useCallback((test) => {
-    if (!test?.name) return;
-    toast.success(`Opening ${test.name} preview...`);
+  const handleRetakeTest = useCallback(
+    (test) => {
+      if (!test?.id) return;
+      const attemptUrl = `/mock-test/${examcategory}/attempt/${test.id}`;
+      if (!user) {
+        router.push(`/sign-in?redirect=${encodeURIComponent(attemptUrl)}`);
+        return;
+      }
+      setPreflight({ open: true, test, isRetake: true });
+    },
+    [router, examcategory, user]
+  );
+
+  const confirmPreflight = useCallback(() => {
+    const test = preflight.test;
+    if (!test?.id) return;
+    setPreflight({ open: false, test: null, isRetake: false });
+    router.push(`/mock-test/${examcategory}/attempt/${test.id}`);
+  }, [preflight.test, router, examcategory]);
+
+  const closePreflight = useCallback(() => {
+    setPreflight({ open: false, test: null, isRetake: false });
   }, []);
+
+  const resumeEntry = useMemo(() => {
+    const testId = Object.keys(inProgressByTestId)[0];
+    if (!testId) return null;
+    const test = tests.find((t) => t.id === testId);
+    const attempt = inProgressByTestId[testId];
+    return test && attempt ? { test, attempt } : null;
+  }, [inProgressByTestId, tests]);
+
+  const testsForActiveTab = useMemo(() => {
+    if (activeTab === 'topic-tests') {
+      return tests.filter(isTopicWiseTest);
+    }
+    if (activeTab === 'tests') {
+      return tests.filter((t) => !isTopicWiseTest(t));
+    }
+    return tests;
+  }, [tests, activeTab]);
 
   // Highly optimized filtered and paginated tests
   const { filteredTests, paginatedTests, totalPages } = useMemo(() => {
-    const filtered = tests.filter(test => {
+    const filtered = testsForActiveTab.filter((test) => {
       if (!test) return false;
-      
-      const matchesSearch = !searchTerm || 
+
+      const matchesSearch =
+        !searchTerm ||
         test.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (test.description || '').toLowerCase().includes(searchTerm.toLowerCase());
-      
-      const matchesDifficulty = difficultyFilter === 'all' || 
-        (test.difficulty?.toLowerCase() === difficultyFilter);
-      
-      return matchesSearch && matchesDifficulty;
+
+      const matchesDifficulty =
+        difficultyFilter === 'all' || test.difficulty?.toLowerCase() === difficultyFilter;
+
+      const matchesStatus =
+        statusFilter === 'all' ||
+        (statusFilter === 'new' && !test.userCompleted && !test.userInProgress) ||
+        (statusFilter === 'completed' && test.userCompleted) ||
+        (statusFilter === 'in-progress' && test.userInProgress);
+
+      return matchesSearch && matchesDifficulty && matchesStatus;
     });
 
-    const totalPages = Math.ceil(filtered.length / testsPerPage);
-    const startIndex = (currentPage - 1) * testsPerPage;
-    const paginated = filtered.slice(startIndex, startIndex + testsPerPage);
+    const sorted = [...filtered].sort((a, b) => {
+      switch (sortBy) {
+        case 'oldest':
+          return new Date(a.created_at || 0) - new Date(b.created_at || 0);
+        case 'name':
+          return (a.name || '').localeCompare(b.name || '');
+        case 'duration':
+          return (b.duration || 0) - (a.duration || 0);
+        case 'questions':
+          return (b.total_questions || 0) - (a.total_questions || 0);
+        case 'newest':
+        default:
+          return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+      }
+    });
 
-    return { filteredTests: filtered, paginatedTests: paginated, totalPages };
-  }, [tests, searchTerm, difficultyFilter, currentPage, testsPerPage]);
+    const totalPages = Math.ceil(sorted.length / testsPerPage);
+    const startIndex = (currentPage - 1) * testsPerPage;
+    const paginated = sorted.slice(startIndex, startIndex + testsPerPage);
+
+    return { filteredTests: sorted, paginatedTests: paginated, totalPages };
+  }, [
+    testsForActiveTab,
+    searchTerm,
+    difficultyFilter,
+    statusFilter,
+    sortBy,
+    currentPage,
+    testsPerPage,
+  ]);
 
   const openProgressTab = useCallback(() => {
     setActiveTab('progress');
@@ -1510,6 +1745,8 @@ export default function OptimizedMockTestDashboard() {
             examcategory={examcategory}
             categoryLabel={categoryLabel}
             onStartTest={handleStartTest}
+            onViewResults={handleViewResults}
+            onRetakeTest={handleRetakeTest}
             onOpenProgress={openProgressTab}
           />
         ) : (
@@ -1517,46 +1754,34 @@ export default function OptimizedMockTestDashboard() {
         );
 
       case 'tests':
+      case 'topic-tests':
         return (
           <div className="bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
             <div className="px-4 sm:px-6 py-4 border-b border-neutral-200">
               <h3 className="text-lg font-semibold text-neutral-900 flex items-center">
                 <Grid className="h-5 w-5 mr-2 text-neutral-600" />
-                Available Mock Tests
+                {activeTab === 'topic-tests' ? 'Topic-wise Tests' : 'Available Mock Tests'}
               </h3>
             </div>
 
-            {/* Search and Filter */}
-            <div className="p-4 sm:p-6 border-b border-neutral-200 bg-neutral-50/50">
-              <div className="flex flex-col space-y-3 sm:flex-row sm:gap-4">
-                <div className="flex-1 relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-neutral-400" />
-                  <input
-                    type="text"
-                    placeholder="Search tests..."
-                    onChange={(e) => debouncedSearch(e.target.value)}
-                    className="w-full pl-9 sm:pl-10 pr-4 py-2.5 sm:py-3 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-800 focus:border-neutral-800 transition-all text-sm sm:text-base"
-                  />
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Filter className="h-4 w-4 sm:h-5 sm:w-5 text-neutral-500 flex-shrink-0" />
-                  <select
-                    value={difficultyFilter}
-                    onChange={(e) => {
-                      setDifficultyFilter(e.target.value);
-                      setCurrentPage(1);
-                    }}
-                    className="flex-1 sm:flex-initial px-3 sm:px-4 py-2.5 sm:py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-neutral-800 focus:border-neutral-800 text-sm sm:text-base"
-                  >
-                    <option value="all">All Difficulties</option>
-                    <option value="easy">Easy</option>
-                    <option value="medium">Medium</option>
-                    <option value="hard">Hard</option>
-                    <option value="mixed">Mixed</option>
-                  </select>
-                </div>
-              </div>
-            </div>
+            <TestListToolbar
+              onSearchChange={debouncedSearch}
+              difficultyFilter={difficultyFilter}
+              onDifficultyChange={(v) => {
+                setDifficultyFilter(v);
+                setCurrentPage(1);
+              }}
+              statusFilter={statusFilter}
+              onStatusChange={(v) => {
+                setStatusFilter(v);
+                setCurrentPage(1);
+              }}
+              sortBy={sortBy}
+              onSortChange={(v) => {
+                setSortBy(v);
+                setCurrentPage(1);
+              }}
+            />
 
             {/* Tests List */}
             <div className="p-4 sm:p-6">
@@ -1571,7 +1796,9 @@ export default function OptimizedMockTestDashboard() {
                   <p className="text-neutral-500 mb-6 text-sm sm:text-base">
                     {searchTerm || difficultyFilter !== 'all'
                       ? 'Try adjusting search or filters.'
-                      : 'New tests will appear here soon.'}
+                      : activeTab === 'topic-tests'
+                        ? 'Create a topic-wise test from the admin panel.'
+                        : 'New tests will appear here soon.'}
                   </p>
                 </div>
               ) : (
@@ -1581,8 +1808,10 @@ export default function OptimizedMockTestDashboard() {
                       key={test.id}
                       test={test}
                       onStartTest={handleStartTest}
-                      onPreview={handlePreviewTest}
+                      onViewResults={handleViewResults}
+                      onRetakeTest={handleRetakeTest}
                       examcategory={examcategory}
+                      user={user}
                     />
                   ))}
                   <Pagination 
@@ -1596,6 +1825,9 @@ export default function OptimizedMockTestDashboard() {
           </div>
         );
       
+      case 'leaderboard':
+        return <LeaderboardPanel examcategory={examcategory} user={user} />;
+
       case 'progress':
         return (
           <MyProgressTab
@@ -1610,7 +1842,7 @@ export default function OptimizedMockTestDashboard() {
     }
   };
 
-  if (isLoading) {
+  if (authLoading || isLoading) {
     return <FullPageLoader />;
   }
 
@@ -1641,34 +1873,23 @@ export default function OptimizedMockTestDashboard() {
       {/* Spacer to clear fixed navbar (h-20 = 80px; pt-24 = 96px for safe clearance) */}
       <div className="pt-24 min-h-screen">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-12 sm:pb-16">
-          {/* Hero - motion-aligned with [category] */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-            className="text-center mb-6 sm:mb-8 pt-2"
-          >
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-neutral-900 mb-2 sm:mb-3 tracking-tight px-2 scroll-mt-24" id="page-title">
-              {categoryLabel} Mock Tests
-            </h1>
-            <p className="text-sm sm:text-base md:text-lg text-neutral-600 max-w-2xl mx-auto px-4 mb-4">
-              Timed full-length tests with detailed analytics. Minimal distractions—just progress.
-            </p>
-            <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 text-neutral-600 text-xs sm:text-sm">
-              <span className="flex items-center gap-1.5">
-                <BookOpen className="h-4 w-4" />
-                {tests.length} tests
-              </span>
-              <span className="flex items-center gap-1.5">
-                <Target className="h-4 w-4" />
-                Full-length
-              </span>
-              <span className="flex items-center gap-1.5">
-                <Trophy className="h-4 w-4" />
-                Analytics
-              </span>
-            </div>
-          </motion.div>
+          <MockTestBreadcrumb examcategory={examcategory} categoryLabel={categoryLabel} />
+
+          <MockTestPageHeader
+            examcategory={examcategory}
+            categoryLabel={categoryLabel}
+            testsCount={tests.length}
+            streak={user ? userStats.streak : 0}
+            profileDisplayName={profileDisplayName}
+          />
+
+          {user && resumeEntry && (
+            <ResumeTestBanner
+              attempt={resumeEntry.attempt}
+              test={resumeEntry.test}
+              examcategory={examcategory}
+            />
+          )}
 
           {/* Tab Navigation */}
           <TabNavigation
@@ -1691,23 +1912,23 @@ export default function OptimizedMockTestDashboard() {
         </div>
       </div>
 
-      <Toaster
-        position="bottom-right"
-        toastOptions={{
-          duration: 2000,
-          style: {
-            background: '#fff',
-            color: '#171717',
-            borderRadius: '8px',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-            fontSize: '14px',
-            padding: '12px 16px',
-            maxWidth: '90vw',
-          },
-          success: { iconTheme: { primary: '#22c55e', secondary: '#fff' } },
-          error: { iconTheme: { primary: '#ef4444', secondary: '#fff' } },
-        }}
+      <PreflightModal
+        test={preflight.test}
+        examcategory={examcategory}
+        open={preflight.open}
+        isRetake={preflight.isRetake}
+        onClose={closePreflight}
+        onConfirm={confirmPreflight}
       />
+
     </div>
+  );
+}
+
+export default function MockTestCategoryPage() {
+  return (
+    <Suspense fallback={<FullPageLoader />}>
+      <OptimizedMockTestDashboard />
+    </Suspense>
   );
 }

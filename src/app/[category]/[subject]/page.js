@@ -9,6 +9,7 @@ import React, {
 } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@supabase/supabase-js";
+import { applyProgressUserFilter } from "@/lib/progressIdentity";
 import toast, { Toaster } from "react-hot-toast";
 import { useParams } from "next/navigation";
 import Link from "next/link";
@@ -419,8 +420,8 @@ const Examtracker = () => {
   // Fetches all pages of user_progress for a given user + category.
   // Each page is PROGRESS_PAGE_SIZE rows; we stop when a page is short.
   const fetchUserProgress = useCallback(
-    async (userId, forceRefresh = false) => {
-      if (!userId || !category) return;
+    async (progressUser, forceRefresh = false) => {
+      if (!progressUser?.id || !category) return;
 
       try {
         if (forceRefresh) invalidateCache(cacheKeyProgress);
@@ -431,7 +432,6 @@ const Examtracker = () => {
             const areaLower = category.toLowerCase();
             const areaOr    = `area.eq.${areaLower},area.eq.${category},area.eq.${category.toUpperCase()}`;
 
-            // ── Paginate through all rows ──────────────────────────────────
             const allRows = [];
             let page = 0;
 
@@ -439,13 +439,15 @@ const Examtracker = () => {
               const from = page * PROGRESS_PAGE_SIZE;
               const to   = from + PROGRESS_PAGE_SIZE - 1;
 
-              const { data: rows, error } = await supabase
+              let query = supabase
                 .from("user_progress")
                 .select("topic, completedquestions, correctanswers, points")
-                .eq("user_id", userId)
                 .or(areaOr)
                 .range(from, to)
-                .order("topic", { ascending: true }); // stable ordering helps cache hits
+                .order("topic", { ascending: true });
+              query = applyProgressUserFilter(query, progressUser);
+
+              const { data: rows, error } = await query;
 
               if (error) throw error;
 
@@ -528,7 +530,7 @@ const Examtracker = () => {
   useEffect(() => {
     if (user?.id) {
       const isNewUser = lastUserIdRef.current !== user.id;
-      fetchUserProgress(user.id, isNewUser).finally(() => {
+      fetchUserProgress(user, isNewUser).finally(() => {
         lastUserIdRef.current = user.id;
       });
     } else {
@@ -551,7 +553,7 @@ const Examtracker = () => {
           event:  "*",
           schema: "public",
           table:  "user_progress",
-          filter: `user_id=eq.${user.id}`,
+          filter: `email=eq.${user.email}`,
         },
         (payload) => {
           if (!active) return;
@@ -569,7 +571,7 @@ const Examtracker = () => {
           const needsFullRefetch = patchProgressFromPayload(payload);
           if (needsFullRefetch) {
             invalidateCache(cacheKeyProgress);
-            fetchUserProgress(user.id, true);
+            fetchUserProgress(user, true);
           } else {
             // Patch applied — just invalidate the cache entry so the next
             // manual refresh or TTL expiry gets fresh data
@@ -615,7 +617,7 @@ const Examtracker = () => {
 
     if (user?.id) {
       invalidateCache(cacheKeyProgress);
-      fetchUserProgress(user.id, true);
+      fetchUserProgress(user, true);
     }
 
     toast.success("Data refreshed!");

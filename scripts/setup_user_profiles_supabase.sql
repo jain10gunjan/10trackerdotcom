@@ -1,0 +1,1 @@
+-- Alias: run scripts/fix_user_profiles_schema.sql or scripts/ensure_user_profiles.sql in Supabase SQL Editor.

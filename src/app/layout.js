@@ -1,14 +1,7 @@
 import localFont from "next/font/local";
 import "./globals.css";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
-import MobileBottomMenu from "@/components/MobileBottomMenu";
 import Script from "next/script";
-import { ClerkProvider } from "@clerk/nextjs";
-import { AuthProvider } from "./context/AuthContext";
-import AuthModalWrapper from "@/components/AuthModalWrapper";
-import ProfileModal from "@/components/ProfileModal";
-import AnalyticsInitializer from "@/components/AnalyticsInitializer";
+import Providers from "@/components/Providers";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -138,28 +131,10 @@ export default function RootLayout({ children }) {
         <link rel="manifest" href="/site.webmanifest" />
       </head>
       <body>
-        <ClerkProvider 
-          publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
-          appearance={{
-            elements: {
-              formButtonPrimary: "bg-neutral-900 hover:bg-neutral-800 text-white font-semibold transition-colors",
-              formFieldInput: "border-neutral-300 focus:border-neutral-900 focus:ring-neutral-900",
-            }
-          }}
-        >
-          <AuthProvider>
-            <AnalyticsInitializer />
-            <AuthModalWrapper />
-            <Navbar/>
-            <ProfileModal />
-            <div className="pb-16 md:pb-0">
-              {children}
-            </div>
-            <Footer />
-            <MobileBottomMenu />
-            <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
-          </AuthProvider>
-        </ClerkProvider>
+        <Providers>
+          {children}
+          <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
+        </Providers>
 
       </body>
     </html>

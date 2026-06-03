@@ -1,20 +1,37 @@
 import { NextResponse } from 'next/server';
 import { createClient } from "@supabase/supabase-js";
+import { getCategoryVariants } from '@/lib/mockTestUtils';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
 
+function transformQuestion(q, index) {
+  return {
+    id: q._id || index + 1,
+    question: q.question,
+    type: 'MCQ',
+    subject: q.subject || q.topic,
+    difficulty: q.difficulty,
+    options_A: q.options_A,
+    options_B: q.options_B,
+    options_C: q.options_C,
+    options_D: q.options_D,
+    correct_option: q.correct_option,
+    solution: q.solution || q.solutiontext,
+  };
+}
+
 export async function GET(request, { params }) {
   try {
-    const testId = parseInt(params.testId);
+    const { testId } = await params;
 
-    // First get the test configuration
     const { data: test, error: testError } = await supabase
-      .from('gate_cse_tests')
+      .from('mock_tests')
       .select('*')
       .eq('id', testId)
+      .eq('is_active', true)
       .single();
 
     if (testError) {
@@ -25,11 +42,43 @@ export async function GET(request, { params }) {
       );
     }
 
-    // Get questions from examtracker table based on test configuration
+    const categoryVariants = getCategoryVariants('gate-cse');
+
+    // Prefer pinned questions from mock_test_questions when present
+    const { data: pinnedRows } = await supabase
+      .from('mock_test_questions')
+      .select('question_id, question_order')
+      .eq('test_id', testId)
+      .order('question_order');
+
+    if (pinnedRows?.length) {
+      const questionIds = pinnedRows.map((r) => r.question_id).filter(Boolean);
+      const { data: pinnedQuestions, error: pinnedError } = await supabase
+        .from('examtracker')
+        .select('_id, question, options_A, options_B, options_C, options_D, correct_option, solution, solutiontext, topic, difficulty, subject')
+        .in('_id', questionIds);
+
+      if (!pinnedError && pinnedQuestions?.length) {
+        const byId = new Map(pinnedQuestions.map((q) => [q._id, q]));
+        const ordered = pinnedRows
+          .map((row, index) => {
+            const q = byId.get(row.question_id);
+            if (!q) return null;
+            return transformQuestion(q, index);
+          })
+          .filter(Boolean);
+
+        if (ordered.length > 0) {
+          return NextResponse.json({ success: true, questions: ordered });
+        }
+      }
+    }
+
+    // Fallback: random pool from examtracker (legacy)
     let query = supabase
       .from("examtracker")
-      .select("_id, question, options_A, options_B, options_C, options_D, correct_option, solution, solutiontext, topic, difficulty")
-      .eq("category", "GATE_CSE");
+      .select("_id, question, options_A, options_B, options_C, options_D, correct_option, solution, solutiontext, topic, difficulty, subject")
+      .in("category", categoryVariants);
 
     // Apply difficulty filter if specified
     if (test.difficulty && test.difficulty !== 'mixed') {
@@ -56,20 +105,7 @@ export async function GET(request, { params }) {
       );
     }
 
-    // Transform questions to match expected format
-    const transformedQuestions = questions.map((q, index) => ({
-      id: q._id || index + 1,
-      question: q.question,
-      type: "MCQ", // Default to MCQ for now
-      subject: q.topic,
-      difficulty: q.difficulty,
-      options_A: q.options_A,
-      options_B: q.options_B,
-      options_C: q.options_C,
-      options_D: q.options_D,
-      correct_option: q.correct_option,
-      solution: q.solution || q.solutiontext
-    }));
+    const transformedQuestions = questions.map((q, index) => transformQuestion(q, index));
 
     return NextResponse.json({
       success: true,

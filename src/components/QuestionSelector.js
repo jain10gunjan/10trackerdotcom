@@ -18,12 +18,9 @@ const QuestionSelector = ({
   initialSubject,
   initialChapter,
 }) => {
-  const topicsApi = examcategory
-    ? `/api/mock-test/admin/topics?category=${encodeURIComponent(examcategory)}`
-    : '/api/gate-cse/mock-test/admin/topics';
-  const questionsApiBase = examcategory
-    ? '/api/mock-test/admin/questions'
-    : '/api/gate-cse/mock-test/admin/questions';
+  const categoryParam = examcategory || 'gate-cse';
+  const topicsApi = `/api/mock-test/admin/topics?category=${encodeURIComponent(categoryParam)}`;
+  const questionsApiBase = '/api/mock-test/admin/questions';
   const [questions, setQuestions] = useState([]);
   const [filteredQuestions, setFilteredQuestions] = useState([]);
   const [loading, setLoading] = useState(false);

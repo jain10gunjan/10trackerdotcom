@@ -1,10 +1,10 @@
 // context/AuthContext.js
 'use client'
 
-import React, { createContext, useContext, useMemo, useState } from 'react';
-import { useUser, useClerk } from '@clerk/nextjs';
+import React, { createContext, useContext, useMemo, useState, useCallback } from 'react';
+import { useSession, signIn, signOut as nextAuthSignOut } from 'next-auth/react';
+import { getProgressUserId } from '@/lib/progressIdentity';
 
-// Create the auth context that proxies Clerk while preserving modal visibility state
 const AuthContext = createContext({
   user: null,
   loading: true,
@@ -17,20 +17,46 @@ const AuthContext = createContext({
 
 export const useAuth = () => useContext(AuthContext);
 
+function normalizeUser(sessionUser) {
+  if (!sessionUser) return null;
+
+  const email = sessionUser.email || '';
+  const name = sessionUser.name || email.split('@')[0] || 'User';
+  const progressId = getProgressUserId({ email, id: sessionUser.id });
+
+  return {
+    id: progressId,
+    authId: sessionUser.id,
+    email,
+    name,
+    image: sessionUser.image,
+    fullName: name,
+    displayName: name,
+    primaryEmailAddress: { emailAddress: email },
+    emailAddresses: email ? [{ emailAddress: email }] : [],
+  };
+}
+
 export const AuthProvider = ({ children }) => {
-  const { user, isLoaded, isSignedIn } = useUser();
-  const { signOut, openSignIn } = useClerk();
+  const { data: session, status } = useSession();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
 
-  const signInWithGoogle = async (options = {}) => {
+  const sessionUser = session?.user;
+  const user = useMemo(
+    () => normalizeUser(sessionUser),
+    [sessionUser?.id, sessionUser?.email, sessionUser?.name, sessionUser?.image]
+  );
+  const loading = status === 'loading';
+
+  const signInWithGoogle = useCallback(async (options = {}) => {
     const { redirectUrl } = options;
-    if (redirectUrl) {
-      await openSignIn({ afterSignInUrl: redirectUrl });
-    } else {
-      await openSignIn();
-    }
-  };
+    await signIn('google', { callbackUrl: redirectUrl || '/' });
+  }, []);
+
+  const signOut = useCallback(async () => {
+    await nextAuthSignOut({ callbackUrl: '/' });
+  }, []);
 
   const adminEmails = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || '')
     .split(',')
@@ -38,10 +64,7 @@ export const AuthProvider = ({ children }) => {
     .filter(Boolean);
 
   const isAdmin = !!(user && adminEmails.length > 0 && (
-    // primary email
-    (user.primaryEmailAddress?.emailAddress &&
-      adminEmails.includes(user.primaryEmailAddress.emailAddress.toLowerCase())) ||
-    // any other email on the account
+    (user.email && adminEmails.includes(user.email.toLowerCase())) ||
     (Array.isArray(user.emailAddresses) &&
       user.emailAddresses.some(e =>
         e.emailAddress && adminEmails.includes(e.emailAddress.toLowerCase())
@@ -50,16 +73,16 @@ export const AuthProvider = ({ children }) => {
 
   const value = useMemo(() => ({
     user,
-    loading: !isLoaded,
+    loading,
     signInWithGoogle,
     signOut,
-    isAuthenticated: !!isSignedIn,
+    isAuthenticated: !!user,
     isAdmin,
     showAuthModal,
     setShowAuthModal,
     showProfileModal,
     setShowProfileModal
-  }), [user, isLoaded, isSignedIn, isAdmin, signOut, showAuthModal, showProfileModal]);
+  }), [user, loading, isAdmin, showAuthModal, showProfileModal]);
 
   return (
     <AuthContext.Provider value={value}>

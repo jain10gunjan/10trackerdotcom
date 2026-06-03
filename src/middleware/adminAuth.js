@@ -1,11 +1,17 @@
-// Admin authentication middleware - simplified for now
-export const ADMIN_EMAIL = 'jain10gunjan@gmail.com';
+import { auth } from '@/auth';
+import { isAdminEmail } from '@/lib/mockTestUtils';
 
-export async function verifyAdminAuth(request) {
+export async function verifyAdminAuth() {
   try {
-    // For now, we'll allow all requests to pass through
-    // You can add proper authentication later
-    return { isAdmin: true, userId: 'admin', userEmail: ADMIN_EMAIL };
+    const session = await auth();
+    const email = session?.user?.email;
+    if (!email) {
+      return { isAdmin: false, error: 'Authentication required' };
+    }
+    if (!isAdminEmail(email)) {
+      return { isAdmin: false, error: 'Admin access required' };
+    }
+    return { isAdmin: true, userId: session.user.id, userEmail: email };
   } catch (error) {
     console.error('Admin auth error:', error);
     return { isAdmin: false, error: 'Authentication failed' };
@@ -14,17 +20,17 @@ export async function verifyAdminAuth(request) {
 
 export function requireAdminAuth(handler) {
   return async (request, context) => {
-    const { isAdmin, error } = await verifyAdminAuth(request);
-    
+    const { isAdmin, error } = await verifyAdminAuth();
+
     if (!isAdmin) {
       return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: error || 'Admin access required' 
+        JSON.stringify({
+          success: false,
+          error: error || 'Admin access required',
         }),
-        { 
-          status: 403, 
-          headers: { 'Content-Type': 'application/json' } 
+        {
+          status: 403,
+          headers: { 'Content-Type': 'application/json' },
         }
       );
     }

@@ -235,7 +235,7 @@ export default function ExamsPage() {
 
   const featuredExams = useMemo(() => {
     const bySlug = new Map(examCategories.map((e) => [e.slug, e]));
-    const preferred = ["upsc-prelims", "gate-cse", "gate"].map((s) => bySlug.get(s)).filter(Boolean);
+    const preferred = ["upsc-prelims", "general-aptitude"].map((s) => bySlug.get(s)).filter(Boolean);
     const picked = [];
     for (const e of preferred) {
       if (picked.length >= 3) break;
@@ -372,18 +372,11 @@ export default function ExamsPage() {
                     UPSC guide
                   </Link>
                   <Link
-                    href="/exams/gate-cse"
+                    href="/exams/general-aptitude"
                     className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-neutral-300 bg-white text-neutral-800 text-sm font-semibold hover:bg-neutral-50 transition-colors"
                   >
                     <FileText className="w-4 h-4" />
-                    GATE CSE guide
-                  </Link>
-                  <Link
-                    href="/exams/gate-cse"
-                    className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-neutral-300 bg-white text-neutral-800 text-sm font-semibold hover:bg-neutral-50 transition-colors"
-                  >
-                    <FileText className="w-4 h-4" />
-                    SSC guide
+                    General Aptitude guide
                   </Link>
                 </div>
               </div>

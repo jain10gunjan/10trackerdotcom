@@ -1,18 +1,24 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
+import { verifyAdminAuth } from '@/middleware/adminAuth';
+import { getSupabaseServer } from '@/lib/supabaseServer';
 
 function normalizeCategory(param) {
   if (!param || typeof param !== 'string') return 'GATE-CSE';
   return param.trim().toUpperCase().replace(/_/g, '-');
 }
 
+function sanitizeSearchTerm(term) {
+  return String(term).replace(/[%_(),."'\\]/g, '').trim().slice(0, 80);
+}
+
 export async function GET(request) {
+  const { isAdmin, error: authError } = await verifyAdminAuth();
+  if (!isAdmin) {
+    return NextResponse.json({ error: authError || 'Admin access required' }, { status: 403 });
+  }
+
   try {
+    const supabase = getSupabaseServer(true);
     const { searchParams } = new URL(request.url);
     const categoryParam = searchParams.get('category');
     const category = normalizeCategory(categoryParam);
@@ -34,7 +40,10 @@ export async function GET(request) {
     if (topic && topic !== 'all') query = query.eq('topic', topic);
     if (chapter && chapter.trim() !== '') query = query.eq('chapter', chapter.trim());
     if (difficulty && difficulty !== 'all') query = query.eq('difficulty', difficulty);
-    if (search && search.trim()) query = query.or(`question.ilike.%${search}%,topic.ilike.%${search}%`);
+    if (search && search.trim()) {
+      const safe = sanitizeSearchTerm(search);
+      if (safe) query = query.or(`question.ilike.%${safe}%,topic.ilike.%${safe}%`);
+    }
     if (excludeIds) {
       const excludeArray = excludeIds.split(',').filter((id) => id.trim());
       if (excludeArray.length > 0) query = query.not('_id', 'in', `(${excludeArray.join(',')})`);
@@ -62,27 +71,17 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
+  const { isAdmin, error: authError } = await verifyAdminAuth();
+  if (!isAdmin) {
+    return NextResponse.json({ success: false, error: authError || 'Admin access required' }, { status: 403 });
+  }
+
   try {
     const { action, examCategory } = await request.json();
 
     if (action === 'fetch-all-questions') {
       try {
-        // Import Supabase client
-        const { createClient } = require('@supabase/supabase-js');
-        
-        // Initialize Supabase client
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-        const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-        
-        if (!supabaseUrl || !supabaseKey) {
-          return NextResponse.json({ 
-            success: false, 
-            error: 'Supabase configuration missing. Please check your environment variables.' 
-          });
-        }
-
-        const supabase = createClient(supabaseUrl, supabaseKey);
-
+        const supabase = getSupabaseServer(true);
         // Fetch questions from examtracker table
         let query = supabase
           .from('examtracker')

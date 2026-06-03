@@ -14,7 +14,7 @@ export default function AuthModalWrapper() {
   
   const handleGoogleSignIn = useCallback(async () => {
     try {
-      await signInWithGoogle(); // This opens Clerk SignIn modal
+      await signInWithGoogle();
     } catch (error) {
       console.error('Sign-in error in wrapper:', error);
     }
