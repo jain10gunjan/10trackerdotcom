@@ -1,14 +1,25 @@
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
+import {
+  getAuthSecret,
+  getGoogleClientId,
+  getGoogleClientSecret,
+  validateGoogleAuthEnv,
+} from "@/lib/authEnv";
+
+const googleEnv = validateGoogleAuthEnv();
+if (process.env.NODE_ENV === "development" && !googleEnv.ok) {
+  console.warn("[auth] Google OAuth env issues:\n", googleEnv.issues.join("\n "));
+}
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     Google({
-      clientId: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      clientId: getGoogleClientId(),
+      clientSecret: getGoogleClientSecret(),
     }),
   ],
-  secret: process.env.NEXTAUTH_SECRET,
+  secret: getAuthSecret(),
   trustHost: true,
   pages: {
     signIn: "/sign-in",

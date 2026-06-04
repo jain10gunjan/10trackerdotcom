@@ -12,7 +12,7 @@ export const SUBSCRIPTION_PLANS = {
     id: 'day_pass',
     name: '24-Hour Unlimited',
     description: 'Unlimited practice & mock tests for exactly 24 hours from purchase',
-    priceInr: 1,
+    priceInr: 5,
     durationHours: 24,
     badge: 'Try unlimited',
   },

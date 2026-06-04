@@ -24,6 +24,22 @@ export default function SignInPage() {
   );
 
   useEffect(() => {
+    const authError = searchParams.get("error");
+    if (!authError) return;
+    if (authError === "Configuration") {
+      setError(
+        "Google sign-in is misconfigured. In Google Cloud Console, open your OAuth client, reset the client secret, paste the new value into GOOGLE_CLIENT_SECRET in .env.local (must match GOOGLE_CLIENT_ID), add redirect URI http://localhost:3000/api/auth/callback/google, then restart the dev server."
+      );
+      return;
+    }
+    if (authError === "AccessDenied") {
+      setError("Sign-in was cancelled or denied.");
+      return;
+    }
+    setError("Sign-in failed. Please try again.");
+  }, [searchParams]);
+
+  useEffect(() => {
     if (status !== "authenticated") return;
     let cancelled = false;
     (async () => {
