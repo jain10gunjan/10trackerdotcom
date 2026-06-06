@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
 import { MathJax, MathJaxContext } from "better-react-mathjax";
 import {
   Clock,
@@ -745,8 +745,7 @@ const PracticeUnlimited = () => {
           onClose={() => setShowAuthModal(false)}
           onGoogleSignIn={signInWithGoogle}
         />
-        <Toaster position="bottom-right" />
-      </div>
+</div>
     );
   }
 
@@ -784,8 +783,7 @@ const PracticeUnlimited = () => {
             </div>
           </div>
         </div>
-        <Toaster position="bottom-right" />
-      </div>
+</div>
     );
   }
 
@@ -1066,8 +1064,7 @@ const PracticeUnlimited = () => {
           onClose={() => setShowAuthModal(false)}
           onGoogleSignIn={signInWithGoogle}
         />
-        <Toaster position="bottom-right" />
-      </div>
+</div>
        </div>
        </>
     );
@@ -1439,8 +1436,7 @@ const PracticeUnlimited = () => {
         onClose={() => setShowAuthModal(false)}
         onGoogleSignIn={signInWithGoogle}
       />
-      <Toaster position="bottom-right" />
-    </div>
+</div>
   );
 };
 

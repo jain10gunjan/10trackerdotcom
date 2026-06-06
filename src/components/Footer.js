@@ -71,6 +71,16 @@ const Footer = () => {
                   </Link>
                 </li>
                 <li>
+                  <Link href="/roadmaps" className="hover:text-gray-900 transition-colors">
+                    Study roadmaps
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/pricing" className="hover:text-gray-900 transition-colors">
+                    Plans & pricing
+                  </Link>
+                </li>
+                <li>
                   <Link href="/practice-unlimited" className="hover:text-gray-900 transition-colors">
                     Practice unlimited
                   </Link>
@@ -132,7 +142,7 @@ const Footer = () => {
             </p>
             <div className="flex items-center gap-3">
               <Link
-                href="mailto:jain10gunjan@gmail.com"
+                href="mailto:contact@10tracker.com"
                 className="w-10 h-10 rounded-md border border-gray-300 bg-white flex items-center justify-center text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition-colors"
                 aria-label="Email"
               >
@@ -165,6 +175,14 @@ const Footer = () => {
           <div className="flex items-center flex-wrap justify-center gap-3">
             <Link href="/privacy-policy" className="hover:text-gray-700 transition-colors">
               Privacy
+            </Link>
+            <span className="text-gray-300 hidden sm:inline">•</span>
+            <Link href="/roadmaps" className="hover:text-gray-700 transition-colors">
+              Roadmaps
+            </Link>
+            <span className="text-gray-300 hidden sm:inline">•</span>
+            <Link href="/pricing" className="hover:text-gray-700 transition-colors">
+              Pricing
             </Link>
             <span className="text-gray-300 hidden sm:inline">•</span>
             <Link href="/terms-and-services" className="hover:text-gray-700 transition-colors">

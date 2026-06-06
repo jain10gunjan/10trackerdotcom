@@ -1,10 +1,7 @@
 import { getSupabaseServer, isValidServiceRoleKey } from '@/lib/supabaseServer';
 import { normalizeEmail } from '@/lib/normalizeEmail';
-import {
-  SIGNUP_BONUS_CREDITS,
-  CREDIT_COST,
-  SUBSCRIPTION_PLANS,
-} from '@/lib/credits/constants';
+import { CREDIT_COST, SUBSCRIPTION_PLANS } from '@/lib/credits/constants';
+import { getPricingConfig, getPlanById } from '@/lib/credits/pricingService';
 
 function db() {
   return getSupabaseServer(isValidServiceRoleKey());
@@ -64,6 +61,9 @@ export async function grantSignupBonus(userEmail) {
   const email = normalizeEmail(userEmail);
   if (!email) return { granted: false, credits: 0 };
 
+  const pricing = await getPricingConfig();
+  const bonusAmount = pricing.signupBonus;
+
   const supabase = db();
   const wallet = await getWallet(email);
 
@@ -71,7 +71,7 @@ export async function grantSignupBonus(userEmail) {
     return { granted: false, credits: wallet.credits, alreadyGranted: true };
   }
 
-  const newBalance = wallet.credits + SIGNUP_BONUS_CREDITS;
+  const newBalance = wallet.credits + bonusAmount;
 
   const { error: upsertErr } = await supabase.from('user_wallet').upsert(
     {
@@ -90,13 +90,13 @@ export async function grantSignupBonus(userEmail) {
 
   await supabase.from('credit_ledger').insert({
     user_email: email,
-    delta: SIGNUP_BONUS_CREDITS,
+    delta: bonusAmount,
     reason: 'signup_bonus',
     reference_type: 'signup',
     idempotency_key: `signup_bonus:${email}`,
   });
 
-  return { granted: true, credits: newBalance };
+  return { granted: true, credits: newBalance, amount: bonusAmount };
 }
 
 async function deductCredits(email, amount, meta) {
@@ -206,7 +206,8 @@ export async function consumeCredits(userEmail, type, options = {}) {
     };
   }
 
-  const cost = CREDIT_COST[type];
+  const pricing = await getPricingConfig();
+  const cost = pricing.costs[type] ?? CREDIT_COST[type];
   if (!cost) {
     return { allowed: false, reason: 'invalid_type' };
   }
@@ -242,7 +243,7 @@ export async function consumeCredits(userEmail, type, options = {}) {
 
 export async function activateSubscription(userEmail, planId, paymentMeta = {}) {
   const email = normalizeEmail(userEmail);
-  const plan = SUBSCRIPTION_PLANS[planId];
+  const plan = await getPlanById(planId);
   if (!email || !plan) throw new Error('Invalid plan or email');
 
   const supabase = db();
@@ -297,27 +298,143 @@ export async function activateSubscription(userEmail, planId, paymentMeta = {}) 
   return data;
 }
 
-export async function getWalletSummary(userEmail) {
+export async function getWalletSummary(userEmail, { grantBonus = false } = {}) {
   const email = normalizeEmail(userEmail);
+  const pricing = await getPricingConfig();
+
+  let signupGrant = null;
+  if (grantBonus) {
+    try {
+      signupGrant = await grantSignupBonus(email);
+    } catch (err) {
+      console.error('getWalletSummary grantSignupBonus', err);
+    }
+  }
+
   const [wallet, subscription] = await Promise.all([
     getWallet(email),
     getActiveSubscription(email),
   ]);
 
+  const activePlanList = (pricing.planList || []).filter((p) => p.isActive !== false);
+  const planCatalog = {};
+  for (const plan of activePlanList) {
+    const { isActive, sortOrder, ...rest } = plan;
+    planCatalog[plan.id] = rest;
+  }
+  const credits =
+    signupGrant?.granted && typeof signupGrant.credits === 'number'
+      ? signupGrant.credits
+      : wallet.credits;
+
   return {
     email,
-    credits: wallet.credits,
-    signupBonusGranted: wallet.signupBonusGranted,
+    credits,
+    signupBonusGranted: wallet.signupBonusGranted || Boolean(signupGrant?.granted),
     unlimited: Boolean(subscription),
     subscription: subscription
       ? {
           planId: subscription.plan_id,
-          planName: SUBSCRIPTION_PLANS[subscription.plan_id]?.name || subscription.plan_id,
+          planName:
+            planCatalog[subscription.plan_id]?.name ||
+            SUBSCRIPTION_PLANS[subscription.plan_id]?.name ||
+            subscription.plan_id,
           expiresAt: subscription.expires_at,
         }
       : null,
-    costs: CREDIT_COST,
-    signupBonus: SIGNUP_BONUS_CREDITS,
-    plans: SUBSCRIPTION_PLANS,
+    costs: pricing.costs,
+    signupBonus: pricing.signupBonus,
+    plans: planCatalog,
+    planList: activePlanList,
+    pricingSource: pricing.source,
+    signupGrant: signupGrant?.granted
+      ? { granted: true, credits: signupGrant.credits, amount: signupGrant.amount }
+      : signupGrant?.alreadyGranted
+        ? { granted: false, alreadyGranted: true }
+        : null,
+  };
+}
+
+/**
+ * Admin grant or set credits for a specific user (ledger + wallet upsert).
+ */
+export async function adminAdjustCredits(
+  userEmail,
+  { delta, setBalance, note, adminEmail } = {}
+) {
+  const email = normalizeEmail(userEmail);
+  if (!email) throw new Error('Invalid user email');
+
+  const hasDelta = typeof delta === 'number' && Number.isFinite(delta);
+  const hasSet = typeof setBalance === 'number' && Number.isFinite(setBalance);
+
+  if (!hasDelta && !hasSet) {
+    throw new Error('Provide delta (add/subtract) or setBalance');
+  }
+
+  const supabase = db();
+  const wallet = await getWallet(email);
+  const now = new Date().toISOString();
+
+  let newBalance;
+  let ledgerDelta;
+
+  if (hasSet) {
+    newBalance = Math.max(0, Math.round(setBalance));
+    ledgerDelta = newBalance - wallet.credits;
+  } else {
+    ledgerDelta = Math.round(delta);
+    newBalance = Math.max(0, wallet.credits + ledgerDelta);
+  }
+
+  if (ledgerDelta === 0) {
+    return {
+      email,
+      credits: wallet.credits,
+      delta: 0,
+      unchanged: true,
+    };
+  }
+
+  const { error: upsertErr } = await supabase.from('user_wallet').upsert(
+    {
+      user_email: email,
+      credits_balance: newBalance,
+      signup_bonus_granted: wallet.signupBonusGranted,
+      updated_at: now,
+    },
+    { onConflict: 'user_email' }
+  );
+
+  if (upsertErr) throw upsertErr;
+
+  const idempotencyKey = `admin_adjust:${email}:${now}:${Math.random().toString(36).slice(2, 10)}`;
+
+  const { error: ledgerErr } = await supabase.from('credit_ledger').insert({
+    user_email: email,
+    delta: ledgerDelta,
+    reason: 'admin_adjust',
+    reference_type: 'admin',
+    reference_id: adminEmail || null,
+    idempotency_key: idempotencyKey,
+  });
+
+  if (ledgerErr) {
+    await supabase
+      .from('user_wallet')
+      .update({
+        credits_balance: wallet.credits,
+        updated_at: now,
+      })
+      .eq('user_email', email);
+    throw ledgerErr;
+  }
+
+  return {
+    email,
+    credits: newBalance,
+    delta: ledgerDelta,
+    previousCredits: wallet.credits,
+    note: note || null,
   };
 }

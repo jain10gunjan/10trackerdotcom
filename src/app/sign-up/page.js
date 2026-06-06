@@ -8,6 +8,7 @@ import Link from "next/link";
 import { ArrowLeft, Sparkles, CheckCircle } from "lucide-react";
 import { getSafeRedirect } from "@/lib/safeRedirect";
 import { resolvePostAuthRedirect } from "@/lib/resolvePostAuthRedirect";
+import { buildAuthResumePath } from "@/lib/profileGatePaths";
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -36,7 +37,7 @@ export default function SignUpPage() {
   const handleGoogleSignUp = async () => {
     setIsLoading(true);
     try {
-      await signIn("google", { callbackUrl: redirectUrl });
+      await signIn("google", { callbackUrl: buildAuthResumePath("sign-up", redirectUrl) });
     } catch (err) {
       console.error("Google sign-up failed:", err);
       setIsLoading(false);

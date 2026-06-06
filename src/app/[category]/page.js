@@ -6,7 +6,7 @@ import React, {
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import {
   BookOpen, Search, Target, Zap,
   Grid3X3, Play, X, ChevronDown, AlertCircle,
@@ -779,8 +779,7 @@ export default function ExamTracker() {
         seoTitle={`${formattedCat} Practice Tracker`}
         seoDescription={`Practice ${formattedCat} MCQs topic-wise with detailed solutions.`}
       />
-      <Toaster position="top-center" />
-      <Navbar />
+<Navbar />
 
       <div className="pt-20">
 

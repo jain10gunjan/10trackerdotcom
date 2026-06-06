@@ -20,6 +20,14 @@ export function toastPromise(fn, messages = {}) {
   return toast.promise(fn(), { loading, success, error });
 }
 
+/** Shared copy for profile / terms flows */
+export const PROFILE_TOAST = {
+  saveLoading: 'Saving profile…',
+  saveSuccess: 'Profile saved',
+  termsLoading: 'Saving acceptance…',
+  termsSuccess: 'Thanks — you’re all set.',
+};
+
 /** @deprecated Use toastPromise */
 export async function withLoadingToast(promise, messages = {}) {
   return toastPromise(() => promise, messages);

@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireSessionEmail } from '@/lib/credits/requireSession';
 import { consumeCredits } from '@/lib/credits/walletService';
-import { CREDIT_COST } from '@/lib/credits/constants';
-
-const VALID_TYPES = Object.keys(CREDIT_COST);
+import { getPricingConfig } from '@/lib/credits/pricingService';
 
 export async function POST(request) {
   try {
@@ -12,14 +10,17 @@ export async function POST(request) {
       return NextResponse.json({ success: false, error }, { status });
     }
 
+    const pricing = await getPricingConfig();
+    const validTypes = Object.keys(pricing.costs || {});
+
     const body = await request.json();
     const type = body?.type;
     const referenceId = body?.referenceId ? String(body.referenceId) : null;
     const idempotencyKey = body?.idempotencyKey ? String(body.idempotencyKey) : null;
 
-    if (!type || !VALID_TYPES.includes(type)) {
+    if (!type || !validTypes.includes(type)) {
       return NextResponse.json(
-        { success: false, error: `Invalid type. Use: ${VALID_TYPES.join(', ')}` },
+        { success: false, error: `Invalid type. Use: ${validTypes.join(', ')}` },
         { status: 400 }
       );
     }

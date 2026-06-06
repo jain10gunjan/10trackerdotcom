@@ -78,3 +78,54 @@ export function mergeActivityEvents(...lists) {
   }
   return [...byDate.entries()].map(([date, v]) => ({ date, ...v }));
 }
+
+/** Streak stats from merged daily activity events */
+export function computeStreakStats(events) {
+  const activeDates = new Set(
+    (events || [])
+      .filter((e) => (e.practice || 0) + (e.mock || 0) > 0)
+      .map((e) => String(e.date).slice(0, 10))
+  );
+
+  if (!activeDates.size) {
+    return { activeDays: 0, currentStreak: 0, maxStreak: 0 };
+  }
+
+  const sorted = [...activeDates].sort();
+  const activeDays = sorted.length;
+
+  let maxStreak = 1;
+  let run = 1;
+  for (let i = 1; i < sorted.length; i++) {
+    const prev = new Date(`${sorted[i - 1]}T00:00:00`);
+    const curr = new Date(`${sorted[i]}T00:00:00`);
+    const diffDays = Math.round((curr - prev) / 86400000);
+    if (diffDays === 1) {
+      run += 1;
+      maxStreak = Math.max(maxStreak, run);
+    } else if (diffDays > 1) {
+      run = 1;
+    }
+  }
+
+  let currentStreak = 0;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  let cursor = new Date(today);
+  let checkedToday = false;
+
+  while (true) {
+    const key = cursor.toISOString().slice(0, 10);
+    if (activeDates.has(key)) {
+      currentStreak += 1;
+      cursor.setDate(cursor.getDate() - 1);
+    } else if (!checkedToday && cursor.getTime() === today.getTime()) {
+      checkedToday = true;
+      cursor.setDate(cursor.getDate() - 1);
+    } else {
+      break;
+    }
+  }
+
+  return { activeDays, currentStreak, maxStreak };
+}

@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect, useCallback } from "react";
 import { createClient } from "@supabase/supabase-js";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
 import { MathJax, MathJaxContext } from "better-react-mathjax";
 import {
   Clock,
@@ -226,8 +226,7 @@ const PracticeUnlimited = () => {
             </button>
           </div>
         </div>
-        <Toaster position="top-right" />
-      </div>
+</div>
     );
   }
 
@@ -338,8 +337,7 @@ const PracticeUnlimited = () => {
           End Practice Session
         </button>
       </div>
-      <Toaster position="top-right" />
-    </div>
+</div>
   );
 };
 

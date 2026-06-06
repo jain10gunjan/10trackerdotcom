@@ -1,6 +1,7 @@
 /** Shared user profile validation and completion checks */
 
 import { isValidExamSlug, normalizeTargetExamsPayload, parseTargetExams } from '@/lib/examProfile';
+import { TERMS_VERSION } from '@/lib/billing/legal';
 
 export const PROFILE_REQUIRED_FIELDS = ['first_name', 'last_name', 'country', 'phone_number'];
 
@@ -18,7 +19,8 @@ export function buildDisplayName(firstName, lastName) {
   return [firstName, lastName].map((s) => String(s || '').trim()).filter(Boolean).join(' ');
 }
 
-export function isProfileComplete(profile) {
+/** Required profile fields + exams filled (ignores terms) */
+export function isProfileFieldsComplete(profile) {
   if (!profile) return false;
   for (const field of PROFILE_REQUIRED_FIELDS) {
     const val = profile[field];
@@ -33,6 +35,94 @@ export function isProfileComplete(profile) {
   if (!primary || !isValidExamSlug(primary) || !exams.includes(primary)) return false;
 
   return true;
+}
+
+/** User accepted the current TERMS_VERSION */
+export function hasCurrentTermsAcceptance(profile) {
+  if (!profile?.terms_accepted_at) return false;
+  return String(profile.terms_version || '') === TERMS_VERSION;
+}
+
+/** @deprecated use hasCurrentTermsAcceptance */
+export function hasTermsAcceptance(profile) {
+  return hasCurrentTermsAcceptance(profile);
+}
+
+export function needsTermsReacceptance(profile) {
+  return isProfileFieldsComplete(profile) && !hasCurrentTermsAcceptance(profile);
+}
+
+export function isProfileComplete(profile) {
+  return isProfileFieldsComplete(profile) && hasCurrentTermsAcceptance(profile);
+}
+
+export function getProfileGateStatus(profile) {
+  const needsProfileCompletion = !isProfileFieldsComplete(profile);
+  const needsTermsReaccept = needsTermsReacceptance(profile);
+  return {
+    needsProfile: needsProfileCompletion || needsTermsReaccept,
+    needsProfileCompletion,
+    needsTermsReacceptance: needsTermsReaccept,
+    termsVersion: profile?.terms_version ?? null,
+    currentTermsVersion: TERMS_VERSION,
+  };
+}
+
+export function validatePhoneNumber(phone) {
+  const raw = String(phone || '').trim();
+  if (!raw) return 'Phone number is required';
+  const digits = raw.replace(/\D/g, '');
+  if (digits.length < 8 || digits.length > 15) {
+    return 'Enter a valid phone number (8–15 digits)';
+  }
+  return null;
+}
+
+/** Client-side validation — mirrors server rules for immediate feedback */
+export function validateProfileFormFields(
+  form,
+  { requireTerms = false, termsAccepted = false, skipExamFields = false } = {}
+) {
+  const errors = {};
+  const first = String(form.first_name || '').trim();
+  const last = String(form.last_name || '').trim();
+
+  if (!first) errors.first_name = 'First name is required';
+  else if (first.length > 50) errors.first_name = 'First name is too long';
+
+  if (!last) errors.last_name = 'Last name is required';
+  else if (last.length > 50) errors.last_name = 'Last name is too long';
+
+  if (!String(form.country || '').trim()) errors.country = 'Country is required';
+
+  const phoneErr = validatePhoneNumber(form.phone_number);
+  if (phoneErr) errors.phone_number = phoneErr;
+
+  if (!skipExamFields) {
+    const exams = Array.isArray(form.target_exams) ? form.target_exams : [];
+    if (!exams.length) errors.target_exams = 'Select at least one exam';
+    else if (!form.target_exam || !exams.includes(form.target_exam)) {
+      errors.target_exam = 'Choose a primary exam';
+    }
+  }
+
+  const avatar = String(form.avatar_url || '').trim();
+  if (avatar) {
+    try {
+      const url = new URL(avatar);
+      if (!['http:', 'https:'].includes(url.protocol)) {
+        errors.avatar_url = 'Photo URL must start with http:// or https://';
+      }
+    } catch {
+      errors.avatar_url = 'Enter a valid photo URL';
+    }
+  }
+
+  if (requireTerms && !termsAccepted) {
+    errors.terms = 'You must accept the Terms of Service and Privacy Policy';
+  }
+
+  return errors;
 }
 
 export function validateProfilePayload(body) {
@@ -54,12 +144,9 @@ export function validateProfilePayload(body) {
   if (!country) {
     return { error: 'Country is required' };
   }
-  if (!phone_number) {
-    return { error: 'Phone number is required' };
-  }
-  const digits = phone_number.replace(/\D/g, '');
-  if (digits.length < 8 || digits.length > 15) {
-    return { error: 'Enter a valid phone number (8–15 digits)' };
+  const phoneErr = validatePhoneNumber(phone_number);
+  if (phoneErr) {
+    return { error: phoneErr };
   }
 
   const examFields = normalizeTargetExamsPayload(body);
@@ -103,7 +190,6 @@ export function profileToFormDefaults(profile, session = {}) {
   let target_exam = profile?.target_exam != null ? String(profile.target_exam).trim().toLowerCase() : '';
 
   if (!target_exams.length && target_exam && !isValidExamSlug(target_exam)) {
-    // legacy free-text — leave target_exam as-is for banner; clear from dropdown selection
     target_exam = '';
   } else if (!target_exam && target_exams.length) {
     target_exam = target_exams[0];

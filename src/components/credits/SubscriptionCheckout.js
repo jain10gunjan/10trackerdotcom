@@ -6,6 +6,7 @@ import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/app/context/AuthContext';
 import { useCredits } from '@/context/CreditsContext';
 import { SUBSCRIPTION_PLANS } from '@/lib/credits/constants';
+import { parseJsonResponse, toastPromise } from '@/lib/toastAsync';
 
 function loadRazorpayScript() {
   return new Promise((resolve, reject) => {
@@ -32,12 +33,12 @@ function loadRazorpayScript() {
 
 export default function SubscriptionCheckout({ planId, termsAccepted = false, className = '' }) {
   const { user, isAuthenticated } = useAuth();
-  const { refreshWallet } = useCredits();
+  const { refreshWallet, plans: walletPlans } = useCredits();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const plan = SUBSCRIPTION_PLANS[planId];
+  const plan = walletPlans?.[planId] || SUBSCRIPTION_PLANS[planId];
   if (!plan) return null;
 
   const handleCheckout = async () => {
@@ -55,18 +56,27 @@ export default function SubscriptionCheckout({ planId, termsAccepted = false, cl
     setError(null);
 
     try {
-      await loadRazorpayScript();
-
-      const orderRes = await fetch('/api/subscriptions/create-order', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ planId, termsAccepted: true }),
-      });
-      const orderData = await orderRes.json();
-      if (!orderData.success) {
-        throw new Error(orderData.error || 'Could not start checkout');
-      }
+      const orderData = await toastPromise(
+        async () => {
+          await loadRazorpayScript();
+          const orderRes = await fetch('/api/subscriptions/create-order', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ planId, termsAccepted: true }),
+          });
+          const data = await parseJsonResponse(orderRes);
+          if (!data.success) {
+            throw new Error(data.error || 'Could not start checkout');
+          }
+          return data;
+        },
+        {
+          loading: 'Preparing checkout…',
+          success: 'Opening payment…',
+          error: (err) => err?.message || 'Could not start checkout',
+        }
+      );
 
       const sellerName = orderData.legal?.businessName || '10Tracker';
 
@@ -84,22 +94,31 @@ export default function SubscriptionCheckout({ planId, termsAccepted = false, cl
         theme: { color: '#171717' },
         handler: async (response) => {
           try {
-            const verifyRes = await fetch('/api/subscriptions/verify', {
-              method: 'POST',
-              credentials: 'include',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-                planId,
-              }),
-            });
-            const verifyData = await verifyRes.json();
-            if (!verifyData.success) {
-              throw new Error(verifyData.error || 'Verification failed');
-            }
-            await refreshWallet();
+            await toastPromise(
+              async () => {
+                const verifyRes = await fetch('/api/subscriptions/verify', {
+                  method: 'POST',
+                  credentials: 'include',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    razorpay_order_id: response.razorpay_order_id,
+                    razorpay_payment_id: response.razorpay_payment_id,
+                    razorpay_signature: response.razorpay_signature,
+                    planId,
+                  }),
+                });
+                const verifyData = await parseJsonResponse(verifyRes);
+                if (!verifyData.success) {
+                  throw new Error(verifyData.error || 'Verification failed');
+                }
+                await refreshWallet();
+              },
+              {
+                loading: 'Verifying payment…',
+                success: 'Payment successful!',
+                error: (err) => err?.message || 'Payment verification failed',
+              }
+            );
             router.push('/?subscribed=1');
           } catch (verifyErr) {
             setError(verifyErr.message || 'Payment verification failed');

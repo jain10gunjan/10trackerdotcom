@@ -11,9 +11,10 @@ import React, {
 } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/app/context/AuthContext';
-import { isProfileExemptPath } from '@/lib/profileGatePaths';
+import { isProfileExemptPath, buildProfileSetupHref } from '@/lib/profileGatePaths';
+import { getSafeRedirect } from '@/lib/safeRedirect';
 import { profileToFormDefaults } from '@/lib/userProfile';
-import { parseJsonResponse } from '@/lib/toastAsync';
+import { parseJsonResponse, toastPromise, PROFILE_TOAST } from '@/lib/toastAsync';
 
 const EMPTY_SUGGESTED = {
   first_name: '',
@@ -32,18 +33,54 @@ const EMPTY_SUGGESTED = {
 const ProfileGateContext = createContext({
   profile: null,
   needsProfile: false,
+  needsProfileCompletion: false,
+  needsTermsReacceptance: false,
+  termsReacceptRequired: false,
   suggested: EMPTY_SUGGESTED,
   loading: true,
   saving: false,
   loadError: null,
   gateActive: false,
   saveProfile: async () => {},
+  acceptTerms: async () => {},
   refresh: async () => {},
   displayName: null,
 });
 
 export function useProfileGate() {
   return useContext(ProfileGateContext);
+}
+
+function applyGateFromResponse(data, setters, sessionHints) {
+  const {
+    setProfile,
+    setNeedsProfile,
+    setNeedsProfileCompletion,
+    setNeedsTermsReacceptance,
+    setSuggested,
+    setLoadError,
+  } = setters;
+
+  if (data.success) {
+    setProfile(data.profile);
+    setNeedsProfile(Boolean(data.needsProfile));
+    setNeedsProfileCompletion(Boolean(data.needsProfileCompletion ?? data.needsProfile));
+    setNeedsTermsReacceptance(Boolean(data.needsTermsReacceptance));
+    setSuggested(
+      profileToFormDefaults(data.profile, {
+        name: sessionHints.name,
+        image: sessionHints.image,
+        email: sessionHints.email,
+      })
+    );
+    setLoadError(null);
+    return true;
+  }
+  setLoadError(data.error || 'Could not load profile');
+  setNeedsProfile(true);
+  setNeedsProfileCompletion(true);
+  setNeedsTermsReacceptance(false);
+  return false;
 }
 
 export function ProfileGateProvider({ children }) {
@@ -54,6 +91,8 @@ export function ProfileGateProvider({ children }) {
 
   const [profile, setProfile] = useState(null);
   const [needsProfile, setNeedsProfile] = useState(false);
+  const [needsProfileCompletion, setNeedsProfileCompletion] = useState(false);
+  const [needsTermsReacceptance, setNeedsTermsReacceptance] = useState(false);
   const [suggested, setSuggested] = useState(EMPTY_SUGGESTED);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -68,32 +107,24 @@ export function ProfileGateProvider({ children }) {
     [user]
   );
 
-  const applyProfileResponse = useCallback(
-    (data) => {
-      if (data.success) {
-        setProfile(data.profile);
-        setNeedsProfile(Boolean(data.needsProfile));
-        setSuggested(
-          profileToFormDefaults(data.profile, {
-            name: sessionHints.name,
-            image: sessionHints.image,
-            email: sessionHints.email,
-          })
-        );
-        setLoadError(null);
-        return true;
-      }
-      setLoadError(data.error || 'Could not load profile');
-      setNeedsProfile(true);
-      return false;
-    },
-    [sessionHints]
+  const setters = useMemo(
+    () => ({
+      setProfile,
+      setNeedsProfile,
+      setNeedsProfileCompletion,
+      setNeedsTermsReacceptance,
+      setSuggested,
+      setLoadError,
+    }),
+    []
   );
 
   const refresh = useCallback(async () => {
     if (!user) {
       setProfile(null);
       setNeedsProfile(false);
+      setNeedsProfileCompletion(false);
+      setNeedsTermsReacceptance(false);
       setLoadError(null);
       setLoading(false);
       return null;
@@ -106,26 +137,44 @@ export function ProfileGateProvider({ children }) {
         cache: 'no-store',
       });
       const data = await parseJsonResponse(res);
-      applyProfileResponse(data);
+      applyGateFromResponse(data, setters, sessionHints);
       return data;
     } catch (e) {
       console.error('Profile load failed', e);
       setLoadError('Network error loading profile');
       setNeedsProfile(true);
+      setNeedsProfileCompletion(true);
       return null;
     } finally {
       setLoading(false);
     }
-  }, [user, applyProfileResponse]);
+  }, [user, sessionHints, setters]);
 
   useEffect(() => {
     refresh();
   }, [refresh]);
 
+  useEffect(() => {
+    if (!user) {
+      skipGateRedirectRef.current = false;
+    }
+  }, [user]);
+
+  const applySaveResponse = useCallback(
+    (data) => {
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to save');
+      }
+      skipGateRedirectRef.current = true;
+      applyGateFromResponse(data, setters, sessionHints);
+      return data.profile;
+    },
+    [sessionHints, setters]
+  );
+
   const saveProfile = useCallback(
-    async (formData) => {
-      setSaving(true);
-      try {
+    async (formData, opts = {}) => {
+      const run = async () => {
         const { email: _e, user_email: _ue, id: _id, ...payload } = formData || {};
         const res = await fetch('/api/user/profile', {
           method: 'POST',
@@ -134,29 +183,65 @@ export function ProfileGateProvider({ children }) {
           body: JSON.stringify(payload),
         });
         const data = await parseJsonResponse(res);
-        if (!res.ok || !data.success) {
+        if (!res.ok) {
           throw new Error(data.error || 'Failed to save profile');
         }
-        skipGateRedirectRef.current = true;
-        setProfile(data.profile);
-        setNeedsProfile(false);
-        setLoadError(null);
-        setSuggested(
-          profileToFormDefaults(data.profile, {
-            name: sessionHints.name,
-            image: sessionHints.image,
-            email: sessionHints.email,
-          })
-        );
-        return data.profile;
+        return applySaveResponse(data);
+      };
+
+      setSaving(true);
+      try {
+        if (opts.silent) return await run();
+        return await toastPromise(() => run(), {
+          loading: PROFILE_TOAST.saveLoading,
+          success: PROFILE_TOAST.saveSuccess,
+          ...opts.messages,
+        });
       } finally {
         setSaving(false);
       }
     },
-    [sessionHints]
+    [applySaveResponse]
   );
 
-  const gateActive = Boolean(user && needsProfile);
+  const acceptTerms = useCallback(async (opts = {}) => {
+    const run = async () => {
+      const res = await fetch('/api/user/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ termsOnly: true, termsAccepted: true }),
+      });
+      const data = await parseJsonResponse(res);
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to accept terms');
+      }
+      return applySaveResponse(data);
+    };
+
+    setSaving(true);
+    try {
+      if (opts.silent) return await run();
+      return await toastPromise(() => run(), {
+        loading: PROFILE_TOAST.termsLoading,
+        success: PROFILE_TOAST.termsSuccess,
+        ...opts.messages,
+      });
+    } finally {
+      setSaving(false);
+    }
+  }, [applySaveResponse]);
+
+  /** Full onboarding — incomplete profile fields */
+  const gateActive = Boolean(user && needsProfileCompletion);
+  /** Modal — profile done but TERMS_VERSION changed */
+  const termsReacceptRequired = Boolean(user && needsTermsReacceptance && !needsProfileCompletion);
+
+  useEffect(() => {
+    if (!gateActive && !termsReacceptRequired) {
+      skipGateRedirectRef.current = false;
+    }
+  }, [gateActive, termsReacceptRequired]);
 
   useEffect(() => {
     if (skipGateRedirectRef.current) return;
@@ -164,8 +249,8 @@ export function ProfileGateProvider({ children }) {
     if (isProfileExemptPath(pathname)) return;
 
     const search = typeof window !== 'undefined' ? window.location.search : '';
-    const returnPath = `${pathname || '/'}${search}`;
-    router.replace(`/profile?redirect=${encodeURIComponent(returnPath)}`);
+    const returnPath = getSafeRedirect(`${pathname || '/'}${search}`) || `${pathname || '/'}${search}`;
+    router.replace(buildProfileSetupHref(returnPath));
   }, [authLoading, loading, user, gateActive, pathname, router]);
 
   const displayName =
@@ -177,18 +262,25 @@ export function ProfileGateProvider({ children }) {
     () => ({
       profile,
       needsProfile,
+      needsProfileCompletion,
+      needsTermsReacceptance,
+      termsReacceptRequired,
       suggested,
       loading: authLoading || loading,
       saving,
       loadError,
       gateActive,
       saveProfile,
+      acceptTerms,
       refresh,
       displayName,
     }),
     [
       profile,
       needsProfile,
+      needsProfileCompletion,
+      needsTermsReacceptance,
+      termsReacceptRequired,
       suggested,
       authLoading,
       loading,
@@ -196,6 +288,7 @@ export function ProfileGateProvider({ children }) {
       loadError,
       gateActive,
       saveProfile,
+      acceptTerms,
       refresh,
       displayName,
     ]

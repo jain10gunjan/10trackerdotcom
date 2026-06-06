@@ -73,6 +73,9 @@ ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS target_exam TEXT;
 ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS target_exams TEXT[] DEFAULT '{}'::text[];
 UPDATE public.user_profiles SET target_exams = '{}'::text[] WHERE target_exams IS NULL;
 
+ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS terms_accepted_at TIMESTAMPTZ;
+ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS terms_version TEXT;
+
 ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS display_name TEXT;
 UPDATE public.user_profiles SET display_name = '' WHERE display_name IS NULL;
 ALTER TABLE public.user_profiles ALTER COLUMN display_name SET DEFAULT '';

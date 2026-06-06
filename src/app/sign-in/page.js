@@ -9,6 +9,7 @@ import { ArrowLeft, Sparkles } from "lucide-react";
 
 import { getSafeRedirect } from "@/lib/safeRedirect";
 import { resolvePostAuthRedirect } from "@/lib/resolvePostAuthRedirect";
+import { buildAuthResumePath } from "@/lib/profileGatePaths";
 
 export default function SignInPage() {
   const router = useRouter();
@@ -55,7 +56,7 @@ export default function SignInPage() {
     setError(null);
     setIsLoading(true);
     try {
-      await signIn("google", { callbackUrl: redirectUrl });
+      await signIn("google", { callbackUrl: buildAuthResumePath("sign-in", redirectUrl) });
     } catch (err) {
       console.error("Google sign-in failed:", err);
       setError("Sign-in failed. Please try again.");

@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import { createClient } from "@supabase/supabase-js";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
 
 // Supabase configuration
 const supabase = createClient(
@@ -293,8 +293,7 @@ const QuestionEntryPage = () => {
           )}
         </div>
       </div>
-      <Toaster position="top-right" />
-    </div>
+</div>
   );
 };
 

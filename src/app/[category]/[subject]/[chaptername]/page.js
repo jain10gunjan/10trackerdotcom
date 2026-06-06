@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@supabase/supabase-js";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import dynamic from "next/dynamic";
@@ -644,8 +644,7 @@ const ChapterTopicsPage = () => {
           </div>
         </div>
       </div>
-      <Toaster position="bottom-right" />
-    </ErrorBoundary>
+</ErrorBoundary>
   );
 };
 

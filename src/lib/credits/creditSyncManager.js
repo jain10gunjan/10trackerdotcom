@@ -162,6 +162,7 @@ export async function hydrateCreditsFromServer(userId, walletPayload) {
   const store = initCreditStoreFromServer(userId, {
     credits: walletPayload.credits,
     unlimited: walletPayload.unlimited,
+    costs: walletPayload.costs,
   });
 
   dispatchBalance(store.balance);

@@ -1,124 +1,195 @@
+import Link from 'next/link';
+import LegalPageShell from '@/components/legal/LegalPageShell';
+import {
+  getBillingLegalInfo,
+  LEGAL_ENTITY_NAME,
+  PLATFORM_BRAND,
+  TERMS_VERSION,
+  CONTACT_EMAIL,
+} from '@/lib/billing/legal';
+
 export const metadata = {
   title: 'Disclaimer - 10tracker',
-  description: 'Read the disclaimer for 10tracker platform. Important information about content accuracy, liability, and usage terms.',
-  keywords: ['disclaimer', 'terms of use', 'liability', 'content accuracy', 'legal notice'],
+  description:
+    'Disclaimer for 10Tracker.com — educational content, mock tests, credits, and limitation of liability.',
   openGraph: {
     title: 'Disclaimer - 10tracker',
-    description: 'Read the disclaimer for 10tracker platform. Important information about content accuracy, liability, and usage terms.',
+    description: 'Important information about content accuracy and liability on 10Tracker.com.',
     type: 'website',
   },
 };
 
-export default function DisclaimerPage() {
+function Section({ title, children }) {
   return (
-    <div className="min-h-screen bg-white">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-24">
-        {/* Header */}
-        <div className="mb-12">
-          <h1 className="text-4xl md:text-5xl font-semibold text-neutral-900 mb-4 tracking-tight" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif' }}>
-            Disclaimer
-          </h1>
-          <p className="text-sm text-neutral-500">
-            Last updated: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
-          </p>
-        </div>
-
-        {/* Content */}
-        <div className="prose prose-neutral max-w-none">
-          <div className="space-y-8 text-neutral-700">
-            <section>
-              <h2 className="text-2xl font-semibold text-neutral-900 mb-4" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif' }}>
-                General Information
-              </h2>
-              <p className="leading-relaxed mb-4">
-                The information provided on 10tracker (the &quot;Platform&quot;) is for general informational purposes only. While we strive to keep the information up to date and correct, we make no representations or warranties of any kind, express or implied, about the completeness, accuracy, reliability, suitability, or availability of the information, products, services, or related graphics contained on the Platform.
-              </p>
-            </section>
-
-            <section>
-              <h2 className="text-2xl font-semibold text-neutral-900 mb-4" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif' }}>
-                Educational Content
-              </h2>
-              <p className="leading-relaxed mb-4">
-                All educational content, practice questions, mock tests, study materials, and other resources provided on the Platform are intended for educational and practice purposes only. While we make every effort to ensure the accuracy of our content, we do not guarantee that all information is error-free or up-to-date.
-              </p>
-              <p className="leading-relaxed">
-                The actual exam questions, formats, and patterns may vary, and we recommend that users refer to official exam authorities and sources for the most current and accurate information.
-              </p>
-            </section>
-
-            <section>
-              <h2 className="text-2xl font-semibold text-neutral-900 mb-4" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif' }}>
-                No Warranty
-              </h2>
-              <p className="leading-relaxed mb-4">
-                The Platform is provided &quot;as is&quot; without any warranties, expressed or implied. We disclaim all warranties, including but not limited to:
-              </p>
-              <ul className="list-disc list-inside space-y-2 ml-4">
-                <li>Warranties of merchantability and fitness for a particular purpose</li>
-                <li>Warranties regarding the accuracy, reliability, or completeness of content</li>
-                <li>Warranties that the Platform will be uninterrupted, secure, or error-free</li>
-                <li>Warranties regarding the results obtained from using the Platform</li>
-              </ul>
-            </section>
-
-            <section>
-              <h2 className="text-2xl font-semibold text-neutral-900 mb-4" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif' }}>
-                Limitation of Liability
-              </h2>
-              <p className="leading-relaxed mb-4">
-                In no event shall 10tracker, its owners, employees, partners, or affiliates be liable for any direct, indirect, incidental, special, consequential, or punitive damages, including but not limited to:
-              </p>
-              <ul className="list-disc list-inside space-y-2 ml-4">
-                <li>Loss of data or profits</li>
-                <li>Business interruption</li>
-                <li>Personal injury or property damage</li>
-                <li>Any other damages arising from the use or inability to use the Platform</li>
-              </ul>
-            </section>
-
-            <section>
-              <h2 className="text-2xl font-semibold text-neutral-900 mb-4" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif' }}>
-                External Links
-              </h2>
-              <p className="leading-relaxed">
-                The Platform may contain links to external websites or resources that are not owned or controlled by 10tracker. We have no control over the nature, content, and availability of those sites. The inclusion of any links does not necessarily imply a recommendation or endorse the views expressed within them.
-              </p>
-            </section>
-
-            <section>
-              <h2 className="text-2xl font-semibold text-neutral-900 mb-4" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif' }}>
-                Exam Results and Performance
-              </h2>
-              <p className="leading-relaxed">
-                Performance on practice tests, mock exams, or any assessments provided on the Platform does not guarantee similar performance in actual examinations. Actual exam results depend on various factors including but not limited to preparation, exam conditions, and individual performance.
-              </p>
-            </section>
-
-            <section>
-              <h2 className="text-2xl font-semibold text-neutral-900 mb-4" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif' }}>
-                Changes to Disclaimer
-              </h2>
-              <p className="leading-relaxed">
-                We reserve the right to modify this disclaimer at any time without prior notice. Your continued use of the Platform after any changes constitutes your acceptance of the new disclaimer.
-              </p>
-            </section>
-
-            <section>
-              <h2 className="text-2xl font-semibold text-neutral-900 mb-4" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif' }}>
-                Contact
-              </h2>
-              <p className="leading-relaxed">
-                If you have any questions about this disclaimer, please contact us at{' '}
-                <a href="mailto:jain10gunjan@gmail.com" className="text-blue-600 hover:text-blue-700">
-                  jain10gunjan@gmail.com
-                </a>
-              </p>
-            </section>
-          </div>
-        </div>
-      </div>
-    </div>
+    <section>
+      <h2 className="text-xl font-semibold text-neutral-900 mb-3">{title}</h2>
+      <div className="space-y-3 text-neutral-600 leading-relaxed text-[15px]">{children}</div>
+    </section>
   );
 }
 
+function formatLegalDate(version) {
+  const d = new Date(`${version}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return version;
+  return d.toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' });
+}
+
+export default function DisclaimerPage() {
+  const legal = getBillingLegalInfo();
+  const contactEmail = legal.contactEmail || CONTACT_EMAIL;
+
+  return (
+    <LegalPageShell>
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+        <header className="mb-10 pb-8 border-b border-neutral-200">
+          <p className="text-xs font-medium text-neutral-400 uppercase tracking-wide">Legal</p>
+          <h1 className="text-3xl sm:text-4xl font-semibold text-neutral-900 mt-2 tracking-tight">
+            Disclaimer
+          </h1>
+          <p className="text-sm text-neutral-500 mt-3">
+            Last updated: {formatLegalDate(TERMS_VERSION)}
+          </p>
+          <p className="text-sm text-neutral-600 mt-4 leading-relaxed">
+            This Disclaimer applies to <strong className="text-neutral-800">{PLATFORM_BRAND}</strong>{' '}
+            (the &quot;Platform&quot;), operated by{' '}
+            <strong className="text-neutral-800">{LEGAL_ENTITY_NAME}</strong>. It should be read
+            together with our{' '}
+            <Link href="/terms-and-services" className="underline text-neutral-800">
+              Terms of Service
+            </Link>{' '}
+            and{' '}
+            <Link href="/privacy-policy" className="underline text-neutral-800">
+              Privacy Policy
+            </Link>
+            .
+          </p>
+        </header>
+
+        <div className="space-y-10">
+          <Section title="1. General">
+            <p>
+              Information and services on the Platform are provided for general educational and
+              practice purposes. We try to keep content current, but we do not warrant that
+              everything on the Platform is complete, accurate, or suitable for every purpose.
+            </p>
+          </Section>
+
+          <Section title="2. Not an official exam authority">
+            <p>
+              {PLATFORM_BRAND} is <strong>not affiliated with, endorsed by, or sponsored by</strong>{' '}
+              any government body, university, or official examination board unless we explicitly
+              state otherwise on a specific page.
+            </p>
+            <p>
+              Practice questions, explanations, and mock tests are study aids only. They may not
+              reflect the exact difficulty, format, syllabus, or wording of real examinations.
+              Always verify syllabus, dates, eligibility, and rules with{' '}
+              <strong>official sources</strong>.
+            </p>
+          </Section>
+
+          <Section title="3. Educational & informational content">
+            <p>
+              MCQ practice, chapter-wise questions, timed mock tests, dashboards, and articles (such
+              as exam-related news or job updates) are offered to support self-study. Errors,
+              omissions, or outdated material may occur despite our review efforts.
+            </p>
+            <p>
+              You are responsible for how you use the Platform and for cross-checking critical
+              information before relying on it for exam or career decisions.
+            </p>
+          </Section>
+
+          <Section title="4. Credits, subscriptions, and payments">
+            <p>
+              Some features use a credit wallet or paid unlimited plans processed via Razorpay. Plan
+              prices, credit costs, and durations may change. Access rules (such as when credits are
+              consumed for practice or mock tests) are described on the Platform and in our Terms of
+              Service.
+            </p>
+            <p>
+              Purchasing a plan does not guarantee exam success. Digital access is non-refundable
+              after it is granted, except where applicable law requires otherwise.
+            </p>
+          </Section>
+
+          <Section title="5. No warranty">
+            <p>
+              The Platform is provided <strong>&quot;as is&quot;</strong> and{' '}
+              <strong>&quot;as available&quot;</strong> without warranties of any kind, whether
+              express or implied, including merchantability, fitness for a particular purpose, or
+              non-infringement.
+            </p>
+            <p>
+              We do not guarantee uninterrupted access, error-free operation, or that defects will
+              be corrected immediately.
+            </p>
+          </Section>
+
+          <Section title="6. Limitation of liability">
+            <p>
+              To the fullest extent permitted by Indian law, {LEGAL_ENTITY_NAME} and its operators
+              shall not be liable for indirect, incidental, special, consequential, or punitive
+              damages, including loss of data, profits, opportunities, or exam outcomes arising
+              from use of the Platform.
+            </p>
+            <p>
+              Mock-test scores, practice accuracy, and dashboard analytics are indicative only and
+              do not predict actual exam performance.
+            </p>
+          </Section>
+
+          <Section title="7. Third-party links and services">
+            <p>
+              The Platform may link to external websites or use third-party services (for example
+              Google sign-in, payment processors, and cloud hosting). We do not control third-party
+              content or policies and are not responsible for their availability or accuracy.
+            </p>
+          </Section>
+
+          <Section title="8. User responsibility">
+            <p>
+              You use the Platform at your own risk. You should not share account access, attempt
+              to bypass credit or paywall limits, or misuse content in ways that violate our Terms
+              or applicable law.
+            </p>
+          </Section>
+
+          <Section title="9. Changes">
+            <p>
+              We may update this Disclaimer from time to time. Continued use of the Platform after
+              changes constitutes acceptance of the updated Disclaimer.
+            </p>
+          </Section>
+
+          <Section title="10. Contact">
+            <p>
+              Questions about this Disclaimer:
+              <br />
+              <strong>{LEGAL_ENTITY_NAME}</strong> ({PLATFORM_BRAND})
+              <br />
+              <a href={`mailto:${contactEmail}`} className="underline text-neutral-800">
+                {contactEmail}
+              </a>
+            </p>
+            <p>
+              Registered business particulars are available on request for compliance enquiries.
+            </p>
+          </Section>
+        </div>
+
+        <div className="mt-12 pt-8 border-t border-neutral-200 flex flex-wrap gap-4 text-sm text-neutral-500">
+          <Link href="/terms-and-services" className="hover:text-neutral-900 underline">
+            Terms of Service
+          </Link>
+          <Link href="/privacy-policy" className="hover:text-neutral-900 underline">
+            Privacy Policy
+          </Link>
+          <Link href="/pricing" className="hover:text-neutral-900 underline">
+            Pricing
+          </Link>
+        </div>
+      </div>
+    </LegalPageShell>
+  );
+}

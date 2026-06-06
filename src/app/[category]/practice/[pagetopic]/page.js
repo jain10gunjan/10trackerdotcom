@@ -18,7 +18,7 @@ import {
   writeProgressBuffer,
   saveProgressBufferToSupabase,
 } from "@/lib/progressBuffer";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
 import { Clock } from "lucide-react";
 
 // Lazy-loaded components
@@ -891,8 +891,7 @@ const Pagetracker = memo(() => {
             </div>
           </div>
         </div>
-        <Toaster position="bottom-right" />
-      </div>
+</div>
     </>
   );
 });

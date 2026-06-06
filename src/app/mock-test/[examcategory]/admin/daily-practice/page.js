@@ -11,7 +11,7 @@ import {
   AlertCircle,
   ListChecks,
 } from "lucide-react";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
 import QuestionSelector from "@/components/QuestionSelector";
 import { MathJax, MathJaxContext } from "better-react-mathjax";
 import { MATHJAX_CONFIG } from "@/lib/mathjaxConfig";
@@ -300,8 +300,7 @@ export default function DailyPracticeAdminPage() {
         />
       )}
 
-      <Toaster position="bottom-right" />
-      </MathJaxContext>
+</MathJaxContext>
     </div>
   );
 }

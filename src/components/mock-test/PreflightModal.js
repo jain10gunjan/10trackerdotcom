@@ -1,9 +1,13 @@
 'use client';
 
-import { Clock, FileQuestion, Target, X, AlertCircle } from 'lucide-react';
+import { Clock, Coins, FileQuestion, Target, X, AlertCircle } from 'lucide-react';
 import { usesGateMarking } from '@/lib/mockTestUtils';
+import { useCredits } from '@/context/CreditsContext';
+import { CREDIT_COST } from '@/lib/credits/constants';
 
 export default function PreflightModal({ test, examcategory, open, onClose, onConfirm, isRetake }) {
+  const { credits, unlimited, costs } = useCredits();
+  const mockCost = costs?.mock_test ?? CREDIT_COST.mock_test;
   if (!open || !test) return null;
 
   const gateMarking = usesGateMarking(examcategory);
@@ -82,6 +86,22 @@ export default function PreflightModal({ test, examcategory, open, onClose, onCo
               )}
             </ul>
           </div>
+
+          {!unlimited && !isRetake && (
+            <p className="text-xs text-neutral-700 bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2 flex gap-2">
+              <Coins className="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-600" />
+              First attempt on this test costs {mockCost} credit{mockCost === 1 ? '' : 's'}. You have{' '}
+              {credits} remaining. Retakes on the same test are free.
+            </p>
+          )}
+
+          {!unlimited && isRetake && (
+            <p className="text-xs text-emerald-800 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2 flex gap-2">
+              <Coins className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              No additional credits — you have already unlocked this test. You have {credits} credits
+              remaining.
+            </p>
+          )}
 
           {isRetake && (
             <p className="text-xs text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 flex gap-2">

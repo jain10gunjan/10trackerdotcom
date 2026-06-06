@@ -9,7 +9,7 @@ import React, {
   useState,
 } from 'react';
 import { useAuth } from '@/app/context/AuthContext';
-import { CREDIT_COST } from '@/lib/credits/constants';
+import { CREDIT_COST, SIGNUP_BONUS_CREDITS } from '@/lib/credits/constants';
 import {
   getLocalCreditBalance,
   loadCreditStore,
@@ -28,6 +28,8 @@ const CreditsContext = createContext({
   unlimited: false,
   subscription: null,
   costs: CREDIT_COST,
+  signupBonus: SIGNUP_BONUS_CREDITS,
+  signupBonusGranted: false,
   refreshWallet: async () => {},
   setCreditsBalance: () => {},
   flushSync: async () => {},
@@ -61,6 +63,7 @@ export function CreditsProvider({ children }) {
         await hydrateCreditsFromServer(userId, {
           credits: data.credits,
           unlimited: data.unlimited,
+          costs: data.costs,
         });
 
         const displayCredits = getLocalCreditBalance(userId);
@@ -162,8 +165,10 @@ export function CreditsProvider({ children }) {
       unlimited: wallet?.unlimited ?? false,
       subscription: wallet?.subscription ?? null,
       costs: wallet?.costs ?? CREDIT_COST,
-      signupBonus: wallet?.signupBonus ?? 60,
+      signupBonus: wallet?.signupBonus ?? SIGNUP_BONUS_CREDITS,
+      signupBonusGranted: wallet?.signupBonusGranted ?? false,
       plans: wallet?.plans,
+      planList: wallet?.planList,
       walletReady: Boolean(wallet) || Boolean(userId),
       walletError,
       refreshWallet,

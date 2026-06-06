@@ -22,7 +22,7 @@ import {
   BarChart3,
   Target
 } from "lucide-react";
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import Navbar from '@/components/Navbar';
 import MetaDataJobs from '@/components/Seo';
 import MockTestBreadcrumb from '@/components/mock-test/MockTestBreadcrumb';
@@ -718,24 +718,7 @@ export default function TestResultPage() {
              
           </div>
 
-          <Toaster
-            position="bottom-right"
-            toastOptions={{
-              duration: 2000,
-              style: {
-                background: '#fff',
-                color: '#171717',
-                borderRadius: '8px',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                fontSize: '14px',
-                padding: '12px 16px',
-                maxWidth: '90vw',
-              },
-              success: { iconTheme: { primary: '#22c55e', secondary: '#fff' } },
-              error: { iconTheme: { primary: '#ef4444', secondary: '#fff' } },
-            }}
-          />
-        </MathJaxContext>
+</MathJaxContext>
       </div>
     </>
   );

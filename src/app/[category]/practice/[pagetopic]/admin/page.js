@@ -9,7 +9,7 @@ import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/app/context/AuthContext";
 import { upsertUserProgress } from "@/lib/userProgressUpsert";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -1265,32 +1265,7 @@ const PremiumTestInterface = () => {
       </div>
       
       {/* Toast Notifications */}
-      <Toaster
-        position="bottom-right"
-        toastOptions={{
-          duration: 2000,
-          style: {
-            background: 'rgba(0, 0, 0, 0.8)',
-            color: '#fff',
-            borderRadius: '12px',
-            boxShadow: '0 10px 25px rgba(0, 0, 0, 0.2)',
-            backdropFilter: 'blur(10px)',
-          },
-          success: { 
-            style: { 
-              background: 'rgba(34, 197, 94, 0.9)',
-              backdropFilter: 'blur(10px)'
-            } 
-          },
-          error: { 
-            style: { 
-              background: 'rgba(239, 68, 68, 0.9)',
-              backdropFilter: 'blur(10px)'
-            } 
-          },
-        }}
-      />
-    </div>
+</div>
   );
 };
 

@@ -24,6 +24,7 @@ function defaultStore() {
     chargedKeys: [],
     pending: [],
     lastServerBalance: null,
+    costs: { ...CREDIT_COST },
     updatedAt: 0,
   };
 }
@@ -73,9 +74,26 @@ export function isCreditAlreadyReserved(userId, idempotencyKey) {
   return (store.pending || []).some((p) => p.idempotencyKey === idempotencyKey);
 }
 
-export function initCreditStoreFromServer(userId, { credits, unlimited }) {
+export function getStoredCreditCosts(userId) {
+  const store = loadCreditStore(userId);
+  return store.costs || CREDIT_COST;
+}
+
+export function setStoredCreditCosts(userId, costs) {
+  if (!userId || !costs) return;
+  const store = loadCreditStore(userId);
+  saveCreditStore(userId, { ...store, costs: { ...CREDIT_COST, ...costs } });
+}
+
+function resolveCost(userId, type) {
+  const costs = getStoredCreditCosts(userId);
+  return costs[type] ?? CREDIT_COST[type];
+}
+
+export function initCreditStoreFromServer(userId, { credits, unlimited, costs }) {
   const store = loadCreditStore(userId);
   const serverCredits = typeof credits === 'number' ? credits : 0;
+  const mergedCosts = costs ? { ...CREDIT_COST, ...costs } : store.costs || CREDIT_COST;
 
   if (unlimited) {
     const next = {
@@ -84,6 +102,7 @@ export function initCreditStoreFromServer(userId, { credits, unlimited }) {
       unlimited: true,
       lastServerBalance: serverCredits,
       pending: [],
+      costs: mergedCosts,
     };
     saveCreditStore(userId, next);
     return next;
@@ -96,6 +115,7 @@ export function initCreditStoreFromServer(userId, { credits, unlimited }) {
     ...store,
     unlimited: false,
     lastServerBalance: serverCredits,
+    costs: mergedCosts,
     balance:
       pending.length > 0
         ? Math.max(0, serverCredits - pendingCost)
@@ -116,20 +136,38 @@ export function isLocalUnlimited(userId) {
 export function canAffordPracticeQuestion(userId) {
   const store = loadCreditStore(userId);
   if (store.unlimited) return true;
-  return store.balance >= CREDIT_COST.practice_question;
+  return store.balance >= resolveCost(userId, 'practice_question');
 }
 
 export function canAffordMockTest(userId) {
   const store = loadCreditStore(userId);
   if (store.unlimited) return true;
-  return store.balance >= CREDIT_COST.mock_test;
+  return store.balance >= resolveCost(userId, 'mock_test');
 }
 
 /**
  * Reserve credits locally. Returns { ok, balance, idempotencyKey } or { ok: false, reason }.
  */
-export function reserveCreditsLocally(userId, { type, referenceId, idempotencyKey }) {
-  const cost = CREDIT_COST[type];
+export function applyServerDebit(userId, { idempotencyKey, serverCredits, cost }) {
+  const store = loadCreditStore(userId);
+  let chargedKeys = store.chargedKeys;
+  if (idempotencyKey && !chargedKeys.includes(idempotencyKey)) {
+    chargedKeys = [...chargedKeys, idempotencyKey];
+  }
+
+  const next = {
+    ...store,
+    balance: typeof serverCredits === 'number' ? serverCredits : store.balance,
+    lastServerBalance: typeof serverCredits === 'number' ? serverCredits : store.lastServerBalance,
+    chargedKeys,
+    pending: (store.pending || []).filter((p) => p.idempotencyKey !== idempotencyKey),
+  };
+  saveCreditStore(userId, next);
+  return next;
+}
+
+export function reserveCreditsLocally(userId, { type, referenceId, idempotencyKey, cost: costOverride }) {
+  const cost = costOverride ?? resolveCost(userId, type);
   if (!cost) return { ok: false, reason: 'invalid_type' };
 
   const key =

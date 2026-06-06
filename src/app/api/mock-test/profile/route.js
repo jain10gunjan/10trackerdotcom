@@ -7,16 +7,40 @@ import {
   upsertProfile,
 } from '@/lib/userProfileDb';
 import {
+  getProfileGateStatus,
+  hasCurrentTermsAcceptance,
   isProfileComplete,
+  isProfileFieldsComplete,
+  needsTermsReacceptance,
   profileToFormDefaults,
   validateProfilePayload,
 } from '@/lib/userProfile';
+import { validateTermsAcceptance, TERMS_VERSION } from '@/lib/billing/legal';
 import { getSupabaseServer, isValidServiceRoleKey } from '@/lib/supabaseServer';
 import { normalizeEmail } from '@/lib/normalizeEmail';
 import { grantSignupBonus } from '@/lib/credits/walletService';
 
 function profileClient() {
   return getSupabaseServer(isValidServiceRoleKey());
+}
+
+function gatePayload(profile) {
+  return getProfileGateStatus(profile);
+}
+
+function jsonProfileSuccess(profile, session, extra = {}) {
+  const suggested = profileToFormDefaults(profile, {
+    name: session.user?.name,
+    image: session.user?.image,
+    email: normalizeEmail(session.user?.email),
+  });
+  return NextResponse.json({
+    success: true,
+    profile,
+    suggested,
+    ...gatePayload(profile),
+    ...extra,
+  });
 }
 
 export async function GET() {
@@ -36,17 +60,7 @@ export async function GET() {
         resetProfileDbSchemaCache();
         const retry = await selectProfile(supabase, userEmail);
         if (!retry.error) {
-          const suggested = profileToFormDefaults(retry.profile, {
-            name: session.user?.name,
-            image: session.user?.image,
-            email: userEmail,
-          });
-          return NextResponse.json({
-            success: true,
-            profile: retry.profile,
-            needsProfile: !isProfileComplete(retry.profile),
-            suggested,
-          });
+          return jsonProfileSuccess(retry.profile, session);
         }
       }
       if (error.code === '42P01') {
@@ -54,6 +68,8 @@ export async function GET() {
           success: true,
           profile: null,
           needsProfile: true,
+          needsProfileCompletion: true,
+          needsTermsReacceptance: false,
           suggested: profileToFormDefaults(null, {
             name: session.user?.name,
             image: session.user?.image,
@@ -74,12 +90,6 @@ export async function GET() {
       return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
 
-    const suggested = profileToFormDefaults(profile, {
-      name: session.user?.name,
-      image: session.user?.image,
-      email: userEmail,
-    });
-
     let signupGrant = null;
     try {
       signupGrant = await grantSignupBonus(userEmail);
@@ -87,13 +97,7 @@ export async function GET() {
       console.warn('grantSignupBonus on profile load:', bonusErr?.message);
     }
 
-    return NextResponse.json({
-      success: true,
-      profile,
-      needsProfile: !isProfileComplete(profile),
-      suggested,
-      signupGrant,
-    });
+    return jsonProfileSuccess(profile, session, { signupGrant });
   } catch (error) {
     console.error('Profile GET error:', error);
     return NextResponse.json(
@@ -112,14 +116,61 @@ export async function POST(request) {
     }
 
     const body = await request.json();
+    const supabase = profileClient();
+    const { profile: existingProfile } = await selectProfile(supabase, userEmail);
+
+    // Terms-only re-acceptance (existing users after TERMS_VERSION bump)
+    if (body?.termsOnly === true) {
+      if (!isProfileFieldsComplete(existingProfile)) {
+        return NextResponse.json(
+          { success: false, error: 'Complete your profile before accepting terms.' },
+          { status: 400 }
+        );
+      }
+      const termsCheck = validateTermsAcceptance(body);
+      if (!termsCheck.ok) {
+        return NextResponse.json({ success: false, error: termsCheck.error }, { status: 400 });
+      }
+
+      const { data, error } = await upsertProfile(supabase, userEmail, {
+        terms_accepted_at: new Date().toISOString(),
+        terms_version: TERMS_VERSION,
+        profile_completed: true,
+      });
+
+      if (error) {
+        console.error('Terms accept error:', error);
+        return NextResponse.json(
+          { success: false, error: error.message || 'Failed to save acceptance' },
+          { status: 500 }
+        );
+      }
+
+      return jsonProfileSuccess(data, session);
+    }
+
     const { email: _omitEmail, user_email: _omitUserEmail, id: _omitId, ...payload } = body || {};
     const validated = validateProfilePayload(payload);
     if (validated.error) {
       return NextResponse.json({ success: false, error: validated.error }, { status: 400 });
     }
 
-    const supabase = profileClient();
     const fields = { ...validated.data };
+    const firstCompletion = !isProfileFieldsComplete(existingProfile);
+    const mustAcceptTerms =
+      firstCompletion || needsTermsReacceptance(existingProfile) || !hasCurrentTermsAcceptance(existingProfile);
+
+    if (mustAcceptTerms) {
+      const termsCheck = validateTermsAcceptance(body);
+      if (!termsCheck.ok) {
+        return NextResponse.json({ success: false, error: termsCheck.error }, { status: 400 });
+      }
+      fields.terms_accepted_at = new Date().toISOString();
+      fields.terms_version = TERMS_VERSION;
+    } else if (existingProfile?.terms_accepted_at) {
+      fields.terms_accepted_at = existingProfile.terms_accepted_at;
+      fields.terms_version = existingProfile.terms_version || TERMS_VERSION;
+    }
 
     if (!fields.avatar_url && session.user?.image) {
       fields.avatar_url = session.user.image;
@@ -133,17 +184,7 @@ export async function POST(request) {
         resetProfileDbSchemaCache();
         const retry = await upsertProfile(supabase, userEmail, fields);
         if (!retry.error && isProfileComplete(retry.data)) {
-          const suggested = profileToFormDefaults(retry.data, {
-            name: session.user?.name,
-            image: session.user?.image,
-            email: userEmail,
-          });
-          return NextResponse.json({
-            success: true,
-            profile: retry.data,
-            needsProfile: false,
-            suggested,
-          });
+          return jsonProfileSuccess(retry.data, session);
         }
         if (!retry.error && retry.data) {
           return NextResponse.json(
@@ -152,7 +193,7 @@ export async function POST(request) {
           );
         }
         if (retry.error) {
-          error = retry.error;
+          error.message = retry.error.message;
         }
       }
       const setupHint = PROFILE_SETUP_SQL_HINT;
@@ -181,31 +222,19 @@ export async function POST(request) {
 
     if (!isProfileComplete(data)) {
       return NextResponse.json(
-        { success: false, error: 'Profile saved but required fields are still missing' },
+        { success: false, error: 'Profile saved but acceptance or required fields are still missing' },
         { status: 400 }
       );
     }
-
-    const suggested = profileToFormDefaults(data, {
-      name: session.user?.name,
-      image: session.user?.image,
-      email: userEmail,
-    });
 
     let signupCredits = null;
     try {
       signupCredits = await grantSignupBonus(userEmail);
     } catch (bonusErr) {
-      console.warn('Signup bonus grant failed (run setup_credits_subscriptions.sql):', bonusErr?.message);
+      console.warn('Signup bonus grant failed:', bonusErr?.message);
     }
 
-    return NextResponse.json({
-      success: true,
-      profile: data,
-      needsProfile: false,
-      suggested,
-      signupCredits,
-    });
+    return jsonProfileSuccess(data, session, { signupCredits });
   } catch (error) {
     console.error('Profile POST error:', error);
     return NextResponse.json(

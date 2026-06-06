@@ -5,7 +5,8 @@ import { useAuth } from '@/app/context/AuthContext';
 import { 
   ArrowLeft, Calendar, Clock, CheckCircle, Plus, Search, Filter, BookOpen
 } from 'lucide-react';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
+import { mockTestAdminBase } from '@/lib/mockTestAdminPaths';
 
 export default function CreateYearwiseTestPage() {
   const router = useRouter();
@@ -208,11 +209,12 @@ export default function CreateYearwiseTestPage() {
       <div className="max-w-7xl mx-auto py-8 px-4">
         <div className="mb-8">
           <button
-            onClick={() => router.back()}
+            type="button"
+            onClick={() => router.push(mockTestAdminBase(params.examcategory || 'gate-cse'))}
             className="flex items-center text-gray-600 hover:text-gray-900 mb-4"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Admin Panel
+            Back to mock tests admin
           </button>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Create Year-wise Test</h1>
           <p className="text-gray-600">Select questions by year and topic for {params.examcategory?.toUpperCase() || 'All Categories'}</p>
@@ -387,8 +389,7 @@ export default function CreateYearwiseTestPage() {
           />
         )}
       </div>
-      <Toaster position="bottom-right" />
-    </div>
+</div>
   );
 }
 

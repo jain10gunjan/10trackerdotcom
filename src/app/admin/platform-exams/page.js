@@ -7,7 +7,7 @@ import { useAuth } from '@/app/context/AuthContext';
 import MetaDataJobs from '@/components/Seo';
 import { ArrowLeft, AlertCircle, GraduationCap } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { parseJsonResponse } from '@/lib/toastAsync';
+import { parseJsonResponse, toastPromise } from '@/lib/toastAsync';
 
 export default function AdminPlatformExamsPage() {
   const router = useRouter();
@@ -41,20 +41,29 @@ export default function AdminPlatformExamsPage() {
 
   const toggleActive = async (slug, is_active) => {
     try {
-      const res = await fetch('/api/admin/platform-exams', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ slug, is_active }),
-      });
-      const data = await parseJsonResponse(res);
-      if (!data.success) throw new Error(data.error);
-      setExams((prev) =>
-        prev.map((e) => (e.slug === slug ? { ...e, is_active: data.exam.is_active } : e))
+      await toastPromise(
+        async () => {
+          const res = await fetch('/api/admin/platform-exams', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ slug, is_active }),
+          });
+          const data = await parseJsonResponse(res);
+          if (!data.success) throw new Error(data.error);
+          setExams((prev) =>
+            prev.map((e) => (e.slug === slug ? { ...e, is_active: data.exam.is_active } : e))
+          );
+          return `${data.exam.name} ${data.exam.is_active ? 'enabled' : 'disabled'}`;
+        },
+        {
+          loading: 'Updating exam…',
+          success: (msg) => msg,
+          error: (e) => e.message || 'Update failed',
+        }
       );
-      toast.success(`${data.exam.name} ${data.exam.is_active ? 'enabled' : 'disabled'}`);
-    } catch (e) {
-      toast.error(e.message || 'Update failed');
+    } catch {
+      /* toast.promise surfaces the error */
     }
   };
 

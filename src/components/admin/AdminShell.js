@@ -9,7 +9,11 @@ import {
   Newspaper,
   Users,
   ListOrdered,
+  Map,
   GraduationCap,
+  FileText,
+  ClipboardList,
+  IndianRupee,
   Menu,
   X,
   ChevronRight,
@@ -17,11 +21,14 @@ import {
 
 const NAV = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/admin/mcq-extractor", label: "MCQ extractor", icon: FileText },
+  { href: "/admin/mock-tests", label: "Mock tests", icon: ClipboardList },
+  { href: "/admin/pricing", label: "Pricing & credits", icon: IndianRupee },
   { href: "/admin/bulk-questions", label: "Bulk questions (JSON)", icon: Database },
   { href: "/admin/articles", label: "Articles", icon: Newspaper },
   { href: "/admin/postable-entries", label: "Postable entries", icon: ListOrdered },
   { href: "/admin/users", label: "Users", icon: Users },
-  { href: "/admin/placement-tracker-cse", label: "Placement tracker", icon: GraduationCap },
+  { href: "/admin/roadmaps", label: "Roadmaps", icon: Map },
   { href: "/admin/upsc-prelims", label: "UPSC Prelims", icon: GraduationCap },
 ];
 

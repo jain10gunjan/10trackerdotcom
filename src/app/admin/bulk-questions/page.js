@@ -4,7 +4,7 @@ import React, { useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/context/AuthContext";
 import MetaDataJobs from "@/components/Seo";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
 import {
   AlertCircle,
   CheckCircle2,
@@ -213,9 +213,7 @@ export default function AdminBulkQuestionsPage() {
         seoTitle="Bulk questions import"
         seoDescription="Import examtracker questions from JSON"
       />
-      <Toaster position="top-center" />
-
-      <div className="mb-6">
+<div className="mb-6">
         <h1 className="text-xl font-semibold tracking-tight text-neutral-900 sm:text-2xl">
           Bulk questions (JSON → Supabase)
         </h1>

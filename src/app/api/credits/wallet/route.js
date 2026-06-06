@@ -9,7 +9,7 @@ export async function GET() {
       return NextResponse.json({ success: false, error }, { status });
     }
 
-    const summary = await getWalletSummary(email);
+    const summary = await getWalletSummary(email, { grantBonus: true });
     return NextResponse.json({ success: true, ...summary });
   } catch (err) {
     console.error('credits/wallet', err);

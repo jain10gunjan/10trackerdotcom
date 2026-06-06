@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useReducer, useEffect, useCallback, useMemo } from "react";
 import { createClient } from "@supabase/supabase-js";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
 import { MathJax, MathJaxContext } from "better-react-mathjax";
 import {
   Clock,
@@ -384,8 +384,7 @@ const Test = () => {
           onClose={() => setShowAuthModal(false)}
           onGoogleSignIn={signInWithGoogle}
         />
-        <Toaster position="bottom-right" />
-      </div>
+</div>
     );
   }
 
@@ -401,8 +400,7 @@ const Test = () => {
             {/* Add BuyNow component or link here */}
           </div>
         </div>
-        <Toaster position="bottom-right" />
-      </div>
+</div>
     );
   }
 
@@ -564,8 +562,7 @@ const Test = () => {
           onClose={() => setShowAuthModal(false)}
           onGoogleSignIn={signInWithGoogle}
         />
-        <Toaster position="top-right" />
-      </div>
+</div>
     );
   }
 
@@ -831,8 +828,7 @@ const Test = () => {
           </MathJaxContext>
         )}
       </div>
-      <Toaster position="top-right" />
-    </div>
+</div>
   );
 };
 

@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { getAuth } from "firebase/auth";
 import { app } from "@/app/lib/firebase";
 import { createClient } from "@supabase/supabase-js";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
 import { MathJax, MathJaxContext } from "better-react-mathjax";
 
 const supabase = createClient(
@@ -370,8 +370,7 @@ const ReportedQuestions = () => {
           )}
         </MathJaxContext>
       </div>
-      <Toaster position="top-right" />
-    </div>
+</div>
   );
 };
 

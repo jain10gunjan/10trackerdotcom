@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireSessionEmail } from '@/lib/credits/requireSession';
 import { consumeCredits, getWalletSummary } from '@/lib/credits/walletService';
-import { CREDIT_COST } from '@/lib/credits/constants';
+import { getPricingConfig } from '@/lib/credits/pricingService';
 
 export async function POST(request) {
   try {
@@ -24,6 +24,9 @@ export async function POST(request) {
       });
     }
 
+    const pricing = await getPricingConfig();
+    const costs = pricing.costs;
+
     const syncedKeys = [];
     const failed = [];
     let needsSubscription = false;
@@ -35,7 +38,7 @@ export async function POST(request) {
         ? String(item.idempotencyKey)
         : null;
 
-      if (!type || !CREDIT_COST[type]) continue;
+      if (!type || !costs[type]) continue;
 
       const result = await consumeCredits(email, type, {
         referenceId,
@@ -56,7 +59,7 @@ export async function POST(request) {
         referenceId,
         idempotencyKey,
         reason: result.reason,
-        cost: CREDIT_COST[type],
+        cost: costs[type],
       });
 
       break;

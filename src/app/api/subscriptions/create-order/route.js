@@ -2,7 +2,10 @@ import Razorpay from 'razorpay';
 import { NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import { requireSessionEmail } from '@/lib/credits/requireSession';
-import { SUBSCRIPTION_PLANS, planAmountPaise } from '@/lib/credits/constants';
+import {
+  getPlanById,
+  planAmountPaiseFromConfig,
+} from '@/lib/credits/pricingService';
 import { getBillingLegalInfo, validateTermsAcceptance } from '@/lib/billing/legal';
 import { getSupabaseServer, isValidServiceRoleKey } from '@/lib/supabaseServer';
 
@@ -25,15 +28,15 @@ export async function POST(request) {
       return NextResponse.json({ success: false, error: termsCheck.error }, { status: 400 });
     }
 
-    const plan = SUBSCRIPTION_PLANS[planId];
-    if (!plan) {
-      return NextResponse.json({ success: false, error: 'Invalid plan' }, { status: 400 });
+    const plan = await getPlanById(planId);
+    if (!plan || plan.isActive === false) {
+      return NextResponse.json({ success: false, error: 'Invalid or inactive plan' }, { status: 400 });
     }
 
     const legal = getBillingLegalInfo();
     const termsAcceptedAt = new Date().toISOString();
 
-    const amountPaise = planAmountPaise(planId);
+    const amountPaise = planAmountPaiseFromConfig(plan);
     const shortEmail = email.split('@')[0].slice(0, 12);
     const receipt = `sub_${shortEmail}_${uuidv4().slice(0, 8)}`.slice(0, 40);
 

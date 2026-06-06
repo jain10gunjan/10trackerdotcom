@@ -11,11 +11,27 @@ import {
   Users,
   ListOrdered,
   GraduationCap,
+  FileText,
+  ClipboardList,
   AlertCircle,
   ArrowRight,
 } from "lucide-react";
 
 const CARDS = [
+  {
+    href: "/admin/mcq-extractor",
+    title: "MCQ extractor",
+    desc: "Upload PDFs, review streamed MCQs, edit, and export JSON for import.",
+    icon: FileText,
+    accent: "from-indigo-600 to-violet-600",
+  },
+  {
+    href: "/admin/mock-tests",
+    title: "Mock tests",
+    desc: "Create, edit, and deactivate mock tests per exam category (UPSC, GATE, etc.).",
+    icon: ClipboardList,
+    accent: "from-blue-600 to-indigo-600",
+  },
   {
     href: "/admin/bulk-questions",
     title: "Bulk questions (JSON)",
@@ -45,9 +61,9 @@ const CARDS = [
     accent: "from-sky-600 to-blue-600",
   },
   {
-    href: "/admin/placement-tracker-cse",
-    title: "Placement tracker",
-    desc: "CSE placement tracker admin.",
+    href: "/admin/roadmaps",
+    title: "Roadmaps",
+    desc: "Study roadmaps — pricing, preview days, and day-by-day content.",
     icon: GraduationCap,
     accent: "from-rose-600 to-pink-600",
   },

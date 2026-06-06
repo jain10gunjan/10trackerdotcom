@@ -1105,6 +1105,7 @@ const ChapterPracticePage = memo(() => {
           if (!stem) throw new Error("empty");
           const resp = await fetch("/api/generate-similar", {
             method: "POST",
+            credentials: "include",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ mode: "rewrite-question", question: stem, maxTokens: 160 }),
           });

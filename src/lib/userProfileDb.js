@@ -23,6 +23,8 @@ const PROFILE_FIELDS = [
   'target_exams',
   'avatar_url',
   'profile_completed',
+  'terms_accepted_at',
+  'terms_version',
   'updated_at',
 ];
 
@@ -151,6 +153,8 @@ export function normalizeProfileRow(row, emailColumn) {
     avatar_url: row.avatar_url ?? '',
     display_name: row.display_name ?? '',
     profile_completed: Boolean(row.profile_completed),
+    terms_accepted_at: row.terms_accepted_at ?? null,
+    terms_version: row.terms_version ?? null,
   };
 }
 

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, Suspense } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { useParams, useRouter } from "next/navigation"; // Updated importimport { useParams } from "next/navigation";
 import { useAuth } from "@/app/context/AuthContext";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
 import { AnimatePresence, motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
 import AuthModal from "@/components/AuthModal";

@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { MathJax, MathJaxContext } from "better-react-mathjax";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
 // import { topicData } from "./assests/aptitudetopicslist";
 import SyntaxHighlighter from "react-syntax-highlighter";
 import { docco } from "react-syntax-highlighter/dist/esm/styles/hljs";
@@ -645,8 +645,7 @@ const Pagetracker = () => {
         </div>
       </section>
 
-      <Toaster />
-    </div>
+</div>
   );
 };
 

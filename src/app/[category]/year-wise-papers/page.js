@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@supabase/supabase-js";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
 import debounce from "lodash/debounce";
 import { useParams } from "next/navigation";
 import dynamic from "next/dynamic";
@@ -374,8 +374,7 @@ const Examtracker = () => {
         </div>
 
        
-        <Toaster position="bottom-right" />
-      </div>
+</div>
     </ErrorBoundary>
   );
 };

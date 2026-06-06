@@ -5,7 +5,7 @@ import { useAuth } from "@/app/context/AuthContext";
 import { CheckCircle, Book, FileText, LayoutGrid, Activity, Calendar } from 'lucide-react';
 import RazorpayButton from './RazorpayButton';
 import AuthModal from '@/components/AuthModal';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 
 export default function BuyNowYearWise({ category, userEmail, userName,redirectUrl }) {
@@ -87,21 +87,7 @@ export default function BuyNowYearWise({ category, userEmail, userName,redirectU
             onClose={() => setShowAuthModal(false)}
             onGoogleSignIn={handleGoogleSignIn}
           />
-          <Toaster
-            position="bottom-right"
-            toastOptions={{
-              duration: 4000,
-              style: {
-                background: '#333',
-                color: '#fff',
-                borderRadius: '8px',
-                boxShadow: '0 3px 10px rgba(0, 0, 0, 0.2)',
-              },
-              success: { style: { background: '#10B981' } },
-              error: { style: { background: '#EF4444' } },
-            }}
-          />
-        </div>
+</div>
       </div>
     );
   }
@@ -181,20 +167,6 @@ export default function BuyNowYearWise({ category, userEmail, userName,redirectU
             </div>
         </div>
       </div>
-      <Toaster
-        position="bottom-right"
-        toastOptions={{
-          duration: 4000,
-          style: {
-            background: '#333',
-            color: '#fff',
-            borderRadius: '8px',
-            boxShadow: '0 3px 10px rgba(0, 0, 0, 0.2)',
-          },
-          success: { style: { background: '#10B981' } },
-          error: { style: { background: '#EF4444' } },
-        }}
-      />
-    </div>
+</div>
   );
 }

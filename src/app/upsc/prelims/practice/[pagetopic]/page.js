@@ -6,7 +6,7 @@ import { getAuth, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { initializeApp } from "firebase/app";
 import { createClient } from "@supabase/supabase-js";
 import { upsertUserProgress } from "@/lib/userProgressUpsert";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
 import debounce from "lodash/debounce";
 import ProgressBar from "../../../../../components/ProgressBar";
 import QuestionCard from "../../../../../components/QuestionCard";
@@ -446,8 +446,7 @@ const Pagetracker = () => {
           onClose={() => setShowAuthModal(false)}
           onGoogleSignIn={handleGoogleSignIn}
         />
-        <Toaster position="top-right" />
-      </div>
+</div>
     </>
   );
 };

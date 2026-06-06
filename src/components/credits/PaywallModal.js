@@ -4,10 +4,18 @@ import { useEffect } from 'react';
 import Link from 'next/link';
 import { X, Coins, Sparkles } from 'lucide-react';
 import { useCredits } from '@/context/CreditsContext';
-import { CREDIT_COST } from '@/lib/credits/constants';
+import { CREDIT_COST, SIGNUP_BONUS_CREDITS } from '@/lib/credits/constants';
 
 export default function PaywallModal() {
-  const { showPaywall, setShowPaywall, credits, costs } = useCredits();
+  const {
+    showPaywall,
+    setShowPaywall,
+    credits,
+    costs,
+    signupBonus,
+    signupBonusGranted,
+    refreshWallet,
+  } = useCredits();
 
   useEffect(() => {
     if (!showPaywall) return;
@@ -18,10 +26,22 @@ export default function PaywallModal() {
     return () => window.removeEventListener('keydown', onKey);
   }, [showPaywall, setShowPaywall]);
 
+  // Refresh wallet when paywall opens so bonus/costs match admin DB settings
+  useEffect(() => {
+    if (!showPaywall) return;
+    refreshWallet();
+  }, [showPaywall, refreshWallet]);
+
   if (!showPaywall) return null;
 
   const practiceCost = costs?.practice_question ?? CREDIT_COST.practice_question;
   const mockCost = costs?.mock_test ?? CREDIT_COST.mock_test;
+  const bonusCredits =
+    typeof signupBonus === 'number' && !Number.isNaN(signupBonus)
+      ? signupBonus
+      : SIGNUP_BONUS_CREDITS;
+
+  const showSignupPromo = !signupBonusGranted && bonusCredits > 0;
 
   return (
     <div
@@ -56,14 +76,22 @@ export default function PaywallModal() {
 
         <p className="text-sm text-neutral-600 mb-4 leading-relaxed">
           Practice uses {practiceCost} credit per new question. Mock tests use {mockCost} credits
-          per new attempt. Get unlimited access with a subscription — secure payment via Razorpay.
+          once per test (retakes are free). Get unlimited access with a subscription — secure
+          payment via Razorpay.
         </p>
 
         <div className="rounded-xl bg-neutral-50 border border-neutral-100 p-4 mb-6 text-xs text-neutral-600 space-y-1">
-          <p className="flex items-center gap-2">
-            <Sparkles className="w-3.5 h-3.5 text-neutral-500" />
-            One-time 60 free credits for every account (claim on sign-in)
-          </p>
+          {showSignupPromo ? (
+            <p className="flex items-center gap-2">
+              <Sparkles className="w-3.5 h-3.5 text-neutral-500 shrink-0" />
+              One-time {bonusCredits} free credits for every account (claim on sign-in)
+            </p>
+          ) : (
+            <p className="flex items-center gap-2">
+              <Sparkles className="w-3.5 h-3.5 text-neutral-500 shrink-0" />
+              Subscribe for unlimited practice and mock tests
+            </p>
+          )}
           <p>Payments are processed securely. GST invoice available on request.</p>
         </div>
 

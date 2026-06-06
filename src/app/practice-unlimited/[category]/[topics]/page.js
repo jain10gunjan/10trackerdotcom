@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
 import { MathJax, MathJaxContext } from "better-react-mathjax";
 
 // Supabase configuration
@@ -155,8 +155,7 @@ const PracticeSession = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-      <Toaster position="top-right" />
-      {state.currentQuestion ? (
+{state.currentQuestion ? (
         <MathJaxContext config={config}>
           <div className="bg-white rounded-lg shadow-md p-6 max-w-3xl mx-auto">
             <div className="text-lg font-medium text-gray-800 mb-6">

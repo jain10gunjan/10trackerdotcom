@@ -17,6 +17,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { toastPromise } from '@/lib/toastAsync';
 import { useArticleCategories } from '@/lib/hooks/useArticleCategories';
 
 const AdminPostableEntriesPage = () => {
@@ -73,35 +74,37 @@ const AdminPostableEntriesPage = () => {
 
     setSubmitting(true);
     try {
-      const url = editingEntry 
-        ? '/api/postable-entries' 
-        : '/api/postable-entries';
-      
-      const method = editingEntry ? 'PUT' : 'POST';
-      const body = editingEntry 
-        ? { ...formData, id: editingEntry.id }
-        : formData;
+      await toastPromise(
+        async () => {
+          const url = '/api/postable-entries';
+          const method = editingEntry ? 'PUT' : 'POST';
+          const body = editingEntry ? { ...formData, id: editingEntry.id } : formData;
 
-      const response = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
+          const response = await fetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+          });
 
-      const result = await response.json();
+          const result = await response.json();
+          if (!result.success) {
+            throw new Error(result.error || 'Failed to save entry');
+          }
 
-      if (result.success) {
-        toast.success(editingEntry ? 'Entry updated successfully' : 'Entry created successfully');
-        setShowCreateModal(false);
-        setEditingEntry(null);
-        setFormData({ title: '', image_url: '', category: '' });
-        fetchEntries();
-      } else {
-        toast.error(result.error || 'Failed to save entry');
-      }
-    } catch (error) {
-      console.error('Error saving entry:', error);
-      toast.error('Failed to save entry');
+          setShowCreateModal(false);
+          setEditingEntry(null);
+          setFormData({ title: '', image_url: '', category: '' });
+          await fetchEntries();
+          return editingEntry ? 'Entry updated successfully' : 'Entry created successfully';
+        },
+        {
+          loading: 'Saving entry…',
+          success: (msg) => msg,
+          error: (err) => err.message || 'Failed to save entry',
+        }
+      );
+    } catch {
+      /* toast.promise surfaces the error */
     } finally {
       setSubmitting(false);
     }
@@ -111,21 +114,27 @@ const AdminPostableEntriesPage = () => {
     if (!confirm('Are you sure you want to delete this entry?')) return;
 
     try {
-      const response = await fetch(`/api/postable-entries?id=${id}`, {
-        method: 'DELETE',
-      });
+      await toastPromise(
+        async () => {
+          const response = await fetch(`/api/postable-entries?id=${id}`, {
+            method: 'DELETE',
+          });
 
-      const result = await response.json();
-
-      if (result.success) {
-        toast.success('Entry deleted successfully');
-        fetchEntries();
-      } else {
-        toast.error(result.error || 'Failed to delete entry');
-      }
-    } catch (error) {
-      console.error('Error deleting entry:', error);
-      toast.error('Failed to delete entry');
+          const result = await response.json();
+          if (!result.success) {
+            throw new Error(result.error || 'Failed to delete entry');
+          }
+          await fetchEntries();
+          return 'Entry deleted successfully';
+        },
+        {
+          loading: 'Deleting entry…',
+          success: (msg) => msg,
+          error: (err) => err.message || 'Failed to delete entry',
+        }
+      );
+    } catch {
+      /* toast.promise surfaces the error */
     }
   };
 

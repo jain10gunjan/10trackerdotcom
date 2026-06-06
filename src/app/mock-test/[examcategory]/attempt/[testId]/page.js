@@ -826,7 +826,6 @@ export default function EnhancedMobileMockTestPage() {
 
           const creditCheck = await consumeCreditOnClient('mock_test', {
             referenceId: String(testId),
-            idempotencyKey: `mock_test:${userEmail}:${testId}`,
             user: { email: userEmail, id: user?.id },
           });
           if (!creditCheck.ok) {

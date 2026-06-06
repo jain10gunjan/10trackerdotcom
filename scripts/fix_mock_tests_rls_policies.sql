@@ -1,5 +1,5 @@
--- Run once in Supabase SQL Editor if admin test creation fails with RLS (42501).
--- Required when SUPABASE_SERVICE_ROLE_KEY is missing or not the real service_role JWT.
+-- DEPRECATED: prefer scripts/fix_mock_tests_rls_secure.sql (strict public RLS + service_role admin API).
+-- This file opens anon INSERT/UPDATE/DELETE — only use for local dev without service_role key.
 
 -- mock_tests: allow writes (admin UI uses NextAuth + anon/server client)
 DROP POLICY IF EXISTS mock_tests_admin_insert ON public.mock_tests;

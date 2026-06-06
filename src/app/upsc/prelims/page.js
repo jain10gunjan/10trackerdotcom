@@ -5,7 +5,7 @@ import { getAuth, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { initializeApp } from "firebase/app";
 import { createClient } from "@supabase/supabase-js";
 import { upsertUserProgress } from "@/lib/userProgressUpsert";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
 import debounce from "lodash/debounce";
 import AuthModal from "@/components/AuthModal";
 import Navbar from "@/components/Navbar";
@@ -798,8 +798,7 @@ const Upscprelimstracker = () => {
           onClose={() => setShowAuthModal(false)}
           onGoogleSignIn={handleGoogleSignIn}
         />
-        <Toaster />
-      </div>
+</div>
     </ErrorBoundary>
   );
 };

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { Toaster, toast } from "react-hot-toast";
+import { toast } from "react-hot-toast";
 import debounce from "lodash.debounce"; // Debouncing updates
 import dynamic from "next/dynamic";
 import { htmlCssLearning } from "@/app/data/videodata";
@@ -224,8 +224,7 @@ export default function WebDevlopement() {
         </section>
         <div class="mx-auto  max-w-screen-xl  text-gray-500    px-4">
           <div className="mt-2 flex flex-col lg:flex-row">
-            <Toaster position="top-center" />
-            {/* Main Content */}
+{/* Main Content */}
             <div className="flex-1 flex flex-col p-6 space-y-6">
               <h2 className="text-lg font-semibold text-gray-700 mb-4">
                 {modules[currentModule]?.title}

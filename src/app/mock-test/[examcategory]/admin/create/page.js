@@ -23,6 +23,7 @@ import QuestionSelector from '@/components/QuestionSelector';
 import SelectedQuestions from '@/components/SelectedQuestions';
 import QuestionEditor from '@/components/QuestionEditor';
 import { usesGateMarking } from '@/lib/mockTestUtils';
+import { mockTestAdminBase } from '@/lib/mockTestAdminPaths';
 
 // Supabase configuration
 const supabase = createClient(
@@ -749,7 +750,7 @@ export default function CreateTestPage() {
       <div className="max-w-7xl mx-auto py-8 px-4">
         <div className="mb-8">
           <button
-            onClick={() => router.push(`/mock-test/${examcategory}/admin`)}
+            onClick={() => router.push(mockTestAdminBase(examcategory))}
             className="flex items-center text-gray-600 hover:text-gray-900 mb-4"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />

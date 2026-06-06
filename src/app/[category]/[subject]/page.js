@@ -10,7 +10,7 @@ import React, {
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@supabase/supabase-js";
 import { applyProgressUserFilter } from "@/lib/progressIdentity";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import dynamic from "next/dynamic";
@@ -1239,14 +1239,7 @@ const Examtracker = () => {
           </button>
         </div>
 
-        <Toaster
-          position="bottom-right"
-          toastOptions={{
-            style: { borderRadius: "12px", fontSize: "13px" },
-            success: { iconTheme: { primary: "#16a34a", secondary: "#fff" } },
-          }}
-        />
-      </div>
+</div>
     </ErrorBoundary>
   );
 };

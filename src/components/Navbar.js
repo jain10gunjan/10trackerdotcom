@@ -19,6 +19,7 @@ import {
   Newspaper,
   Briefcase,
   Coins,
+  Map,
 } from "lucide-react";
 import { useAuth } from "@/app/context/AuthContext";
 import WalletBar from "@/components/credits/WalletBar";
@@ -46,6 +47,7 @@ const Navbar = () => {
   const mainNavItems = [
     { name: "Home", path: "/", icon: <Home size={18} /> },
     { name: "Exams", path: "/exams", icon: <GraduationCap size={18} /> },
+    { name: "Roadmaps", path: "/roadmaps", icon: <Map size={18} /> },
     { name: "News", path: "/article/news", icon: <Newspaper size={18} /> },
     { name: "Jobs", path: "/article/latest-jobs", icon: <Briefcase size={18} /> },
     { name: "About", path: "/about-us", icon: <Info size={18} /> },

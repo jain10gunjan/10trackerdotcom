@@ -2,7 +2,11 @@ import { NextResponse } from 'next/server';
 import { verifyAdminAuth } from '@/middleware/adminAuth';
 import { getCategoryVariants } from '@/lib/mockTestUtils';
 import { insertWithSchemaFallback } from '@/lib/mockTestDb';
-import { getSupabaseServer, isValidServiceRoleKey } from '@/lib/supabaseServer';
+import {
+  getSupabaseAdmin,
+  formatAdminDbError,
+  SUPABASE_ADMIN_SETUP_HINT,
+} from '@/lib/supabaseAdmin';
 
 export async function POST(request) {
   const { isAdmin, userEmail, error: authError } = await verifyAdminAuth();
@@ -24,8 +28,6 @@ export async function POST(request) {
       selectedTopic,
     } = await request.json();
 
-    const useServiceRole = isValidServiceRoleKey();
-
     if (action === 'create-yearwise-test') {
       if (!examCategory || !testConfig?.testName || !Array.isArray(questionIds) || questionIds.length === 0) {
         return NextResponse.json(
@@ -34,7 +36,7 @@ export async function POST(request) {
         );
       }
       try {
-        const supabase = getSupabaseServer(useServiceRole);
+        const supabase = getSupabaseAdmin();
         const category = getCategoryVariants(examCategory)[0] || String(examCategory).toUpperCase();
         const topicMeta = selectedTopic || selectedCategory || 'general';
         const subjectMeta = selectedSubject || 'general';
@@ -129,7 +131,7 @@ export async function POST(request) {
         );
       }
 
-      const supabase = getSupabaseServer(useServiceRole);
+      const supabase = getSupabaseAdmin();
       const category =
         testData.category ||
         getCategoryVariants(examCategory)[0] ||
@@ -235,7 +237,7 @@ export async function POST(request) {
         );
       }
 
-      const supabase = getSupabaseServer(useServiceRole);
+      const supabase = getSupabaseAdmin();
       const category =
         testData.category ||
         getCategoryVariants(examCategory)[0] ||
@@ -263,12 +265,12 @@ export async function POST(request) {
 
       if (testError) {
         console.error('Error saving test:', testError);
-        const rlsHint =
-          testError.code === '42501'
-            ? ' Run scripts/fix_mock_tests_rls_policies.sql in Supabase SQL Editor, or set SUPABASE_SERVICE_ROLE_KEY to the service_role secret (not the publishable key).'
-            : '';
         return NextResponse.json(
-          { success: false, error: `Failed to save test: ${testError.message}.${rlsHint}` },
+          {
+            success: false,
+            error: formatAdminDbError(testError),
+            setupHint: SUPABASE_ADMIN_SETUP_HINT,
+          },
           { status: 500 }
         );
       }
@@ -309,9 +311,10 @@ export async function POST(request) {
 
   } catch (error) {
     console.error('Create test API error:', error);
-    return NextResponse.json({ 
-      success: false, 
-      error: error.message || 'Internal server error' 
-    });
+    return NextResponse.json({
+      success: false,
+      error: formatAdminDbError(error),
+      setupHint: SUPABASE_ADMIN_SETUP_HINT,
+    }, { status: 500 });
   }
 }

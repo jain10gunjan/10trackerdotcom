@@ -13,7 +13,7 @@ import {
   Zap,
   Database
 } from 'lucide-react';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 
 export default function ApiIntegrationPage() {
   const router = useRouter();
@@ -977,8 +977,7 @@ export default function ApiIntegrationPage() {
           </div>
         </div>
       </div>
-      <Toaster position="bottom-right" />
-    </div>
+</div>
   );
 }
 

@@ -20,7 +20,7 @@ import {
   Lightbulb,
   Trophy,
 } from "lucide-react";
-import toast, {Toaster} from "react-hot-toast";
+import toast from "react-hot-toast";
 
 /* ─── tiny helpers ─── */
 function SectionCard({ icon, title, children }) {
@@ -651,10 +651,6 @@ export default function ExamPage() {
           </div>
         </div>
       </main>
-      <Toaster
-  position="top-center"
-  reverseOrder={false}
-/>
-    </>
+</>
   );
 }

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useAuth } from "@/app/context/AuthContext";
 import { CheckCircle, Book, FileText, LayoutGrid, Activity, Calendar } from 'lucide-react';
 import AuthModal from '@/components/AuthModal';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 
 export default function BuyNowWithoutRazorPay({ category }) {
@@ -214,20 +214,6 @@ export default function BuyNowWithoutRazorPay({ category }) {
           </div>
         </div>
       </div>
-      <Toaster
-        position="bottom-right"
-        toastOptions={{
-          duration: 4000,
-          style: {
-            background: '#333',
-            color: '#fff',
-            borderRadius: '8px',
-            boxShadow: '0 3px 10px rgba(0, 0, 0, 0.2)',
-          },
-          success: { style: { background: '#10B981' } },
-          error: { style: { background: '#EF4444' } },
-        }}
-      />
-    </div>
+</div>
   );
 }

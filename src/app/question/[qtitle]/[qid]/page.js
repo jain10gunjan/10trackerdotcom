@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback, useMemo, Suspense } from "reac
 import { MathJax, MathJaxContext } from "better-react-mathjax";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
 import QuestionCard from "@/components/QuestionCard";
 import Navbar from "@/components/Navbar";
 import { ArrowLeft, X } from "lucide-react";
@@ -244,8 +244,7 @@ const SingleQuestionPage = () => {
           </MathJaxContext>
         </div>
       </div>
-      <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
-    </>
+</>
   );
 };
 

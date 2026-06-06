@@ -12,7 +12,13 @@ import {
   datesFromMockAttempts,
   datesFromPracticeRows,
   mergeActivityEvents,
+  computeStreakStats,
 } from '@/lib/activityHeatmap';
+import {
+  buildRecentPractice,
+  buildRecentMockAttempts,
+  buildRecentAllActivity,
+} from '@/lib/dashboardActivity';
 import {
   buildOverallLeaderboard,
   findUserRank,
@@ -20,6 +26,7 @@ import {
 } from '@/lib/mockTestLeaderboard';
 import { fetchLeaderboardData } from '@/lib/mockTestLeaderboardFetch';
 import { formatExamSlug } from '@/lib/platformExams';
+import { listUserPurchasedRoadmaps } from '@/lib/roadmaps/roadmapService';
 
 function practiceSupabase() {
   return createClient(
@@ -244,7 +251,7 @@ export async function GET(request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const heatmapRange = searchParams.get('heatmapRange') === '12mo' ? '12mo' : '90d';
+    const heatmapRange = searchParams.get('heatmapRange') === '90d' ? '90d' : '12mo';
 
     const progressUserId = getProgressUserId({ email: userEmail, id: session.user?.id });
     const profileClient = getSupabaseServer(isValidServiceRoleKey());
@@ -282,7 +289,12 @@ export async function GET(request) {
       datesFromPracticeRows(activityRows)
     );
     const heatmap = buildHeatmapGrid(activityEvents, heatmapRange);
+    const streak = computeStreakStats(activityEvents);
+    const recentPractice = buildRecentPractice(activityRows);
+    const recentMock = buildRecentMockAttempts(mockTests.attempts);
+    const recentAll = buildRecentAllActivity(recentPractice, recentMock);
     const leaderboard = await fetchLeaderboardSnippet(userEmail, primarySlug);
+    const myRoadmaps = await listUserPurchasedRoadmaps(userEmail);
 
     const practiceTotals = practice.reduce(
       (acc, exam) => ({
@@ -299,6 +311,11 @@ export async function GET(request) {
       profile: profile
         ? {
             displayName: profile.display_name,
+            avatarUrl: profile.avatar_url || null,
+            bio: profile.bio || null,
+            city: profile.city || null,
+            state: profile.state || null,
+            country: profile.country || null,
             target_exam: primarySlug,
             target_exams: targetExams,
           }
@@ -314,7 +331,14 @@ export async function GET(request) {
       },
       wallet,
       heatmap: { range: heatmapRange, ...heatmap },
+      streak,
+      recentActivity: {
+        practice: recentPractice,
+        mock: recentMock,
+        all: recentAll,
+      },
       leaderboard,
+      myRoadmaps,
       summary: {
         practiceExams: practice.length,
         practiceQuestions: practiceTotals.questions,
@@ -323,6 +347,7 @@ export async function GET(request) {
             ? Math.round((practiceTotals.correct / practiceTotals.questions) * 100)
             : 0,
         practicePoints: practiceTotals.points,
+        topicsPracticed: practiceTotals.topics,
         mockTestsCompleted: mockTests.stats?.completedCount ?? 0,
         mockTestsInProgress: mockTests.stats?.inProgressCount ?? 0,
         mockAverageScore: mockTests.stats?.averageScore ?? 0,
