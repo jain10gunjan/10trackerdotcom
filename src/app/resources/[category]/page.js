@@ -7,7 +7,6 @@ import { useAuth } from "@/app/context/AuthContext";
 import toast from "react-hot-toast";
 import { AnimatePresence, motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
-import AuthModal from "@/components/AuthModal";
 import BuyNow from "@/components/BuyNow";
 import MetaDataJobs from "@/components/Seo";
 import BuyNowYearWise from "@/components/BuyNowYearWise";
@@ -35,7 +34,7 @@ export default function Home() {
   const [hasAccess, setHasAccess] = useState(null); // New state to track access
 
   const { category } = useParams();
-  const { user, setShowAuthModal, signInWithGoogle } = useAuth();
+  const { user, setShowAuthModal } = useAuth();
   const router = useRouter();
 
   const fetchOrderStatus = useCallback(
@@ -658,23 +657,6 @@ export default function Home() {
         )}
       </AnimatePresence>
 
-      <Suspense fallback={<div>Loading login modal...</div>}>
-        <AuthModal
-          isOpen={user === null}
-          onClose={() => {
-            setShowAuthModal(false);
-            setSelectedPracticeUrl(null);
-          }}
-          onGoogleSignIn={async () => {
-            await signInWithGoogle();
-            if (selectedPracticeUrl && user) {
-              router.push(selectedPracticeUrl);
-            }
-          }}
-        />
-      </Suspense>
-
-   
     </div>
   );
 }

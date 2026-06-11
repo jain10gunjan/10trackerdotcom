@@ -1,3 +1,5 @@
+import { getAutomationImageRemotePatterns } from './src/lib/automationImage.js';
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
@@ -5,11 +7,7 @@ const nextConfig = {
     middlewareClientMaxBodySize: "50mb",
   },
   images: {
-    remotePatterns: [
-      { protocol: 'https', hostname: 'gateoverflow.in' },
-      { protocol: 'https', hostname: '10tracker.com' },
-      { protocol: 'https', hostname: 'images.unsplash.com' },
-    ],
+    remotePatterns: getAutomationImageRemotePatterns(),
   },
 };
 

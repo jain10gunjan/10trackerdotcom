@@ -5,256 +5,309 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Home,
+  LayoutGrid,
   X,
-  ChevronRight,
-  GraduationCap,
   BarChart2,
   User,
-  LogIn,
-  Info,
-  Mail,
-  Menu,
-  Newspaper,
-  Briefcase,
+  LogOut,
+  Shield,
 } from 'lucide-react';
 import { useAuth } from '@/app/context/AuthContext';
+import WalletBar from '@/components/credits/WalletBar';
+import {
+  MOBILE_TAB_NAV,
+  MORE_NAV,
+  FOOTER_NAV,
+  PRIMARY_NAV,
+  isNavActive,
+  isMoreNavActive,
+} from '@/lib/siteNav';
+
+function getUserLabel(user) {
+  return user?.fullName || user?.name || user?.email || 'Account';
+}
+
+function getUserInitial(user) {
+  return (getUserLabel(user)[0] || 'U').toUpperCase();
+}
 
 const MobileBottomMenu = () => {
-  const [showMenu, setShowMenu] = useState(false);
-  const [toast, setToast] = useState(null); // { message: string }
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [roadmapModalOpen, setRoadmapModalOpen] = useState(false);
   const pathname = usePathname();
-  const { user } = useAuth();
-  const isActive = (path) => pathname === path;
+  const { user, signOut, isAdmin } = useAuth();
 
-  const showToast = (message) => {
-    setToast({ message });
-  };
+  const moreActive = isMoreNavActive(pathname);
 
   useEffect(() => {
-    if (!toast) return;
-    const t = setTimeout(() => setToast(null), 2200);
-    return () => clearTimeout(t);
-  }, [toast]);
+    setSheetOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    const el = document.documentElement;
+    const sync = () => setRoadmapModalOpen(el.hasAttribute('data-roadmap-day-modal'));
+    sync();
+    const obs = new MutationObserver(sync);
+    obs.observe(el, { attributes: true, attributeFilter: ['data-roadmap-day-modal'] });
+    return () => obs.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!sheetOpen) return undefined;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [sheetOpen]);
+
+  if (roadmapModalOpen) {
+    return null;
+  }
+
+  const tabClass = (active) =>
+    `flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-1 py-2 transition-colors ${
+      active ? 'text-emerald-700' : 'text-neutral-500 hover:text-neutral-800'
+    }`;
+
+  const sheetLinkClass = (active) =>
+    `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
+      active
+        ? 'bg-emerald-50 text-emerald-900'
+        : 'text-neutral-700 hover:bg-neutral-50 hover:text-neutral-900'
+    }`;
+
+  const sheetExtras = PRIMARY_NAV.filter(
+    (item) => !MOBILE_TAB_NAV.some((tab) => tab.path === item.path)
+  );
 
   return (
     <>
-      {/* Bottom bar: white theme */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 safe-area-bottom">
-        {/* subtle top divider + blur */}
-        <div className="bg-white/95 backdrop-blur border-t border-neutral-200 shadow-[0_-2px_10px_rgba(0,0,0,0.06)]">
-          <div className="relative h-16 px-3">
-            {/* Center floating Menu button */}
-            <button
-              type="button"
-              onClick={() => setShowMenu(true)}
-              className={`absolute left-1/2 -translate-x-1/2 -top-4 w-14 h-14 rounded-2xl flex flex-col items-center justify-center shadow-lg border transition-all ${
-                showMenu
-                  ? 'bg-neutral-900 border-neutral-900 text-white'
-                  : 'bg-white border-neutral-200 text-neutral-900'
-              }`}
-              aria-label="Open menu"
-            >
-              <Menu className={`w-6 h-6 ${showMenu ? 'text-white' : 'text-neutral-900'}`} />
-              <span className={`text-[10px] font-semibold mt-0.5 ${showMenu ? 'text-white' : 'text-neutral-800'}`}>
-                Menu
-              </span>
-            </button>
-
-            {/* Left / Right actions */}
-            <div className="h-full grid grid-cols-3 items-end pb-2">
+      {/* Bottom tab bar — matches navbar (lg breakpoint) */}
+      <nav
+        className="fixed bottom-0 left-0 right-0 z-40 border-t border-neutral-200/90 bg-white/95 backdrop-blur-md supports-[backdrop-filter]:bg-white/90 pb-[env(safe-area-inset-bottom)] lg:hidden"
+        aria-label="Mobile navigation"
+      >
+        <div className="mx-auto flex h-16 max-w-lg items-stretch px-1">
+          {MOBILE_TAB_NAV.map((item) => {
+            const active = isNavActive(pathname, item.path);
+            const Icon = item.icon;
+            return (
               <Link
-                href="/"
-                className={`flex flex-col items-center justify-center transition-colors min-w-0 py-2 ${
-                  isActive('/') ? 'text-neutral-900' : 'text-neutral-500'
-                }`}
+                key={item.path}
+                href={item.path}
+                className={tabClass(active)}
+                aria-current={active ? 'page' : undefined}
               >
-                <Home className="w-5 h-5 flex-shrink-0" />
-                <span className="text-[10px] font-medium mt-0.5 truncate w-full text-center">Home</span>
+                <Icon className="h-5 w-5 shrink-0" strokeWidth={active ? 2.25 : 2} />
+                <span className="w-full truncate text-center text-[10px] font-medium leading-tight">
+                  {item.name}
+                </span>
                 <span
-                  className={`mt-1 h-0.5 w-6 rounded-full ${
-                    isActive('/') ? 'bg-neutral-900' : 'bg-transparent'
+                  className={`h-0.5 w-5 rounded-full transition-colors ${
+                    active ? 'bg-emerald-600' : 'bg-transparent'
                   }`}
                 />
               </Link>
+            );
+          })}
 
-              {/* spacer cell (center button lives above) */}
-              <div />
-
-              {user ? (
-                <Link
-                  href="/"
-                  className={`flex flex-col items-center justify-center transition-colors min-w-0 py-2 ${
-                    isActive('/') && pathname === '/' ? 'text-neutral-900' : 'text-neutral-500'
-                  }`}
-                >
-                  <BarChart2 className="w-5 h-5 flex-shrink-0" />
-                  <span className="text-[10px] font-medium mt-0.5 truncate w-full text-center">Progress</span>
-                  <span
-                    className={`mt-1 h-0.5 w-6 rounded-full ${
-                      isActive('/') && pathname === '/' ? 'bg-neutral-900' : 'bg-transparent'
-                    }`}
-                  />
-                </Link>
-              ) : (
-                <Link
-                  href="/sign-in"
-                  className={`flex flex-col items-center justify-center transition-colors min-w-0 py-2 ${
-                    isActive('/sign-in') ? 'text-neutral-900' : 'text-neutral-500'
-                  }`}
-                >
-                  <LogIn className="w-5 h-5 flex-shrink-0" />
-                  <span className="text-[10px] font-medium mt-0.5 truncate w-full text-center">Sign In</span>
-                  <span
-                    className={`mt-1 h-0.5 w-6 rounded-full ${
-                      isActive('/sign-in') ? 'bg-neutral-900' : 'bg-transparent'
-                    }`}
-                  />
-                </Link>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Toast */}
-      <AnimatePresence>
-        {toast && (
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 16 }}
-            transition={{ duration: 0.2 }}
-            className="md:hidden fixed bottom-20 left-1/2 -translate-x-1/2 z-[80]"
+          <button
+            type="button"
+            onClick={() => setSheetOpen(true)}
+            className={tabClass(moreActive || sheetOpen)}
+            aria-expanded={sheetOpen}
+            aria-haspopup="dialog"
           >
-            <div className="rounded-full bg-neutral-900 text-white text-xs font-medium px-4 py-2 shadow-lg border border-neutral-800">
-              {toast.message}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            <LayoutGrid className="h-5 w-5 shrink-0" strokeWidth={moreActive || sheetOpen ? 2.25 : 2} />
+            <span className="w-full truncate text-center text-[10px] font-medium leading-tight">More</span>
+            <span
+              className={`h-0.5 w-5 rounded-full transition-colors ${
+                moreActive || sheetOpen ? 'bg-emerald-600' : 'bg-transparent'
+              }`}
+            />
+          </button>
+        </div>
+      </nav>
 
-      {/* Drawer: white theme */}
+      {/* Bottom sheet */}
       <AnimatePresence>
-        {showMenu && (
+        {sheetOpen ? (
           <>
-            <motion.div
+            <motion.button
+              type="button"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setShowMenu(false)}
-              className="md:hidden fixed inset-0 bg-black/40 z-[60]"
+              className="fixed inset-0 z-[60] bg-neutral-900/30 backdrop-blur-[2px] lg:hidden"
+              aria-label="Close menu"
+              onClick={() => setSheetOpen(false)}
             />
             <motion.div
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
-              transition={{ type: 'tween', duration: 0.25, ease: 'easeOut' }}
-              className="md:hidden fixed top-0 right-0 bottom-0 w-full max-w-[280px] bg-white border-l border-neutral-200 z-[70] flex flex-col shadow-xl"
+              role="dialog"
+              aria-modal="true"
+              aria-label="More navigation"
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 28, stiffness: 320 }}
+              className="fixed inset-x-0 bottom-0 z-[70] max-h-[min(85vh,640px)] overflow-hidden rounded-t-2xl border border-neutral-200 bg-white shadow-2xl lg:hidden"
+              style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
             >
-              <div className="flex items-center justify-between px-4 py-4 border-b border-neutral-200 sticky top-0 z-10 bg-white">
-                <h2 className="text-lg font-semibold text-neutral-900">Menu</h2>
+              <div className="flex justify-center pt-3 pb-1">
+                <div className="h-1 w-10 rounded-full bg-neutral-200" aria-hidden />
+              </div>
+
+              <div className="flex items-center justify-between border-b border-neutral-100 px-4 pb-3 pt-1">
+                <h2 className="text-base font-semibold text-neutral-900">Explore</h2>
                 <button
-                  onClick={() => setShowMenu(false)}
-                  className="p-2 rounded-lg text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 transition-colors"
-                  aria-label="Close menu"
+                  type="button"
+                  onClick={() => setSheetOpen(false)}
+                  className="rounded-lg p-2 text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
+                  aria-label="Close"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="h-5 w-5" />
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto px-4 py-4">
-                <div className="mb-4">
-                  <p className="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-3">Quick links</p>
-                  <div className="space-y-1">
-                    <Link
-                      href="/exams"
-                      onClick={() => setShowMenu(false)}
-                      className="flex items-center gap-3 px-3 py-3 rounded-xl text-neutral-800 hover:bg-neutral-100 transition-colors"
-                    >
-                      <GraduationCap className="w-5 h-5 text-neutral-500 flex-shrink-0" />
-                      <span className="text-sm font-medium flex-1">All Exams</span>
-                      <ChevronRight className="w-4 h-4 text-neutral-400" />
-                    </Link>
-                    <button
-                      type="button"
-                      onClick={() => showToast('News is in progress — coming soon.')}
-                      className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-neutral-400 bg-neutral-50 border border-neutral-200 cursor-not-allowed"
-                    >
-                      <Newspaper className="w-5 h-5 text-neutral-300 flex-shrink-0" />
-                      <span className="text-sm font-medium flex-1 text-left">News</span>
-                      <span className="text-[11px] font-semibold text-neutral-300">Soon</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => showToast('Jobs is in progress — coming soon.')}
-                      className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-neutral-400 bg-neutral-50 border border-neutral-200 cursor-not-allowed"
-                    >
-                      <Briefcase className="w-5 h-5 text-neutral-300 flex-shrink-0" />
-                      <span className="text-sm font-medium flex-1 text-left">Jobs</span>
-                      <span className="text-[11px] font-semibold text-neutral-300">Soon</span>
-                    </button>
-
-                    {user ? (
-                      <>
-                        <Link
-                          href="/"
-                          onClick={() => setShowMenu(false)}
-                          className="flex items-center gap-3 px-3 py-3 rounded-xl text-neutral-800 hover:bg-neutral-100 transition-colors"
-                        >
-                          <BarChart2 className="w-5 h-5 text-neutral-500 flex-shrink-0" />
-                          <span className="text-sm font-medium flex-1">My Progress</span>
-                          <ChevronRight className="w-4 h-4 text-neutral-400" />
-                        </Link>
-                        <Link
-                          href="/profile"
-                          onClick={() => setShowMenu(false)}
-                          className="flex items-center gap-3 px-3 py-3 rounded-xl text-neutral-800 hover:bg-neutral-100 transition-colors"
-                        >
-                          <User className="w-5 h-5 text-neutral-500 flex-shrink-0" />
-                          <span className="text-sm font-medium flex-1">Edit profile</span>
-                          <ChevronRight className="w-4 h-4 text-neutral-400" />
-                        </Link>
-                      </>
-                    ) : (
-                      <Link
-                        href="/sign-in"
-                        onClick={() => setShowMenu(false)}
-                        className="flex items-center gap-3 px-3 py-3 rounded-xl text-neutral-800 hover:bg-neutral-100 transition-colors"
-                      >
-                        <LogIn className="w-5 h-5 text-neutral-500 flex-shrink-0" />
-                        <span className="text-sm font-medium flex-1">Sign In</span>
-                        <ChevronRight className="w-4 h-4 text-neutral-400" />
-                      </Link>
-                    )}
+              <div className="overflow-y-auto px-4 py-3" style={{ maxHeight: 'calc(min(85vh, 640px) - 120px)' }}>
+                {user ? (
+                  <div className="mb-4 flex items-center gap-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-3">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-neutral-900 text-sm font-semibold text-white">
+                      {getUserInitial(user)}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-neutral-900">
+                        {getUserLabel(user)}
+                      </p>
+                      <p className="truncate text-xs text-neutral-500">{user.email || ''}</p>
+                    </div>
+                    <WalletBar compact />
                   </div>
+                ) : null}
+
+                <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wider text-neutral-400">
+                  Practice
+                </p>
+                <div className="mb-4 space-y-0.5">
+                  {sheetExtras.map((item) => {
+                    const Icon = item.icon;
+                    const active = isNavActive(pathname, item.path);
+                    return (
+                      <Link
+                        key={item.path}
+                        href={item.path}
+                        onClick={() => setSheetOpen(false)}
+                        className={sheetLinkClass(active)}
+                      >
+                        <Icon className="h-[18px] w-[18px] shrink-0 text-neutral-400" />
+                        {item.name}
+                      </Link>
+                    );
+                  })}
+                  {user ? (
+                    <Link
+                      href="/"
+                      onClick={() => setSheetOpen(false)}
+                      className={sheetLinkClass(pathname === '/' && user)}
+                    >
+                      <BarChart2 className="h-[18px] w-[18px] shrink-0 text-neutral-400" />
+                      My progress
+                    </Link>
+                  ) : null}
                 </div>
 
-                <div className="pt-4 border-t border-neutral-200">
-                  <p className="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-3">More</p>
-                  <div className="space-y-1">
+                <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wider text-neutral-400">
+                  More
+                </p>
+                <div className="mb-4 space-y-0.5">
+                  {MORE_NAV.map((item) => {
+                    const Icon = item.icon;
+                    const active = isNavActive(pathname, item.path);
+                    return (
+                      <Link
+                        key={item.path}
+                        href={item.path}
+                        onClick={() => setSheetOpen(false)}
+                        className={sheetLinkClass(active)}
+                      >
+                        <Icon className="h-[18px] w-[18px] shrink-0 text-neutral-400" />
+                        {item.name}
+                      </Link>
+                    );
+                  })}
+                </div>
+
+                {user ? (
+                  <div className="mb-4 space-y-0.5 border-t border-neutral-100 pt-3">
                     <Link
-                      href="/about-us"
-                      onClick={() => setShowMenu(false)}
-                      className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 transition-colors"
+                      href="/profile"
+                      onClick={() => setSheetOpen(false)}
+                      className={sheetLinkClass(pathname === '/profile')}
                     >
-                      <Info className="w-4 h-4 text-neutral-500" />
-                      About Us
+                      <User className="h-[18px] w-[18px] shrink-0 text-neutral-400" />
+                      Edit profile
+                    </Link>
+                    {isAdmin ? (
+                      <Link
+                        href="/admin"
+                        onClick={() => setSheetOpen(false)}
+                        className={sheetLinkClass(pathname?.startsWith('/admin'))}
+                      >
+                        <Shield className="h-[18px] w-[18px] shrink-0 text-neutral-400" />
+                        Admin
+                      </Link>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        signOut();
+                        setSheetOpen(false);
+                      }}
+                      className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
+                    >
+                      <LogOut className="h-[18px] w-[18px] shrink-0" />
+                      Sign out
+                    </button>
+                  </div>
+                ) : (
+                  <div className="mb-4 grid grid-cols-2 gap-2 border-t border-neutral-100 pt-3">
+                    <Link
+                      href="/sign-in"
+                      onClick={() => setSheetOpen(false)}
+                      className="rounded-xl border border-neutral-200 px-3 py-2.5 text-center text-sm font-semibold text-neutral-800 hover:bg-neutral-50"
+                    >
+                      Sign in
                     </Link>
                     <Link
-                      href="/contact-us"
-                      onClick={() => setShowMenu(false)}
-                      className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 transition-colors"
+                      href="/sign-up"
+                      onClick={() => setSheetOpen(false)}
+                      className="rounded-xl bg-neutral-900 px-3 py-2.5 text-center text-sm font-semibold text-white hover:bg-neutral-800"
                     >
-                      <Mail className="w-4 h-4 text-neutral-500" />
-                      Contact Us
+                      Sign up
                     </Link>
                   </div>
+                )}
+
+                <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wider text-neutral-400">
+                  Legal
+                </p>
+                <div className="flex flex-wrap gap-2 pb-2">
+                  {FOOTER_NAV.map((item) => (
+                    <Link
+                      key={item.path}
+                      href={item.path}
+                      onClick={() => setSheetOpen(false)}
+                      className="rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-xs font-medium text-neutral-600 transition-colors hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-900"
+                    >
+                      {item.name.replace(' Policy', '').replace(' of Service', '')}
+                    </Link>
+                  ))}
                 </div>
               </div>
             </motion.div>
           </>
-        )}
+        ) : null}
       </AnimatePresence>
     </>
   );

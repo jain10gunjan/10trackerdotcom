@@ -18,7 +18,6 @@ import { useParams } from "next/navigation";
 import { usePDF } from "react-to-pdf";
 import Navbar from "@/components/Navbar";
 import { useAuth } from "@/app/context/AuthContext";
-import AuthModal from "@/components/AuthModal";
 
 // Supabase configuration
 const supabase = createClient(
@@ -189,12 +188,11 @@ const formatTime = (seconds) => {
 
 const Test = () => {
   const { category } = useParams();
-  const { user, signInWithGoogle } = useAuth();
+  const { user, openAuthModal } = useAuth();
   const { topics, isLoading, error, hasAccess } = useTopics(category);
   const [state, dispatch] = useReducer(reducer, initialState);
   const [searchQuery, setSearchQuery] = useState("");
   const [difficultyFilter, setDifficultyFilter] = useState("all");
-  const [showAuthModal, setShowAuthModal] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const { toPDF, targetRef } = usePDF({ filename: `test_summary_${category}.pdf` });
 
@@ -369,7 +367,7 @@ const Test = () => {
             <h2 className="text-2xl font-bold text-gray-800 mb-4">Sign In Required</h2>
             <p className="text-gray-600 mb-6">Please sign in to access test content.</p>
             <button
-              onClick={() => setShowAuthModal(true)}
+              onClick={() => openAuthModal()}
               className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center justify-center mx-auto"
             >
               <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
@@ -379,12 +377,7 @@ const Test = () => {
             </button>
           </div>
         </div>
-        <AuthModal
-          isOpen={showAuthModal}
-          onClose={() => setShowAuthModal(false)}
-          onGoogleSignIn={signInWithGoogle}
-        />
-</div>
+      </div>
     );
   }
 
@@ -409,8 +402,6 @@ const Test = () => {
     return (
       <div className="min-h-screen bg-gray-100 pt-16">
         <Navbar
-          user={user}
-          setShowAuthModal={setShowAuthModal}
           setIsSidebarOpen={setIsSidebarOpen}
           isSidebarOpen={isSidebarOpen}
         />
@@ -557,12 +548,7 @@ const Test = () => {
             </div>
           </div>
         </div>
-        <AuthModal
-          isOpen={showAuthModal}
-          onClose={() => setShowAuthModal(false)}
-          onGoogleSignIn={signInWithGoogle}
-        />
-</div>
+      </div>
     );
   }
 
@@ -570,8 +556,6 @@ const Test = () => {
   return (
     <div className="min-h-screen bg-gray-100 pt-16">
       <Navbar
-        user={user}
-        setShowAuthModal={setShowAuthModal}
         setIsSidebarOpen={setIsSidebarOpen}
         isSidebarOpen={isSidebarOpen}
       />

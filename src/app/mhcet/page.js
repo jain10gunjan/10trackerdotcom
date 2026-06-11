@@ -1,13 +1,12 @@
 "use client";
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { getAuth, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
-import { initializeApp } from "firebase/app";
 import { createClient } from "@supabase/supabase-js";
 import { upsertUserProgress } from "@/lib/userProgressUpsert";
 import toast from "react-hot-toast";
 import debounce from "lodash/debounce";
-import AuthModal from "@/components/AuthModal";
+import { useAuth } from "@/app/context/AuthContext";
+import { applyProgressUserFilter, getProgressUserId } from "@/lib/progressIdentity";
 import Navbar from "@/components/Navbar";
 
 // Error Boundary Component
@@ -36,22 +35,6 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-// Firebase configuration
-const firebaseConfig = {
-  apiKey: "AIzaSyCyHHobmWFRWb_ZnKhs3JXSCKdbTQaNHW8",
-  authDomain: "examtracker-6731e.firebaseapp.com",
-  projectId: "examtracker-6731e",
-  storageBucket: "examtracker-6731e.firebasestorage.app",
-  messagingSenderId: "492165379080",
-  appId: "1:492165379080:web:6c71aa16d2447f81348dbd",
-  measurementId: "G-Z5B4SRV9H7",
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const provider = new GoogleAuthProvider();
-
 // Supabase configuration
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -62,9 +45,8 @@ const supabase = createClient(
 );
 
 const Mhcettracker = () => {
+  const { user } = useAuth();
   const [data, setData] = useState([]);
-  const [userProgress, setUserProgress] = useState({});
-  const [user, setUser] = useState(null);
   const [activeSubject, setActiveSubject] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [isFiltering, setIsFiltering] = useState(false);
@@ -79,7 +61,7 @@ const Mhcettracker = () => {
     totalCompletedQuestions: 0,
     totalCorrectAnswers: 0,
   });
-  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [userProgress, setUserProgress] = useState({});
   const [fetchProgressCallCount, setFetchProgressCallCount] = useState(0);
   const searchInputRef = useRef(null);
 
@@ -133,41 +115,24 @@ const Mhcettracker = () => {
     fetchData();
   }, []);
 
-  // Firebase Authentication
-  useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((currentUser) => {
-      setUser(currentUser);
-      if (currentUser) {
-        fetchUserProgress(currentUser.uid);
-      } else {
-        setUserProgress({});
-        setProgress({
-          completedTopics: [],
-          completedCount: 0,
-          completionPercentage: 0,
-          totalCompletedQuestions: 0,
-          totalCorrectAnswers: 0,
-        });
-      }
-    });
-    return () => unsubscribe();
-  }, []);
-
-  // Fetch user progress for all topics
   const fetchUserProgress = useCallback(
-    debounce(async (uid) => {
+    debounce(async () => {
+      if (!user?.id) return;
+
       setFetchProgressCallCount((prev) => {
         const newCount = prev + 1;
-        console.log(`User Progress API Call #${newCount} for user: ${uid}`);
+        console.log(`User Progress API Call #${newCount} for user: ${user.email || user.id}`);
         return newCount;
       });
 
       try {
-        const { data, error } = await supabase
+        let query = supabase
           .from("user_progress")
           .select("topic, completedquestions, correctanswers, points")
-          .eq("user_id", uid)
           .eq("area", "mhcet");
+        query = applyProgressUserFilter(query, user);
+
+        const { data, error } = await query;
 
         if (error) throw error;
 
@@ -188,8 +153,24 @@ const Mhcettracker = () => {
         setUserProgress({});
       }
     }, 300),
-    []
+    [user]
   );
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchUserProgress();
+    } else {
+      setUserProgress({});
+      setProgress({
+        completedTopics: [],
+        completedCount: 0,
+        completionPercentage: 0,
+        totalCompletedQuestions: 0,
+        totalCorrectAnswers: 0,
+      });
+    }
+    return () => fetchUserProgress.cancel();
+  }, [user, fetchUserProgress]);
 
   // Debounced function to update progress in Supabase
   const debouncedUpdateProgress = useCallback(
@@ -200,7 +181,7 @@ const Mhcettracker = () => {
         const { data, error } = await upsertUserProgress(
           supabase,
           {
-            user_id: user.uid,
+            user_id: getProgressUserId(user),
             topic: topic,
             completedquestions: updatedProgress.completedQuestions,
             correctanswers: updatedProgress.correctAnswers,
@@ -219,20 +200,6 @@ const Mhcettracker = () => {
     }, 500),
     [user]
   );
-
-  // Google Sign-In
-  const handleGoogleSignIn = async () => {
-    try {
-      const result = await signInWithPopup(auth, provider);
-      setUser(result.user);
-      setShowAuthModal(false);
-      toast.success("Successfully signed in!");
-      fetchUserProgress(result.user.uid);
-    } catch (error) {
-      toast.error("Authentication failed");
-      console.error(error);
-    }
-  };
 
   // Calculate total questions across all topics
   const calculateTotalQuestions = () => {
@@ -403,13 +370,7 @@ const Mhcettracker = () => {
 
   return (
     <ErrorBoundary>
-      <Navbar
-        auth={auth}
-        user={user}
-        setShowAuthModal={setShowAuthModal}
-        setIsSidebarOpen={setIsSidebarOpen}
-        isSidebarOpen={isSidebarOpen}
-      />
+      <Navbar />
       <div className="min-h-screen bg-gray-100 mt-24">
         {/* Mobile sidebar */}
         <div
@@ -792,12 +753,6 @@ const Mhcettracker = () => {
             </div>
           </div>
         </div>
-
-        <AuthModal
-          isOpen={showAuthModal}
-          onClose={() => setShowAuthModal(false)}
-          onGoogleSignIn={handleGoogleSignIn}
-        />
 </div>
     </ErrorBoundary>
   );

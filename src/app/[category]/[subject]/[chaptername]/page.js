@@ -7,7 +7,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useAuth } from "@/app/context/AuthContext";
-import Navbar from "@/components/Navbar";
+import ExamSubpageHeader from "@/components/examHub/ExamSubpageHeader";
 import { getCachedData } from "@/lib/utils/apiCache";
 import { 
   ArrowLeft, 
@@ -18,9 +18,7 @@ import {
 } from "lucide-react";
 
 // Lazy-loaded components
-const AuthModal = dynamic(() => import("@/components/AuthModal"), { ssr: false });
 const Alert = dynamic(() => import("@/components/Alert"), { ssr: false });
-const MetaDataJobs = dynamic(() => import("@/components/Seo"), { ssr: false });
 
 // Supabase configuration
 const supabase = createClient(
@@ -246,14 +244,7 @@ const ChapterTopicsPage = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-neutral-50">
-        <Suspense fallback={<div>Loading metadata...</div>}>
-          <MetaDataJobs
-            seoTitle={`${formattedChapterName} - ${category?.toUpperCase()}`}
-            seoDescription={`Practice ${formattedChapterName} topics for ${category?.toUpperCase()}`}
-          />
-        </Suspense>
-        <Navbar />
-        <div className="flex justify-center items-center min-h-[60vh] pt-20 px-4">
+        <div className="flex justify-center items-center min-h-[60vh] pt-8 px-4">
           <motion.div 
             initial={{ scale: 0.9, opacity: 0 }} 
             animate={{ scale: 1, opacity: 1 }} 
@@ -273,28 +264,14 @@ const ChapterTopicsPage = () => {
 
   return (
     <ErrorBoundary>
-      <Suspense fallback={<div>Loading metadata...</div>}>
-        <MetaDataJobs
-          seoTitle={`${formattedChapterName} - ${category?.toUpperCase()}`}
-          seoDescription={`Practice ${formattedChapterName} topics for ${category?.toUpperCase()}`}
-        />
-      </Suspense>
-      <Suspense fallback={<div>Loading navbar...</div>}>
-        <Navbar/>
-      </Suspense>
-      <div className="min-h-screen bg-neutral-50 pt-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-12 sm:pb-16">
-          {/* Breadcrumb */}
-          <div className="mb-6 flex items-center gap-4">
-            <Link
-              href={`/${category}/${subject || ''}`}
-              className="flex items-center gap-2 text-neutral-600 hover:text-neutral-900 transition-colors text-sm"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>Back to {formattedSubject || 'Subject'}</span>
-            </Link>
-          </div>
-
+      <div className="min-h-screen bg-neutral-50 pt-24">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12 sm:pb-16">
+          <ExamSubpageHeader
+            title={formattedChapterName}
+            description={`Practice topics in ${formattedChapterName}.`}
+            backHref={`/${category}/${subject}`}
+            backLabel="Back to subject"
+          />
           <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex-1 min-w-0">
               <h1 className="text-xl sm:text-2xl md:text-3xl font-semibold text-neutral-900">

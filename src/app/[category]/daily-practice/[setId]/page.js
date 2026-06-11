@@ -2,8 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
-import Navbar from "@/components/Navbar";
-import MetaDataJobs from "@/components/Seo";
+import ExamSubpageHeader from "@/components/examHub/ExamSubpageHeader";
 import { MathJax, MathJaxContext } from "better-react-mathjax";
 import { BookOpen, AlertCircle, CheckCircle, XCircle, ChevronDown, ChevronUp } from "lucide-react";
 import SyntaxHighlighter from "react-syntax-highlighter";
@@ -405,20 +404,16 @@ export default function DailyPracticeSetPage() {
     [answers]
   );
 
-  const seoTitle = setData
-    ? `${setData.title} – ${label} Daily Practice`
-    : `${label} Daily Practice`;
-
   return (
     <MathJaxContext config={mathJaxConfig}>
       <div className="min-h-screen bg-neutral-50">
-        <MetaDataJobs
-          seoTitle={seoTitle}
-          seoDescription={`Solve MCQs in a daily practice set for ${label}.`}
-        />
-        <Navbar />
-
         <main className="mx-auto max-w-3xl px-4 pb-16 pt-24 sm:px-6 lg:px-8">
+          <ExamSubpageHeader
+            title={setData?.title || 'Daily practice set'}
+            description={`Solve MCQs in this daily set for ${label}.`}
+            backHref={`/${safeCategory}/daily-practice`}
+            backLabel="All daily sets"
+          />
           {loading ? (
             <SkeletonSet />
           ) : error ? (

@@ -11,6 +11,7 @@ import { AlertCircle, ArrowLeft } from "lucide-react";
 export default function AdminMcqExtractorPage() {
   const router = useRouter();
   const { user, isAdmin, loading } = useAuth();
+  const [viewingQuestions, setViewingQuestions] = React.useState(false);
 
   React.useEffect(() => {
     if (!loading && !user) {
@@ -39,23 +40,32 @@ export default function AdminMcqExtractorPage() {
         seoTitle="MCQ Extractor"
         seoDescription="Extract and review MCQs from PDF"
       />
-      <Link
-        href="/admin"
-        className="mb-4 inline-flex items-center gap-2 text-sm text-neutral-600 hover:text-neutral-900"
+      {!viewingQuestions && (
+        <Link
+          href="/admin"
+          className="mb-2 inline-flex items-center gap-2 text-sm text-neutral-600 hover:text-neutral-900 sm:mb-4"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Admin
+        </Link>
+      )}
+      <div
+        className={`sm:mb-4 ${viewingQuestions ? "mb-1 hidden sm:block" : "mb-3"}`}
       >
-        <ArrowLeft className="h-4 w-4" />
-        Admin
-      </Link>
-      <div className="mb-4">
-        <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+        <h1 className="hidden text-2xl font-semibold tracking-tight text-neutral-900 sm:block">
           MCQ extractor
         </h1>
-        <p className="mt-1 max-w-2xl text-sm text-neutral-600">
-          Extract from PDF, review and edit examtracker questions, rewrite with AI,
-          and save to Supabase.
+        <p className="max-w-2xl text-sm text-neutral-600 sm:mt-1">
+          <span className="sm:hidden">
+            Extract PDFs, review questions, rewrite with AI, and save to the database.
+          </span>
+          <span className="hidden sm:inline">
+            Extract from PDF, review and edit examtracker questions, rewrite with AI,
+            and save to Supabase.
+          </span>
         </p>
       </div>
-      <McqExtractorApp />
+      <McqExtractorApp onViewingQuestionsChange={setViewingQuestions} />
     </div>
   );
 }

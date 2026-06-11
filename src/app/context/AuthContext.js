@@ -12,7 +12,10 @@ const AuthContext = createContext({
   signOut: async () => {},
   isAuthenticated: false,
   showAuthModal: false,
-  setShowAuthModal: () => {}
+  authModalOverride: null,
+  openAuthModal: () => {},
+  closeAuthModal: () => {},
+  setShowAuthModal: () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -39,7 +42,8 @@ function normalizeUser(sessionUser) {
 
 export const AuthProvider = ({ children }) => {
   const { data: session, status } = useSession();
-  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showAuthModal, setShowAuthModalOpen] = useState(false);
+  const [authModalOverride, setAuthModalOverride] = useState(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
 
   const sessionUser = session?.user;
@@ -57,6 +61,24 @@ export const AuthProvider = ({ children }) => {
   const signOut = useCallback(async () => {
     await nextAuthSignOut({ callbackUrl: '/' });
   }, []);
+
+  const closeAuthModal = useCallback(() => {
+    setShowAuthModalOpen(false);
+    setAuthModalOverride(null);
+  }, []);
+
+  const openAuthModal = useCallback((override = null) => {
+    setAuthModalOverride(override);
+    setShowAuthModalOpen(true);
+  }, []);
+
+  const setShowAuthModal = useCallback(
+    (open, override = null) => {
+      if (open) openAuthModal(override);
+      else closeAuthModal();
+    },
+    [openAuthModal, closeAuthModal]
+  );
 
   const adminEmails = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || '')
     .split(',')
@@ -79,10 +101,25 @@ export const AuthProvider = ({ children }) => {
     isAuthenticated: !!user,
     isAdmin,
     showAuthModal,
+    authModalOverride,
+    openAuthModal,
+    closeAuthModal,
     setShowAuthModal,
     showProfileModal,
-    setShowProfileModal
-  }), [user, loading, isAdmin, showAuthModal, showProfileModal]);
+    setShowProfileModal,
+  }), [
+    user,
+    loading,
+    isAdmin,
+    showAuthModal,
+    authModalOverride,
+    openAuthModal,
+    closeAuthModal,
+    setShowAuthModal,
+    showProfileModal,
+    signInWithGoogle,
+    signOut,
+  ]);
 
   return (
     <AuthContext.Provider value={value}>

@@ -24,9 +24,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { toastPromise } from "@/lib/toastAsync";
-import Navbar from "@/components/Navbar";
-import MetaDataJobs from "@/components/Seo";
-import MockTestBreadcrumb from '@/components/mock-test/MockTestBreadcrumb';
+import MockTestSubpageHeader from '@/components/mockTestHub/MockTestSubpageHeader';
 import {
   categoryMatches,
   isAnswerCorrect,
@@ -1279,12 +1277,10 @@ export default function EnhancedMobileMockTestPage() {
 
   if (authLoading || isLoading) {
     return (
-      <div className="min-h-screen bg-neutral-50">
-        <Navbar />
-        <MetaDataJobs seoTitle={`Mock Test`} seoDescription={`Take a ${categoryLabel} mock test.`} />
-        <div className="pt-24 min-h-screen flex items-center justify-center p-4">
+      <div className="min-h-screen bg-neutral-50 pt-24">
+        <div className="min-h-[60vh] flex items-center justify-center p-4">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-4 border-neutral-200 border-t-neutral-700 mx-auto mb-4" />
+            <div className="animate-spin rounded-full h-12 w-12 border-4 border-neutral-200 border-t-emerald-600 mx-auto mb-4" />
             <p className="text-neutral-600 font-medium text-sm md:text-base">Loading test…</p>
           </div>
         </div>
@@ -1294,19 +1290,17 @@ export default function EnhancedMobileMockTestPage() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-neutral-50">
-        <Navbar />
-        <MetaDataJobs seoTitle="Sign In Required" seoDescription="Sign in to take the mock test." />
-        <div className="pt-24 min-h-screen flex items-center justify-center p-4">
-          <div className="text-center bg-white rounded-xl shadow-sm border border-neutral-200 p-6 md:p-8 max-w-sm md:max-w-md w-full">
-            <BookOpen className="h-12 w-12 md:h-14 md:w-14 text-neutral-600 mx-auto mb-4" />
-            <h2 className="text-xl md:text-2xl font-bold text-neutral-900 mb-2">Sign In Required</h2>
-            <p className="text-neutral-600 mb-6 text-sm md:text-base">Please sign in to take the test.</p>
+      <div className="min-h-screen bg-neutral-50 pt-24">
+        <div className="min-h-[60vh] flex items-center justify-center p-4">
+          <div className="text-center bg-white rounded-3xl shadow-sm border border-neutral-200 p-6 md:p-8 max-w-sm md:max-w-md w-full">
+            <BookOpen className="h-12 w-12 md:h-14 md:w-14 text-emerald-600 mx-auto mb-4" />
+            <h2 className="text-xl md:text-2xl font-bold text-neutral-900 mb-2">Sign in required</h2>
+            <p className="text-neutral-600 mb-6 text-sm md:text-base">Sign in to take this mock test.</p>
             <button
               onClick={() => router.push(`/sign-in?redirect=${encodeURIComponent(`/mock-test/${examcategory}/attempt/${testId}`)}`)}
-              className="w-full bg-neutral-900 text-white py-3 px-6 rounded-lg hover:bg-neutral-800 transition-colors font-medium"
+              className="w-full bg-emerald-600 text-white py-3 px-6 rounded-2xl hover:bg-emerald-700 transition-colors font-semibold"
             >
-              Sign In
+              Sign in
             </button>
           </div>
         </div>
@@ -1316,19 +1310,17 @@ export default function EnhancedMobileMockTestPage() {
 
   if (!testInfo) {
     return (
-      <div className="min-h-screen bg-neutral-50">
-        <Navbar />
-        <MetaDataJobs seoTitle="Test Not Found" seoDescription="The requested mock test was not found." />
-        <div className="pt-24 min-h-screen flex items-center justify-center p-4">
-          <div className="text-center bg-white rounded-xl shadow-sm border border-neutral-200 p-6 md:p-8 max-w-sm md:max-w-md w-full">
+      <div className="min-h-screen bg-neutral-50 pt-24">
+        <div className="min-h-[60vh] flex items-center justify-center p-4">
+          <div className="text-center bg-white rounded-3xl shadow-sm border border-neutral-200 p-6 md:p-8 max-w-sm md:max-w-md w-full">
             <AlertTriangle className="h-12 w-12 md:h-14 md:w-14 text-red-600 mx-auto mb-4" />
-            <h2 className="text-xl md:text-2xl font-bold text-neutral-900 mb-2">Test Not Found</h2>
+            <h2 className="text-xl md:text-2xl font-bold text-neutral-900 mb-2">Test not found</h2>
             <p className="text-neutral-600 mb-6 text-sm md:text-base">The requested test is not available.</p>
             <button
               onClick={() => router.push(`/mock-test/${examcategory}`)}
-              className="w-full bg-neutral-900 text-white py-3 px-6 rounded-lg hover:bg-neutral-800 transition-colors font-medium"
+              className="w-full bg-emerald-600 text-white py-3 px-6 rounded-2xl hover:bg-emerald-700 transition-colors font-semibold"
             >
-              Browse Tests
+              Browse tests
             </button>
           </div>
         </div>
@@ -1339,28 +1331,14 @@ export default function EnhancedMobileMockTestPage() {
   // Pre-test screen with previous attempt check
   if (!state.testStarted) {
     return (
-      <div className="min-h-screen bg-neutral-50">
-        <Navbar />
-        <MetaDataJobs seoTitle={testInfo.name} seoDescription={`Take ${testInfo.name} - ${categoryLabel} mock test.`} />
-        <div className="pt-24 min-h-screen">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
-            <div className="hidden md:block mb-4">
-              <MockTestBreadcrumb
-                examcategory={examcategory}
-                categoryLabel={categoryLabel}
-                current={testInfo.name}
-              />
-            </div>
-            {/* Mobile Header */}
-            <div className="flex items-center justify-between mb-6 md:hidden">
-              <button onClick={() => router.back()} className="p-2 text-neutral-600 hover:bg-neutral-100 rounded-lg" aria-label="Back">
-                <ArrowLeft className="h-6 w-6" />
-              </button>
-              <h1 className="text-sm font-bold text-neutral-900 truncate flex-1 mx-2 text-center">{testInfo.name}</h1>
-              <button onClick={() => router.push(`/mock-test/${examcategory}`)} className="p-2 text-neutral-600 hover:bg-neutral-100 rounded-lg" aria-label="Home">
-                <Home className="h-6 w-6" />
-              </button>
-            </div>
+      <div className="min-h-screen bg-neutral-50 pt-24 pb-16">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
+          <MockTestSubpageHeader
+            backHref={`/mock-test/${examcategory}`}
+            backLabel="Back to mock tests"
+            title={testInfo.name}
+            description={`${categoryLabel} · ${testInfo.total_questions} questions · ${Math.floor(testInfo.duration / 60) > 0 ? `${Math.floor(testInfo.duration / 60)}h ` : ''}${testInfo.duration % 60}m`}
+          />
 
             <div className="max-w-4xl mx-auto">
               {/* Desktop Header */}
@@ -1474,7 +1452,7 @@ export default function EnhancedMobileMockTestPage() {
         <button
           onClick={startTestAttempt}
           disabled={!state.questionsQueue.length}
-          className="w-full md:w-auto inline-flex items-center justify-center px-6 md:px-8 py-4 bg-neutral-900 text-white text-base md:text-lg font-semibold rounded-xl hover:bg-neutral-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors min-h-[52px]"
+          className="w-full md:w-auto inline-flex items-center justify-center px-6 md:px-8 py-4 bg-emerald-600 text-white text-base md:text-lg font-semibold rounded-2xl hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors min-h-[52px]"
         >
           <Play className="h-5 w-5 mr-2" />
           Start {testInfo.total_questions} question test
@@ -1488,7 +1466,6 @@ export default function EnhancedMobileMockTestPage() {
 )}
 
             </div>
-          </div>
         </div>
       </div>
     );
@@ -1500,9 +1477,7 @@ export default function EnhancedMobileMockTestPage() {
   const progressPct = totalQ > 0 ? (currentQ / totalQ) * 100 : 0;
 
   return (
-    <div className="min-h-screen bg-neutral-50">
-      <Navbar />
-      <MetaDataJobs seoTitle={testInfo.name} seoDescription={`Taking ${testInfo.name} - ${categoryLabel} mock test.`} />
+    <div className="min-h-screen bg-neutral-50 pt-24 pb-16">
       {networkError && (
         <div className="bg-red-600 text-white px-4 py-2 text-center text-xs md:text-sm">
           <WifiOff className="h-3 w-3 md:h-4 md:w-4 inline mr-2" />
@@ -1510,11 +1485,11 @@ export default function EnhancedMobileMockTestPage() {
         </div>
       )}
 
-      <div className="pt-24 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
         {state.currentQuestion ? (
           <MathJaxContext config={config}>
           <div className="space-y-4">
-            <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-3 md:p-4 lg:p-5 mb-4 space-y-3">
+            <div className="bg-white rounded-3xl shadow-sm border border-neutral-200 p-3 md:p-4 lg:p-5 mb-4 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2 md:space-x-4 min-w-0 flex-1">
                   <div className="hidden md:block w-8 h-8 lg:w-10 lg:h-10 bg-neutral-100 rounded-lg flex items-center justify-center flex-shrink-0">

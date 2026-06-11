@@ -19,12 +19,11 @@ import {
   SlidersHorizontal, X, TrendingUp, CheckCircle2, Target, Zap,
 } from "lucide-react";
 import { useAuth } from "@/app/context/AuthContext";
-import Navbar from "@/components/Navbar";
+import ExamSubpageHeader from "@/components/examHub/ExamSubpageHeader";
 import { getCachedData, invalidateCache } from "@/lib/utils/apiCache";
 
 // ─── Lazy-loaded components ───────────────────────────────────────────────────
 const Alert        = dynamic(() => import("@/components/Alert"),  { ssr: false });
-const MetaDataJobs = dynamic(() => import("@/components/Seo"),    { ssr: false });
 
 // ─── Supabase (singleton) ─────────────────────────────────────────────────────
 const supabase = createClient(
@@ -843,14 +842,7 @@ const Examtracker = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-neutral-50">
-        <Suspense fallback={null}>
-          <MetaDataJobs
-            seoTitle={`${categoryLabel} Practice Tracker`}
-            seoDescription={`Practice ${categoryLabel} PYQs Topic-Wise Chapter-Wise.`}
-          />
-        </Suspense>
-        <Navbar />
-        <div className="flex justify-center items-center min-h-[70vh] pt-20 px-4">
+        <div className="flex justify-center items-center min-h-[70vh] pt-24 px-4">
           <motion.div
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
@@ -873,16 +865,14 @@ const Examtracker = () => {
   // ==========================================================================
   return (
     <ErrorBoundary>
-      <Suspense fallback={null}>
-        <MetaDataJobs
-          seoTitle={`${categoryLabel} Practice Tracker`}
-          seoDescription={`Practice ${categoryLabel} PYQs Topic-Wise Chapter-Wise Date-Wise questions with detailed solutions.`}
-        />
-      </Suspense>
-      <Navbar />
-
-      <div className="min-h-screen bg-neutral-50 pt-20 pb-24 md:pb-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 space-y-5 sm:space-y-6">
+      <div className="min-h-screen bg-neutral-50 pt-24 pb-24 md:pb-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-5 sm:space-y-6">
+          <ExamSubpageHeader
+            title={formattedSubject || `${categoryLabel} Practice`}
+            description={`Topic-wise and chapter-wise practice for ${categoryLabel}.`}
+            backHref={`/${category}`}
+            backLabel="Exam hub"
+          />
 
           {/* ── Hero ─────────────────────────────────────────────────────────── */}
           <section className="bg-white rounded-3xl shadow-sm border border-neutral-200 overflow-hidden">

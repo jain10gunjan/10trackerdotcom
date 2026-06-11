@@ -36,7 +36,7 @@ export default function TestListToolbar({
             placeholder="Search mock tests…"
             onChange={(e) => onSearchChange(e.target.value)}
             className="w-full pl-9 pr-4 py-2.5 bg-white border border-neutral-300 rounded-xl text-sm
-                       focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-neutral-900"
+                       focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400"
           />
         </div>
         <div className="flex flex-wrap gap-2">

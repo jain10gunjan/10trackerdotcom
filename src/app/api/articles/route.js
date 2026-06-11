@@ -1,43 +1,51 @@
-import { createClient } from '@supabase/supabase-js';
 import { verifyAdminAuth } from '@/middleware/adminAuth';
 import { postToSteinHQ } from '@/lib/steinhq';
+import { createClient } from '@supabase/supabase-js';
+import { safeArticlePage, sanitizeSearchQuery } from '@/lib/articles/categoryMeta';
+import { fetchArticlesList } from '@/lib/articles/fetchCategoryArticles';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
 
-// GET - Fetch all published articles (public)
+const MAX_API_LIMIT = 50;
+
+// GET - Fetch published articles (public, paginated)
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
-    const category = searchParams.get('category');
-    const limit = parseInt(searchParams.get('limit')) || 10;
-    const offset = parseInt(searchParams.get('offset')) || 0;
+    const category = searchParams.get('category') || '';
+    const query = sanitizeSearchQuery(searchParams.get('q') || searchParams.get('query'));
 
-    let query = supabase
-      .from('published_articles')
-      .select('*')
-      .order('is_featured', { ascending: false })
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1);
+    const limit = Math.min(
+      MAX_API_LIMIT,
+      Math.max(1, Number.parseInt(searchParams.get('limit') || '10', 10) || 10)
+    );
+    const offset = Math.max(0, Number.parseInt(searchParams.get('offset') || '0', 10) || 0);
+    const page = searchParams.has('page')
+      ? safeArticlePage(searchParams.get('page'))
+      : Math.floor(offset / limit) + 1;
 
-    if (category) {
-      query = query.eq('category', category);
-    }
-
-    const { data, error } = await query;
-
-    if (error) throw error;
+    const { articles, totalCount, page: safePage, pageSize } = await fetchArticlesList({
+      page,
+      pageSize: limit,
+      category,
+      query,
+    });
 
     return Response.json({
       success: true,
-      data: data || [],
+      data: articles,
       pagination: {
-        limit,
-        offset,
-        hasMore: data?.length === limit
-      }
+        page: safePage,
+        pageSize,
+        totalCount,
+        totalPages: Math.max(1, Math.ceil(totalCount / pageSize)),
+        hasMore: safePage * pageSize < totalCount,
+        limit: pageSize,
+        offset: (safePage - 1) * pageSize,
+      },
     });
   } catch (error) {
     console.error('Error fetching articles:', error);

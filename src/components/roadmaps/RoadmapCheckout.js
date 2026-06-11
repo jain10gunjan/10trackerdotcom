@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2 } from 'lucide-react';
+import { CreditCard, Loader2, ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/app/context/AuthContext';
+import { ROADMAP_PURCHASE_NOTICE } from '@/lib/roadmaps/constants';
 import { parseJsonResponse, toastPromise } from '@/lib/toastAsync';
 
 function loadRazorpayScript() {
@@ -28,6 +29,7 @@ export default function RoadmapCheckout({
   termsAccepted = false,
   onSuccess,
   className = '',
+  variant = 'default',
 }) {
   const { isAuthenticated } = useAuth();
   const router = useRouter();
@@ -81,7 +83,7 @@ export default function RoadmapCheckout({
           name: orderData.customerName,
           email: orderData.customerEmail,
         },
-        theme: { color: '#171717' },
+        theme: { color: '#059669' },
         handler: async (response) => {
           try {
             await toastPromise(
@@ -129,15 +131,28 @@ export default function RoadmapCheckout({
     }
   };
 
+  const isCompact = variant === 'compact';
+
   return (
-    <div>
+    <div className={className}>
+      {!isCompact ? (
+        <div className="mb-4 flex items-start gap-3 rounded-xl bg-white border border-emerald-100 px-4 py-3">
+          <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+          <div className="text-xs text-neutral-600 leading-relaxed">
+            <p className="font-semibold text-neutral-800">Secure one-time checkout</p>
+            <p className="mt-0.5">{ROADMAP_PURCHASE_NOTICE}</p>
+          </div>
+        </div>
+      ) : null}
+
       <button
         type="button"
         onClick={handleCheckout}
         disabled={loading || !termsAccepted}
         className={
-          className ||
-          'w-full px-4 py-3 rounded-xl bg-neutral-900 text-white font-semibold hover:bg-neutral-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors inline-flex items-center justify-center gap-2'
+          isCompact
+            ? 'w-full px-4 py-3 rounded-xl bg-emerald-600 text-white font-semibold hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors inline-flex items-center justify-center gap-2'
+            : 'w-full px-4 py-3.5 rounded-xl bg-neutral-900 text-white font-semibold hover:bg-neutral-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors inline-flex items-center justify-center gap-2 shadow-sm'
         }
       >
         {loading ? (
@@ -146,13 +161,20 @@ export default function RoadmapCheckout({
             Opening checkout…
           </>
         ) : (
-          <>Unlock full roadmap — ₹{priceInr}</>
+          <>
+            <CreditCard className="w-4 h-4" />
+            Unlock full roadmap — ₹{priceInr}
+          </>
         )}
       </button>
+
       {error ? <p className="mt-2 text-xs text-red-600 text-center">{error}</p> : null}
-      <p className="mt-2 text-[11px] text-neutral-500 text-center leading-relaxed">
-        One-time purchase · lifetime access while 10Tracker operates · all sales final (no refunds)
-      </p>
+
+      {isCompact ? (
+        <p className="mt-2 text-[11px] text-neutral-500 text-center leading-relaxed">
+          {ROADMAP_PURCHASE_NOTICE}
+        </p>
+      ) : null}
     </div>
   );
 }

@@ -11,8 +11,6 @@ import {
   Gauge, Activity, Zap, Brain, RefreshCw, Eye, Calendar, Hexagon, Layers, AlertCircle
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import Navbar from '@/components/Navbar';
-import MetaDataJobs from '@/components/Seo';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import {
   getCategoryVariants,
@@ -22,8 +20,13 @@ import {
   formatDurationShort,
   fetchActiveMockTests,
 } from '@/lib/mockTestUtils';
-import MockTestBreadcrumb from '@/components/mock-test/MockTestBreadcrumb';
-import MockTestPageHeader from '@/components/mock-test/MockTestPageHeader';
+import MockTestHubHeader from '@/components/mockTestHub/MockTestHubHeader';
+import MockTestHubTabs from '@/components/mockTestHub/MockTestHubTabs';
+import MockTestCard from '@/components/mockTestHub/MockTestCard';
+import MockTestStatsStrip from '@/components/mockTestHub/MockTestStatsStrip';
+import MockTestGuestHero from '@/components/mockTestHub/MockTestGuestHero';
+import MockTestTypeSegment from '@/components/mockTestHub/MockTestTypeSegment';
+import MockTestHubSkeleton from '@/components/mockTestHub/MockTestHubSkeleton';
 import ResumeTestBanner from '@/components/mock-test/ResumeTestBanner';
 import PreflightModal from '@/components/mock-test/PreflightModal';
 import TestListToolbar from '@/components/mock-test/TestListToolbar';
@@ -100,49 +103,25 @@ const isTopicWiseTest = (test) => {
 };
 
 const MOCK_TEST_TABS = [
-  { id: 'dashboard', label: 'Dashboard', icon: Grid, requiresAuth: false },
-  { id: 'tests', label: 'Mock Tests', icon: BookOpen, requiresAuth: false },
-  { id: 'topic-tests', label: 'Topic-wise', icon: Layers, requiresAuth: false },
-  { id: 'leaderboard', label: 'Overall rank', icon: Trophy, requiresAuth: false },
+  { id: 'tests', label: 'Tests', icon: BookOpen, requiresAuth: false },
+  { id: 'rank', label: 'Rank', icon: Trophy, requiresAuth: false },
   { id: 'progress', label: 'My Progress', icon: BarChart3, requiresAuth: true },
 ];
 
-const TabNavigation = memo(function TabNavigation({ activeTab, onTabChange, isAuthenticated }) {
-  const tabs = MOCK_TEST_TABS;
+function mapLegacyTab(tabParam) {
+  if (!tabParam) return 'tests';
+  if (tabParam === 'results' || tabParam === 'sessions' || tabParam === 'subjects') return 'progress';
+  if (tabParam === 'dashboard' || tabParam === 'topic-tests' || tabParam === 'tests') return 'tests';
+  if (tabParam === 'leaderboard') return 'rank';
+  if (['tests', 'rank', 'progress'].includes(tabParam)) return tabParam;
+  return 'tests';
+}
 
-  return (
-    <div className="bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden mb-4 sm:mb-6">
-      <div className="flex overflow-x-auto scrollbar-hide p-1">
-        {tabs.map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          const isDisabled = tab.requiresAuth && !isAuthenticated;
-
-          return (
-            <button
-              key={tab.id}
-              onClick={() => !isDisabled && onTabChange(tab.id)}
-              disabled={isDisabled}
-              className={`
-                flex items-center space-x-2 px-3 sm:px-4 py-2.5 sm:py-3 text-sm font-medium transition-all duration-200 whitespace-nowrap rounded-lg
-                ${isActive
-                  ? 'bg-neutral-900 text-white shadow-sm'
-                  : isDisabled
-                    ? 'text-neutral-400 cursor-not-allowed'
-                    : 'text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900'
-                }
-              `}
-            >
-              <Icon className="h-4 w-4 flex-shrink-0" />
-              <span>{tab.label}</span>
-              {isDisabled && <Lock className="h-3 w-3 flex-shrink-0" />}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-});
+function mapLegacyTestType(tabParam, typeParam) {
+  if (typeParam === 'topic' || tabParam === 'topic-tests') return 'topic';
+  if (typeParam === 'full') return 'full';
+  return 'all';
+}
 
 // Public Dashboard Component for Non-Authenticated Users
 // signInHref: use Link so navigation works even if extensions break onClick
@@ -1164,21 +1143,23 @@ function OptimizedMockTestDashboard() {
   
   const searchParams = useSearchParams();
   const tabParam = searchParams.get('tab');
-  const normalizedTab = useMemo(() => {
-    if (tabParam === 'results' || tabParam === 'sessions' || tabParam === 'subjects') return 'progress';
-    return ['dashboard', 'tests', 'topic-tests', 'leaderboard', 'progress'].includes(tabParam)
-      ? tabParam
-      : 'dashboard';
-  }, [tabParam]);
+  const typeParam = searchParams.get('type');
+  const normalizedTab = useMemo(() => mapLegacyTab(tabParam), [tabParam]);
+  const normalizedTestType = useMemo(
+    () => mapLegacyTestType(tabParam, typeParam),
+    [tabParam, typeParam]
+  );
   const [activeTab, setActiveTab] = useState(() => normalizedTab);
+  const [testTypeFilter, setTestTypeFilter] = useState(() => normalizedTestType);
   const prevTabParamRef = React.useRef(tabParam);
 
   useEffect(() => {
     if (tabParam !== prevTabParamRef.current) {
       prevTabParamRef.current = tabParam;
       setActiveTab(normalizedTab);
+      setTestTypeFilter(normalizedTestType);
     }
-  }, [tabParam, normalizedTab]);
+  }, [tabParam, normalizedTab, normalizedTestType]);
   
   const [tests, setTests] = useState([]);
   const [userStats, setUserStats] = useState({
@@ -1656,14 +1637,17 @@ function OptimizedMockTestDashboard() {
   }, [inProgressByTestId, tests]);
 
   const testsForActiveTab = useMemo(() => {
-    if (activeTab === 'topic-tests') {
-      return tests.filter(isTopicWiseTest);
-    }
-    if (activeTab === 'tests') {
-      return tests.filter((t) => !isTopicWiseTest(t));
-    }
+    if (activeTab !== 'tests') return tests;
+    if (testTypeFilter === 'topic') return tests.filter(isTopicWiseTest);
+    if (testTypeFilter === 'full') return tests.filter((t) => !isTopicWiseTest(t));
     return tests;
-  }, [tests, activeTab]);
+  }, [tests, activeTab, testTypeFilter]);
+
+  const testTypeCounts = useMemo(() => ({
+    all: tests.length,
+    full: tests.filter((t) => !isTopicWiseTest(t)).length,
+    topic: tests.filter(isTopicWiseTest).length,
+  }), [tests]);
 
   // Highly optimized filtered and paginated tests
   const { filteredTests, paginatedTests, totalPages } = useMemo(() => {
@@ -1728,104 +1712,116 @@ function OptimizedMockTestDashboard() {
     router.replace(`/mock-test/${examcategory}?tab=${tabId}`, { scroll: false });
   }, [router, examcategory]);
 
+  const handleTestTypeChange = useCallback((typeId) => {
+    setTestTypeFilter(typeId);
+    setCurrentPage(1);
+    const p = new URLSearchParams();
+    p.set('tab', 'tests');
+    if (typeId !== 'all') p.set('type', typeId);
+    router.replace(`/mock-test/${examcategory}?${p.toString()}`, { scroll: false });
+  }, [router, examcategory]);
+
   const signInHref = useMemo(
-    () => `/sign-in?redirect=${encodeURIComponent(`/mock-test/${examcategory || 'gate-cse'}${activeTab && activeTab !== 'dashboard' ? `?tab=${activeTab}` : ''}`)}`,
+    () => `/sign-in?redirect=${encodeURIComponent(`/mock-test/${examcategory || 'gate-cse'}${activeTab && activeTab !== 'tests' ? `?tab=${activeTab}` : ''}`)}`,
     [examcategory, activeTab]
   );
 
-  // Render content based on active tab
   const renderTabContent = () => {
     switch (activeTab) {
-      case 'dashboard':
-        return user ? (
-          <AuthenticatedDashboard
-            tests={tests}
-            userStats={userStats}
-            examTrackerStats={examTrackerStats}
-            examcategory={examcategory}
-            categoryLabel={categoryLabel}
-            onStartTest={handleStartTest}
-            onViewResults={handleViewResults}
-            onRetakeTest={handleRetakeTest}
-            onOpenProgress={openProgressTab}
-          />
-        ) : (
-          <PublicDashboard tests={tests} examcategory={examcategory} signInHref={signInHref} />
-        );
-
       case 'tests':
-      case 'topic-tests':
         return (
-          <div className="bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
-            <div className="px-4 sm:px-6 py-4 border-b border-neutral-200">
-              <h3 className="text-lg font-semibold text-neutral-900 flex items-center">
-                <Grid className="h-5 w-5 mr-2 text-neutral-600" />
-                {activeTab === 'topic-tests' ? 'Topic-wise Tests' : 'Available Mock Tests'}
-              </h3>
-            </div>
+          <div>
+            {user ? (
+              <MockTestStatsStrip
+                userStats={userStats}
+                examTrackerStats={examTrackerStats}
+                examcategory={examcategory}
+                onOpenProgress={openProgressTab}
+              />
+            ) : (
+              <MockTestGuestHero
+                testsCount={tests.length}
+                totalQuestions={tests.reduce((sum, t) => sum + (t.total_questions || 0), 0)}
+                signInHref={signInHref}
+              />
+            )}
 
-            <TestListToolbar
-              onSearchChange={debouncedSearch}
-              difficultyFilter={difficultyFilter}
-              onDifficultyChange={(v) => {
-                setDifficultyFilter(v);
-                setCurrentPage(1);
-              }}
-              statusFilter={statusFilter}
-              onStatusChange={(v) => {
-                setStatusFilter(v);
-                setCurrentPage(1);
-              }}
-              sortBy={sortBy}
-              onSortChange={(v) => {
-                setSortBy(v);
-                setCurrentPage(1);
-              }}
-            />
+            <div className="rounded-3xl border border-neutral-200 bg-white shadow-sm overflow-hidden">
+              <div className="px-4 sm:px-6 py-4 border-b border-neutral-100">
+                <h3 className="text-lg font-bold text-neutral-900">Available tests</h3>
+                <p className="text-sm text-neutral-500 mt-0.5">Full mock and topic-wise tests</p>
+              </div>
 
-            {/* Tests List */}
-            <div className="p-4 sm:p-6">
-              {filteredTests.length === 0 ? (
-                <div className="text-center py-12 px-4">
-                  <div className="bg-neutral-100 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
-                    <BookOpen className="h-10 w-10 text-neutral-400" />
+              <TestListToolbar
+                onSearchChange={debouncedSearch}
+                difficultyFilter={difficultyFilter}
+                onDifficultyChange={(v) => {
+                  setDifficultyFilter(v);
+                  setCurrentPage(1);
+                }}
+                statusFilter={statusFilter}
+                onStatusChange={(v) => {
+                  setStatusFilter(v);
+                  setCurrentPage(1);
+                }}
+                sortBy={sortBy}
+                onSortChange={(v) => {
+                  setSortBy(v);
+                  setCurrentPage(1);
+                }}
+              />
+
+              <div className="px-4 sm:px-6 pt-4">
+                <MockTestTypeSegment
+                  value={testTypeFilter}
+                  onChange={handleTestTypeChange}
+                  counts={testTypeCounts}
+                />
+              </div>
+
+              <div className="p-4 sm:p-6 pt-0">
+                {filteredTests.length === 0 ? (
+                  <div className="text-center py-12 px-4">
+                    <div className="bg-emerald-50 rounded-2xl w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                      <BookOpen className="h-8 w-8 text-emerald-600" />
+                    </div>
+                    <h3 className="text-lg font-bold text-neutral-900 mb-2">
+                      {searchTerm || difficultyFilter !== 'all' ? 'No tests found' : 'No tests available'}
+                    </h3>
+                    <p className="text-neutral-500 mb-6 text-sm">
+                      {searchTerm || difficultyFilter !== 'all'
+                        ? 'Try adjusting search or filters.'
+                        : testTypeFilter === 'topic'
+                          ? 'Topic-wise tests will appear here when published.'
+                          : 'New tests will appear here soon.'}
+                    </p>
                   </div>
-                  <h3 className="text-lg font-semibold text-neutral-600 mb-2">
-                    {searchTerm || difficultyFilter !== 'all' ? 'No tests found' : 'No tests available'}
-                  </h3>
-                  <p className="text-neutral-500 mb-6 text-sm sm:text-base">
-                    {searchTerm || difficultyFilter !== 'all'
-                      ? 'Try adjusting search or filters.'
-                      : activeTab === 'topic-tests'
-                        ? 'Create a topic-wise test from the admin panel.'
-                        : 'New tests will appear here soon.'}
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {paginatedTests.map((test) => (
-                    <TestListItem
-                      key={test.id}
-                      test={test}
-                      onStartTest={handleStartTest}
-                      onViewResults={handleViewResults}
-                      onRetakeTest={handleRetakeTest}
-                      examcategory={examcategory}
-                      user={user}
+                ) : (
+                  <div className="space-y-4">
+                    {paginatedTests.map((test) => (
+                      <MockTestCard
+                        key={test.id}
+                        test={test}
+                        onStartTest={handleStartTest}
+                        onViewResults={handleViewResults}
+                        onRetakeTest={handleRetakeTest}
+                        examcategory={examcategory}
+                        user={user}
+                      />
+                    ))}
+                    <Pagination
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      onPageChange={setCurrentPage}
                     />
-                  ))}
-                  <Pagination 
-                    currentPage={currentPage}
-                    totalPages={totalPages}
-                    onPageChange={setCurrentPage}
-                  />
-                </div>
-              )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         );
-      
-      case 'leaderboard':
+
+      case 'rank':
         return <LeaderboardPanel examcategory={examcategory} user={user} />;
 
       case 'progress':
@@ -1838,67 +1834,46 @@ function OptimizedMockTestDashboard() {
         );
 
       default:
-        return <PublicDashboard tests={tests} examcategory={examcategory} signInHref={signInHref} />;
+        return null;
     }
   };
 
-  if (authLoading || isLoading) {
-    return <FullPageLoader />;
+  if (authLoading) {
+    return <MockTestHubSkeleton />;
   }
 
   return (
-    <div className="min-h-screen bg-neutral-50">
-      <style jsx>{`
-        .scrollbar-hide {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
-        .scrollbar-hide::-webkit-scrollbar {
-          display: none;
-        }
-        .animate-fade-in {
-          animation: fadeIn 0.4s ease-out;
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(8px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
-      <MetaDataJobs
-        seoTitle={`${categoryLabel} Mock Tests`}
-        seoDescription={`Practice ${categoryLabel} mock tests and track your performance.`}
-      />
-      <Navbar />
+    <div className="min-h-screen bg-neutral-50 pt-24 pb-16">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 pb-12 sm:pb-16">
+        <MockTestHubHeader
+          examcategory={examcategory}
+          categoryLabel={categoryLabel}
+          testsCount={tests.length}
+          streak={user ? userStats.streak : 0}
+          profileDisplayName={profileDisplayName}
+        />
 
-      {/* Spacer to clear fixed navbar (h-20 = 80px; pt-24 = 96px for safe clearance) */}
-      <div className="pt-24 min-h-screen">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-12 sm:pb-16">
-          <MockTestBreadcrumb examcategory={examcategory} categoryLabel={categoryLabel} />
-
-          <MockTestPageHeader
+        {user && resumeEntry && (
+          <ResumeTestBanner
+            attempt={resumeEntry.attempt}
+            test={resumeEntry.test}
             examcategory={examcategory}
-            categoryLabel={categoryLabel}
-            testsCount={tests.length}
-            streak={user ? userStats.streak : 0}
-            profileDisplayName={profileDisplayName}
           />
+        )}
 
-          {user && resumeEntry && (
-            <ResumeTestBanner
-              attempt={resumeEntry.attempt}
-              test={resumeEntry.test}
-              examcategory={examcategory}
-            />
-          )}
+        <MockTestHubTabs
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
+          isAuthenticated={!!user}
+        />
 
-          {/* Tab Navigation */}
-          <TabNavigation
-            activeTab={activeTab}
-            onTabChange={handleTabChange}
-            isAuthenticated={!!user}
-          />
-
-          {/* Tab Content */}
+        {isLoading ? (
+          <div className="space-y-4">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="h-44 bg-white border border-neutral-200 rounded-3xl animate-pulse" />
+            ))}
+          </div>
+        ) : (
           <Suspense fallback={<div className="text-center py-12 text-neutral-500">Loading...</div>}>
             <motion.div
               key={activeTab}
@@ -1909,7 +1884,7 @@ function OptimizedMockTestDashboard() {
               {renderTabContent()}
             </motion.div>
           </Suspense>
-        </div>
+        )}
       </div>
 
       <PreflightModal
@@ -1920,14 +1895,13 @@ function OptimizedMockTestDashboard() {
         onClose={closePreflight}
         onConfirm={confirmPreflight}
       />
-
     </div>
   );
 }
 
 export default function MockTestCategoryPage() {
   return (
-    <Suspense fallback={<FullPageLoader />}>
+    <Suspense fallback={<MockTestHubSkeleton />}>
       <OptimizedMockTestDashboard />
     </Suspense>
   );

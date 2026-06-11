@@ -1,58 +1,114 @@
-import { categoryMatches, getCategoryVariants } from '@/lib/mockTestUtils';
+import {
+  categoryMatches,
+  fetchActiveMockTests,
+  getCategoryVariants,
+} from '@/lib/mockTestUtils';
 
-/**
- * Load tests + completed attempts for a category (flexible category matching).
- */
-export async function fetchLeaderboardData(supabase, examCategory, { testId = null, scope = 'overall' } = {}) {
-  const { data: allTests, error: testsError } = await supabase
-    .from('mock_tests')
-    .select('id, name, category')
-    .eq('is_active', true);
+const ATTEMPT_COLUMNS =
+  'id, test_id, user_email, percentage, score, duration_taken, submitted_at, started_at, examcategory';
 
-  if (testsError) throw testsError;
+function dedupeAttempts(rows) {
+  const seen = new Set();
+  const out = [];
+  for (const row of rows || []) {
+    if (!row?.id || seen.has(row.id)) continue;
+    seen.add(row.id);
+    out.push(row);
+  }
+  return out;
+}
 
-  const tests = (allTests || []).filter((t) => categoryMatches(t.category, examCategory));
-  const testIds = tests.map((t) => t.id);
-  const testNameById = Object.fromEntries(tests.map((t) => [t.id, t.name]));
-
-  const { data: rawAttempts, error: attemptsError } = await supabase
-    .from('user_test_attempts')
-    .select(
-      'id, test_id, user_email, percentage, score, duration_taken, submitted_at, started_at, examcategory'
-    )
-    .eq('is_completed', true)
-    .limit(5000);
-
-  if (attemptsError) throw attemptsError;
-
-  const testIdSet = new Set(testIds);
+function filterAttemptsForCategory(attempts, examCategory, testIdSet) {
   const categoryVariants = new Set(
     getCategoryVariants(examCategory).map((v) => String(v).toUpperCase().replace(/_/g, '-'))
   );
 
-  let attempts = (rawAttempts || []).filter((a) => {
-    if (!a?.test_id) return false;
+  return (attempts || []).filter((a) => {
+    if (!a?.test_id && !a?.examcategory) return false;
     if (testIdSet.has(a.test_id)) return true;
     const ec = String(a.examcategory || '')
       .toUpperCase()
       .replace(/_/g, '-');
-    if (ec && [...categoryVariants].some((v) => ec === v || categoryMatches(ec, examCategory))) {
-      return true;
-    }
-    return false;
+    if (!ec) return false;
+    return [...categoryVariants].some((v) => ec === v || categoryMatches(ec, examCategory));
   });
+}
+
+/**
+ * Load tests + completed attempts for a category (DB-filtered, not full-table scans).
+ */
+export async function fetchLeaderboardData(
+  supabase,
+  examCategory,
+  { testId = null, scope = 'overall' } = {}
+) {
+  const { data: tests, error: testsError } = await fetchActiveMockTests(supabase, examCategory);
+  if (testsError) throw testsError;
+
+  const testRows = tests || [];
+  const testIds = testRows.map((t) => t.id);
+  const testIdSet = new Set(testIds);
+  const testNameById = Object.fromEntries(testRows.map((t) => [t.id, t.name]));
+  const variants = getCategoryVariants(examCategory);
+
+  const attemptQueries = [];
+
+  if (scope === 'test' && testId) {
+    attemptQueries.push(
+      supabase
+        .from('user_test_attempts')
+        .select(ATTEMPT_COLUMNS)
+        .eq('is_completed', true)
+        .eq('test_id', testId)
+        .limit(2000)
+    );
+  } else {
+    if (testIds.length > 0) {
+      attemptQueries.push(
+        supabase
+          .from('user_test_attempts')
+          .select(ATTEMPT_COLUMNS)
+          .eq('is_completed', true)
+          .in('test_id', testIds)
+          .limit(3000)
+      );
+    }
+
+    if (variants.length > 0) {
+      attemptQueries.push(
+        supabase
+          .from('user_test_attempts')
+          .select(ATTEMPT_COLUMNS)
+          .eq('is_completed', true)
+          .in('examcategory', variants)
+          .limit(2000)
+      );
+    }
+  }
+
+  let rawAttempts = [];
+  if (attemptQueries.length) {
+    const results = await Promise.all(attemptQueries);
+    for (const res of results) {
+      if (res.error) throw res.error;
+      rawAttempts = rawAttempts.concat(res.data || []);
+    }
+    rawAttempts = dedupeAttempts(rawAttempts);
+  }
+
+  let attempts = filterAttemptsForCategory(rawAttempts, examCategory, testIdSet);
 
   if (scope === 'test' && testId) {
     attempts = attempts.filter((a) => a.test_id === testId);
   }
 
   return {
-    tests,
+    tests: testRows,
     testIds,
     testNameById,
     attempts,
     meta: {
-      testsInCategory: tests.length,
+      testsInCategory: testRows.length,
       completedAttempts: attempts.length,
     },
   };

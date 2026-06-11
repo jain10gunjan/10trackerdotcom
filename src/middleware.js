@@ -5,8 +5,15 @@ const ARTICLE_CATEGORY_SLUGS = new Set([
   "exam-results",
   "answer-key",
   "admit-cards",
-  "news",
   "categories",
+  // News / education categories (served at /article/[cate], not redirected to /articles/[slug])
+  "current-affairs",
+  "board-exams",
+  "sarkari-exams",
+  "admissions",
+  "general",
+  "college-news",
+  "entrance-exams",
 ]);
 
 export function middleware(req) {
@@ -22,6 +29,12 @@ export function middleware(req) {
     const url = req.nextUrl.clone();
     url.pathname = "/articles";
     return NextResponse.redirect(url);
+  }
+
+  if (pathname === "/article/news" || pathname.startsWith("/article/news/")) {
+    const url = req.nextUrl.clone();
+    url.pathname = "/articles";
+    return NextResponse.redirect(url, 308);
   }
 
   if (pathname.startsWith("/article/")) {

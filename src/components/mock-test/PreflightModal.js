@@ -26,7 +26,7 @@ export default function PreflightModal({ test, examcategory, open, onClose, onCo
         role="dialog"
         aria-modal="true"
         aria-labelledby="preflight-title"
-        className="relative w-full sm:max-w-md bg-white rounded-t-2xl sm:rounded-2xl border border-neutral-200 shadow-xl max-h-[90vh] overflow-y-auto"
+        className="relative w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-3xl border border-neutral-200 shadow-xl max-h-[90vh] overflow-y-auto"
       >
         <div className="p-5 sm:p-6 border-b border-neutral-100 flex items-start justify-between gap-3">
           <div>
@@ -122,7 +122,7 @@ export default function PreflightModal({ test, examcategory, open, onClose, onCo
           <button
             type="button"
             onClick={onConfirm}
-            className="flex-1 px-4 py-2.5 rounded-xl bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-800"
+            className="flex-1 px-4 py-2.5 rounded-2xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700"
           >
             {isRetake ? 'Start retake' : 'Start test'}
           </button>

@@ -1,186 +1,60 @@
-"use client";
+'use client';
 
-import { signIn } from "next-auth/react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
-import { useSession } from "next-auth/react";
-import Link from "next/link";
-import { ArrowLeft, Sparkles, CheckCircle } from "lucide-react";
-import { getSafeRedirect } from "@/lib/safeRedirect";
-import { resolvePostAuthRedirect } from "@/lib/resolvePostAuthRedirect";
-import { buildAuthResumePath } from "@/lib/profileGatePaths";
+import Link from 'next/link';
+import AuthPageShell from '@/components/auth/AuthPageShell';
+import AuthCard from '@/components/auth/AuthCard';
+import AuthBrandMark from '@/components/auth/AuthBrandMark';
+import AuthBenefitStrip from '@/components/auth/AuthBenefitStrip';
+import GoogleAuthButton from '@/components/auth/GoogleAuthButton';
+import AuthTrustFooter from '@/components/auth/AuthTrustFooter';
+import { useGoogleAuthPage } from '@/components/auth/useGoogleAuthPage';
 
 export default function SignUpPage() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const { status } = useSession();
-  const [isLoading, setIsLoading] = useState(false);
-  const defaultRedirect = "/";
-
-  const redirectUrl = useMemo(
-    () => getSafeRedirect(searchParams.get("redirect")) || defaultRedirect,
-    [searchParams]
-  );
-
-  useEffect(() => {
-    if (status !== "authenticated") return;
-    let cancelled = false;
-    (async () => {
-      const target = await resolvePostAuthRedirect(redirectUrl);
-      if (!cancelled) router.replace(target);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [status, router, redirectUrl]);
-
-  const handleGoogleSignUp = async () => {
-    setIsLoading(true);
-    try {
-      await signIn("google", { callbackUrl: buildAuthResumePath("sign-up", redirectUrl) });
-    } catch (err) {
-      console.error("Google sign-up failed:", err);
-      setIsLoading(false);
-    }
-  };
-
-  const features = [
-    "Unlimited practice questions",
-    "Track your progress",
-    "Daily practice problems",
-    "Weekly contests",
-    "Detailed solutions",
-    "Performance analytics"
-  ];
+  const { isLoading, error, redirectHint, handleGoogleAuth, alternateHref } =
+    useGoogleAuthPage('sign-up');
 
   return (
-    <div className="min-h-screen bg-neutral-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2 text-neutral-600 hover:text-neutral-900 transition-colors text-sm font-medium"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to Home
-        </Link>
-      </div>
+    <AuthPageShell>
+      <AuthBenefitStrip />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-start">
-          <div className="order-2 lg:order-1">
-            <div className="bg-white border border-neutral-200 rounded-xl p-6 sm:p-8 shadow-sm">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-neutral-100 border border-neutral-200 mb-6">
-                <Sparkles className="w-4 h-4 text-neutral-700" />
-                <span className="text-sm font-medium text-neutral-700">Start Your Journey</span>
-              </div>
+      <AuthCard>
+        <AuthBrandMark />
 
-              <h1 className="text-3xl sm:text-4xl font-semibold text-neutral-900 mb-4">
-                Join 10tracker Today
-              </h1>
-              <p className="text-lg text-neutral-600 mb-8">
-                Create your free account and start practicing smarter. Track your progress,
-                compete in contests, and achieve your exam goals.
-              </p>
-
-              <div className="space-y-4 mb-8">
-                <h3 className="text-lg font-semibold text-neutral-900 mb-4">What you&apos;ll get:</h3>
-                {features.map((feature, index) => (
-                  <div key={index} className="flex items-start gap-3">
-                    <div className="w-5 h-5 rounded-full bg-neutral-100 border border-neutral-200 flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <CheckCircle className="w-4 h-4 text-neutral-700" />
-                    </div>
-                    <p className="text-neutral-700">{feature}</p>
-                  </div>
-                ))}
-              </div>
-
-              <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-4">
-                <p className="text-sm text-neutral-600">
-                  <span className="font-semibold text-neutral-900">Free to start</span> - No credit card required.
-                  Get unlimited access to practice questions and track your progress.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="order-1 lg:order-2">
-            <div className="bg-white border border-neutral-200 rounded-xl p-6 sm:p-8 shadow-sm">
-              <div className="mb-6">
-                <h2 className="text-2xl font-semibold text-neutral-900 mb-2">Create Account</h2>
-                <p className="text-neutral-600 text-sm">
-                  Already have an account?{" "}
-                  <Link
-                    href="/sign-in"
-                    className="text-neutral-900 font-semibold hover:text-neutral-700 underline"
-                  >
-                    Sign in
-                  </Link>
-                </p>
-              </div>
-
-              <button
-                onClick={handleGoogleSignUp}
-                disabled={isLoading}
-                type="button"
-                className="flex items-center justify-center w-full px-4 py-3 text-sm font-medium text-gray-700 bg-white border border-neutral-300 rounded-md shadow-sm hover:bg-neutral-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-neutral-900 disabled:opacity-60 transition-colors"
-              >
-                {isLoading ? (
-                  <svg
-                    className="w-5 h-5 mr-2 -ml-1 animate-spin text-gray-500"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    aria-hidden="true"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    />
-                  </svg>
-                ) : (
-                  <svg
-                    className="w-5 h-5 mr-2 -ml-1"
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    aria-hidden="true"
-                  >
-                    <path
-                      fill="#EA4335"
-                      d="M5.26620003,9.76452941 C6.19878754,6.93863203 8.85444915,4.90909091 12,4.90909091 C13.6909091,4.90909091 15.2181818,5.50909091 16.4181818,6.49090909 L19.9090909,3 C17.7818182,1.14545455 15.0545455,0 12,0 C7.27006974,0 3.1977497,2.69829785 1.23999023,6.65002441 L5.26620003,9.76452941 Z"
-                    />
-                    <path
-                      fill="#34A853"
-                      d="M16.0407269,18.0125889 C14.9509167,18.7163016 13.5660892,19.0909091 12,19.0909091 C8.86648613,19.0909091 6.21911939,17.076871 5.27698177,14.2678769 L1.23746264,17.3349879 C3.19279051,21.2970142 7.26500293,24 12,24 C14.9328362,24 17.7353462,22.9573905 19.834192,20.9995801 L16.0407269,18.0125889 Z"
-                    />
-                    <path
-                      fill="#4A90E2"
-                      d="M19.834192,20.9995801 C22.0291676,18.9520994 23.4545455,15.903663 23.4545455,12 C23.4545455,11.2909091 23.3454545,10.5272727 23.1818182,9.81818182 L12,9.81818182 L12,14.4545455 L18.4363636,14.4545455 C18.1187732,16.013626 17.2662994,17.2212117 16.0407269,18.0125889 L19.834192,20.9995801 Z"
-                    />
-                    <path
-                      fill="#FBBC05"
-                      d="M5.27698177,14.2678769 C5.03832634,13.556323 4.90909091,12.7937589 4.90909091,12 C4.90909091,11.2182781 5.03443647,10.4668121 5.26620003,9.76452941 L1.23999023,6.65002441 C0.43658717,8.26043162 0,10.0753848 0,12 C0,13.9195484 0.444780743,15.7301709 1.23746264,17.3349879 L5.27698177,14.2678769 Z"
-                    />
-                  </svg>
-                )}
-                {isLoading ? "Creating account..." : "Continue with Google"}
-              </button>
-
-              <p className="mt-6 text-center text-xs text-neutral-500">
-                Sign up is quick and secure with your Google account.
-              </p>
-            </div>
-          </div>
+        <div className="text-center mb-6">
+          <h1 className="text-2xl font-bold text-neutral-900 tracking-tight">Create your account</h1>
+          {redirectHint ? (
+            <p className="mt-2 text-sm text-emerald-700 font-medium">{redirectHint}</p>
+          ) : (
+            <p className="mt-2 text-sm text-neutral-500">
+              Free to start · One click with Google
+            </p>
+          )}
         </div>
-      </div>
-    </div>
+
+        {error ? (
+          <div className="mb-4 text-sm text-rose-700 bg-rose-50 border border-rose-100 p-3 rounded-2xl">
+            {error}
+          </div>
+        ) : null}
+
+        <GoogleAuthButton
+          onClick={handleGoogleAuth}
+          loading={isLoading}
+          loadingLabel="Creating account…"
+          label="Continue with Google"
+        />
+
+        <p className="mt-5 text-center text-sm text-neutral-600">
+          Already have an account?{' '}
+          <Link href={alternateHref} className="font-semibold text-emerald-700 hover:text-emerald-800">
+            Sign in
+          </Link>
+        </p>
+
+        <div className="mt-6 pt-6 border-t border-neutral-100">
+          <AuthTrustFooter />
+        </div>
+      </AuthCard>
+    </AuthPageShell>
   );
 }

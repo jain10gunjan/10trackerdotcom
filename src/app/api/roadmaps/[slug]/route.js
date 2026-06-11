@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { normalizeEmail } from '@/lib/normalizeEmail';
+import { ROADMAP_PURCHASE_NOTICE } from '@/lib/roadmaps/constants';
 import {
   buildRoadmapDetail,
   normalizeSlug,
@@ -27,8 +28,7 @@ export async function GET(_request, { params }) {
       success: true,
       ...detail,
       isAuthenticated: Boolean(email),
-      noRefundsNotice:
-        'One-time purchase — lifetime access while 10Tracker operates. All sales are final; no refunds.',
+      noRefundsNotice: ROADMAP_PURCHASE_NOTICE,
     });
   } catch (err) {
     console.error('GET /api/roadmaps/[slug]', err);

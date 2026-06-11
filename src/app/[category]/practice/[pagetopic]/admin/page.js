@@ -31,7 +31,6 @@ import {
 } from "lucide-react";
 
 // Lazy loaded components - minimal loading states
-const AuthModal = dynamic(() => import("@/components/AuthModal"), { ssr: false });
 const Navbar = dynamic(() => import("@/components/Navbar"), { ssr: false });
 const Sidebar = dynamic(() => import("@/components/Sidebar"), { ssr: false });
 const MetaDataJobs = dynamic(() => import("@/components/Seo"), { ssr: false });

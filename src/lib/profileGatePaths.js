@@ -15,8 +15,22 @@ export const PROFILE_EXEMPT_PATHS = [
   ...ONBOARDING_BROWSE_PATHS,
 ];
 
+/** Public read-only article/news pages — never block while profile loads */
+export function isPublicContentPath(pathname) {
+  if (!pathname) return false;
+  if (pathname === '/articles' || pathname.startsWith('/articles/')) return true;
+  if (pathname === '/article' || pathname.startsWith('/article/')) return true;
+  return false;
+}
+
+export function isHomeDashboardPath(pathname) {
+  return pathname === '/';
+}
+
 export function isProfileExemptPath(pathname) {
   if (!pathname) return false;
+  if (isPublicContentPath(pathname)) return true;
+  if (isHomeDashboardPath(pathname)) return true;
   return PROFILE_EXEMPT_PATHS.some(
     (p) => pathname === p || pathname.startsWith(`${p}/`)
   );

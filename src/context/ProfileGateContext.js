@@ -11,7 +11,11 @@ import React, {
 } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/app/context/AuthContext';
-import { isProfileExemptPath, buildProfileSetupHref } from '@/lib/profileGatePaths';
+import {
+  isProfileExemptPath,
+  isHomeDashboardPath,
+  buildProfileSetupHref,
+} from '@/lib/profileGatePaths';
 import { getSafeRedirect } from '@/lib/safeRedirect';
 import { profileToFormDefaults } from '@/lib/userProfile';
 import { parseJsonResponse, toastPromise, PROFILE_TOAST } from '@/lib/toastAsync';
@@ -247,6 +251,7 @@ export function ProfileGateProvider({ children }) {
     if (skipGateRedirectRef.current) return;
     if (authLoading || loading || !user || !gateActive) return;
     if (isProfileExemptPath(pathname)) return;
+    if (isHomeDashboardPath(pathname)) return;
 
     const search = typeof window !== 'undefined' ? window.location.search : '';
     const returnPath = getSafeRedirect(`${pathname || '/'}${search}`) || `${pathname || '/'}${search}`;

@@ -15,9 +15,17 @@ import {
   ClipboardList,
   AlertCircle,
   ArrowRight,
+  Sparkles,
 } from "lucide-react";
 
 const CARDS = [
+  {
+    href: "/admin/gktoday",
+    title: "GKToday pipeline",
+    desc: "Fetch current affairs, AI-rewrite, edit, and publish articles.",
+    icon: Sparkles,
+    accent: "from-orange-600 to-amber-600",
+  },
   {
     href: "/admin/mcq-extractor",
     title: "MCQ extractor",

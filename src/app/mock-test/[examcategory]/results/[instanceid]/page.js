@@ -23,8 +23,7 @@ import {
   Target
 } from "lucide-react";
 import toast from 'react-hot-toast';
-import Navbar from '@/components/Navbar';
-import MetaDataJobs from '@/components/Seo';
+import MockTestSubpageHeader from '@/components/mockTestHub/MockTestSubpageHeader';
 import MockTestBreadcrumb from '@/components/mock-test/MockTestBreadcrumb';
 import ShareResultsCard from '@/components/mock-test/ShareResultsCard';
 import TestRankSummary from '@/components/mock-test/TestRankSummary';
@@ -391,65 +390,53 @@ export default function TestResultPage() {
   // Show loading until auth is resolved; then show loading again while fetching data (never flash "Sign in required" first)
   if (authLoading) {
     return (
-      <>
-        <Navbar />
-        <div className="pt-24 min-h-screen bg-neutral-50 flex items-center justify-center">
-          <div className="text-center max-w-xs px-4">
-            <div className="w-12 h-12 sm:w-16 sm:h-16 border-2 border-neutral-200 rounded-full animate-spin border-t-neutral-700 mx-auto mb-4" />
-            <p className="text-sm sm:text-base text-neutral-600 font-medium">Checking sign-in...</p>
-          </div>
+      <div className="pt-24 min-h-screen bg-neutral-50 flex items-center justify-center">
+        <div className="text-center max-w-xs px-4">
+          <div className="w-12 h-12 sm:w-16 sm:h-16 border-2 border-neutral-200 rounded-full animate-spin border-t-emerald-600 mx-auto mb-4" />
+          <p className="text-sm sm:text-base text-neutral-600 font-medium">Checking sign-in…</p>
         </div>
-      </>
+      </div>
     );
   }
 
   if (!user) {
     return (
-      <>
-        <Navbar />
-        <div className="pt-24 min-h-screen bg-neutral-50 flex items-center justify-center px-4">
-          <div className="text-center p-6 sm:p-8 bg-white rounded-xl shadow-sm border border-neutral-200 max-w-md w-full">
-            <BookOpen className="w-12 h-12 text-neutral-500 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-neutral-900 mb-2">Sign in required</h2>
-            <p className="text-neutral-600 text-sm sm:text-base">Sign in to view test results.</p>
-          </div>
+      <div className="pt-24 min-h-screen bg-neutral-50 flex items-center justify-center px-4">
+        <div className="text-center p-6 sm:p-8 bg-white rounded-3xl shadow-sm border border-neutral-200 max-w-md w-full">
+          <BookOpen className="w-12 h-12 text-emerald-600 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-neutral-900 mb-2">Sign in required</h2>
+          <p className="text-neutral-600 text-sm sm:text-base">Sign in to view test results.</p>
         </div>
-      </>
+      </div>
     );
   }
 
   if (isLoading) {
     return (
-      <>
-        <Navbar />
-        <div className="pt-24 min-h-screen bg-neutral-50 flex items-center justify-center">
-          <div className="text-center max-w-xs px-4">
-            <div className="w-12 h-12 sm:w-16 sm:h-16 border-2 border-neutral-200 rounded-full animate-spin border-t-neutral-700 mx-auto mb-4" />
-            <p className="text-sm sm:text-base text-neutral-600 font-medium">Loading results...</p>
-          </div>
+      <div className="pt-24 min-h-screen bg-neutral-50 flex items-center justify-center">
+        <div className="text-center max-w-xs px-4">
+          <div className="w-12 h-12 sm:w-16 sm:h-16 border-2 border-neutral-200 rounded-full animate-spin border-t-emerald-600 mx-auto mb-4" />
+          <p className="text-sm sm:text-base text-neutral-600 font-medium">Loading results…</p>
         </div>
-      </>
+      </div>
     );
   }
 
   if (!attempt || !testInfo) {
     return (
-      <>
-        <Navbar />
-        <div className="pt-24 min-h-screen bg-neutral-50 flex items-center justify-center px-4">
-          <div className="text-center p-6 sm:p-8 bg-white rounded-xl shadow-sm border border-neutral-200 max-w-md w-full">
-            <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-neutral-900 mb-2">Attempt not found</h2>
-            <p className="text-neutral-600 text-sm sm:text-base mb-4">The requested test attempt could not be found.</p>
-            <Link
-              href={`/mock-test/${examcategory}?tab=progress`}
-              className="inline-flex items-center gap-2 text-neutral-800 font-medium hover:text-neutral-900"
-            >
-              <ArrowLeft className="w-4 h-4" /> Back to results
-            </Link>
-          </div>
+      <div className="pt-24 min-h-screen bg-neutral-50 flex items-center justify-center px-4">
+        <div className="text-center p-6 sm:p-8 bg-white rounded-3xl shadow-sm border border-neutral-200 max-w-md w-full">
+          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-neutral-900 mb-2">Attempt not found</h2>
+          <p className="text-neutral-600 text-sm sm:text-base mb-4">The requested test attempt could not be found.</p>
+          <Link
+            href={`/mock-test/${examcategory}?tab=progress`}
+            className="inline-flex items-center gap-2 text-emerald-700 font-semibold hover:text-emerald-800"
+          >
+            <ArrowLeft className="w-4 h-4" /> Back to progress
+          </Link>
         </div>
-      </>
+      </div>
     );
   }
 
@@ -468,46 +455,34 @@ export default function TestResultPage() {
     attempt?.total_questions;
 
   return (
-    <>
-      <MetaDataJobs
-        seoTitle={`${testName} - ${categoryLabel} Results`}
-        seoDescription={`View your ${testName} result and topic-wise breakdown.`}
-      />
-      <style jsx>{`
-        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
-        .scrollbar-hide::-webkit-scrollbar { display: none; }
-      `}</style>
-      <Navbar />
-      <div className="min-h-screen bg-neutral-50">
-        <MathJaxContext config={MATHJAX_CONFIG}>
-          <div className="pt-24 max-w-6xl mx-auto py-6 px-4 sm:px-6 lg:px-8 pb-12 sm:pb-16">
-            {/* Back link */}
-            <Link
-              href={`/mock-test/${examcategory}?tab=progress`}
-              className="inline-flex items-center gap-2 text-sm font-medium text-neutral-600 hover:text-neutral-900 mb-4 sm:mb-6"
-            >
-              <ArrowLeft className="w-4 h-4" /> Back to results
-            </Link>
+    <div className="min-h-screen bg-neutral-50 pt-24 pb-16">
+      <MathJaxContext config={MATHJAX_CONFIG}>
+        <div className="max-w-6xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+          <MockTestSubpageHeader
+            backHref={`/mock-test/${examcategory}?tab=progress`}
+            backLabel="Back to mock tests"
+            title={testName}
+            description={`${categoryLabel} · ${testInfo.difficulty || 'Mixed'} difficulty`}
+          />
 
-            {/* Header Card */}
-            <div className="bg-white rounded-xl shadow-sm border border-neutral-200 mb-4 sm:mb-6 overflow-hidden">
+            {/* Score hero */}
+            <div className="bg-white rounded-3xl shadow-sm border border-neutral-200 mb-4 sm:mb-6 overflow-hidden">
               <div className="p-4 sm:p-6">
-                <h1 className="text-xl sm:text-2xl font-semibold text-neutral-900 mb-2 sm:mb-3">{testName}</h1>
                 <div className="flex flex-wrap gap-2 mb-4 sm:mb-6">
-                  <span className="px-2.5 py-1 bg-neutral-100 text-neutral-700 rounded-full text-xs font-medium">
+                  <span className="px-2.5 py-1 bg-emerald-50 text-emerald-800 rounded-full text-xs font-semibold border border-emerald-100">
                     {testInfo.category || categoryLabel}
                   </span>
-                  <span className="px-2.5 py-1 bg-neutral-100 text-neutral-700 rounded-full text-xs font-medium">
+                  <span className="px-2.5 py-1 bg-neutral-100 text-neutral-700 rounded-full text-xs font-semibold">
                     {testInfo.difficulty || '—'}
                   </span>
                   {gateMarking ? (
-                    <span className="px-2.5 py-1 bg-amber-50 text-amber-800 rounded-full text-xs font-medium">
+                    <span className="px-2.5 py-1 bg-amber-50 text-amber-800 rounded-full text-xs font-semibold border border-amber-100">
                       GATE +1 / −⅓
                     </span>
                   ) : null}
                 </div>
-                <div className="mb-4 sm:mb-6 p-4 rounded-xl bg-neutral-900 text-white">
-                  <p className="text-xs text-neutral-300 uppercase tracking-wide mb-1">Overall</p>
+                <div className="mb-4 sm:mb-6 p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-700 text-white">
+                  <p className="text-xs text-emerald-100 uppercase tracking-wide mb-1">Overall score</p>
                   {gateMarking ? (
                     <p className="text-2xl sm:text-3xl font-bold">
                       {netMarks} <span className="text-lg font-medium text-neutral-300">/ {maxMarks} marks</span>
@@ -599,9 +574,9 @@ export default function TestResultPage() {
                   <button
                     key={tab.key}
                     onClick={() => setActiveTab(tab.key)}
-                    className={`flex-1 min-w-0 flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg font-medium text-sm transition-all whitespace-nowrap ${
+                    className={`flex-1 min-w-0 flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl font-semibold text-sm transition-all whitespace-nowrap ${
                       activeTab === tab.key
-                        ? 'bg-neutral-900 text-white'
+                        ? 'bg-emerald-600 text-white'
                         : 'text-neutral-600 hover:bg-neutral-100'
                     }`}
                   >
@@ -714,13 +689,9 @@ export default function TestResultPage() {
                 })
               )}
             </div>
-
-             
-          </div>
-
-</MathJaxContext>
-      </div>
-    </>
+        </div>
+      </MathJaxContext>
+    </div>
   );
 }
 

@@ -30,8 +30,8 @@ export default function WalletBar({ compact = false }) {
     return (
       <Link
         href="/pricing"
-        className={`inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 transition-colors ${
-          compact ? 'px-2.5 py-1.5 text-xs' : 'px-3 py-2 text-sm'
+        className={`inline-flex items-center gap-1.5 border border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 transition-colors ${
+          compact ? 'rounded-full px-2.5 py-1 text-xs' : 'rounded-xl px-3 py-2 text-sm'
         }`}
       >
         <Infinity className={compact ? 'w-3.5 h-3.5' : 'w-4 h-4'} />
@@ -46,8 +46,8 @@ export default function WalletBar({ compact = false }) {
   return (
     <Link
       href="/pricing"
-      className={`inline-flex items-center gap-1.5 rounded-xl border border-neutral-200 bg-white text-neutral-800 hover:bg-neutral-50 transition-colors ${
-        compact ? 'px-2.5 py-1.5 text-xs' : 'px-3 py-2 text-sm'
+      className={`inline-flex items-center gap-1.5 border border-neutral-200 bg-white text-neutral-800 hover:bg-neutral-50 transition-colors ${
+        compact ? 'rounded-full px-2.5 py-1 text-xs' : 'rounded-xl px-3 py-2 text-sm'
       }`}
       title="View credits & plans"
     >

@@ -26,8 +26,7 @@ const QuestionCard = dynamic(() => import("@/components/QuestionCard"), {
   ssr: false,
   loading: () => <QuestionSkeleton />
 });
-const Navbar = dynamic(() => import("@/components/Navbar"), { ssr: false });
-const MetaDataJobs = dynamic(() => import("@/components/Seo"), { ssr: false });
+import ExamSubpageHeader from "@/components/examHub/ExamSubpageHeader";
 
 // Constants
 const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || "jain10gunjan@gmail.com";
@@ -675,12 +674,7 @@ const Pagetracker = memo(() => {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-neutral-50">
-        <MetaDataJobs
-          seoTitle={`${topicName} ${category?.toUpperCase()} Practice`}
-          seoDescription={`Practice ${topicName} questions with detailed solutions.`}
-        />
-        <Navbar />
-        <div className="flex justify-center items-center min-h-[60vh] pt-16 px-4">
+        <div className="flex justify-center items-center min-h-[60vh] pt-8 px-4">
           <div className="bg-white p-8 rounded-lg border border-neutral-200 flex items-center space-x-4">
             <div className="w-8 h-8 border-4 border-neutral-200 border-t-neutral-900 rounded-full animate-spin" />
             <div>
@@ -695,22 +689,16 @@ const Pagetracker = memo(() => {
 
   return (
     <>
-      <Navbar />
       <div className="min-h-screen bg-neutral-50">
-        <MetaDataJobs
-          seoTitle={`${topicName} ${category?.toUpperCase()} Practice`}
-          seoDescription={`Practice ${topicName} questions with detailed solutions.`}
-        />
-        <div className="bg-neutral-50 pt-4 overflow-x-hidden">
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4 w-full">
-            {/* Header with Stats */}
-            <div className="mb-4 sm:mb-8 mt-16">
-              <h1 className="text-xl sm:text-2xl font-semibold text-neutral-900 mb-1">
-                {topicName}
-              </h1>
-              <p className="text-xs sm:text-sm text-neutral-600 mb-4">
-                {totalQuestionsForDifficulty} questions available
-              </p>
+        <div className="bg-neutral-50 pt-24 overflow-x-hidden">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pb-8 w-full">
+            <ExamSubpageHeader
+              title={topicName}
+              description={`${totalQuestionsForDifficulty} questions available for practice.`}
+              backHref={`/${category}`}
+              backLabel="Exam hub"
+            />
+            <div className="mb-4 sm:mb-8">
               
               {/* Stats Row */}
               <div className="bg-white rounded-lg border border-neutral-200 p-3 mb-4">

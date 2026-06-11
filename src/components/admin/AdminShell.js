@@ -17,11 +17,13 @@ import {
   Menu,
   X,
   ChevronRight,
+  Sparkles,
 } from "lucide-react";
 
 const NAV = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/mcq-extractor", label: "MCQ extractor", icon: FileText },
+  { href: "/admin/gktoday", label: "GKToday", icon: Sparkles },
   { href: "/admin/mock-tests", label: "Mock tests", icon: ClipboardList },
   { href: "/admin/pricing", label: "Pricing & credits", icon: IndianRupee },
   { href: "/admin/bulk-questions", label: "Bulk questions (JSON)", icon: Database },

@@ -29,6 +29,7 @@ function emptyRoadmapForm() {
     description: '',
     price_inr: '',
     free_preview_days: '',
+    exam_slug: '',
     sort_order: 0,
     is_active: true,
   };
@@ -213,6 +214,18 @@ export default function RoadmapsAdmin() {
             />
           </label>
           <label className="block text-sm">
+            <span className="font-medium text-neutral-700">Exam slug (optional)</span>
+            <input
+              value={roadmapForm.exam_slug}
+              onChange={(e) => setRoadmapForm((f) => ({ ...f, exam_slug: e.target.value }))}
+              placeholder="gate-cse"
+              className="mt-1 w-full rounded-xl border border-neutral-200 px-3 py-2 text-sm"
+            />
+            <span className="text-xs text-neutral-500 mt-0.5 block">
+              Matches platform_exams.slug for catalog filters
+            </span>
+          </label>
+          <label className="block text-sm">
             <span className="font-medium text-neutral-700">Free preview days *</span>
             <input
               type="number"
@@ -323,6 +336,18 @@ export default function RoadmapsAdmin() {
                   />
                 </label>
               </div>
+
+              <label className="block text-sm">
+                <span className="font-medium text-neutral-700">Day notes / description</span>
+                <span className="text-neutral-400 font-normal"> (optional — shown to students)</span>
+                <textarea
+                  value={dayForm.notes}
+                  onChange={(e) => setDayForm((f) => ({ ...f, notes: e.target.value }))}
+                  rows={2}
+                  placeholder="What to focus on today, tips, links context…"
+                  className="mt-1 w-full rounded-xl border border-neutral-200 px-3 py-2 text-sm"
+                />
+              </label>
 
               {dayForm.focusAreas.map((fa, fi) => (
                 <div key={fi} className="rounded-xl border border-neutral-200 p-4 space-y-3">

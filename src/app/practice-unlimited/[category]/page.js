@@ -34,7 +34,6 @@ import {
 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
-import AuthModal from "@/components/AuthModal";
 import { useAuth } from "@/app/context/AuthContext";
 import MetaDataJobs from "@/components/Seo";
 import { motion, AnimatePresence } from 'framer-motion';
@@ -205,7 +204,7 @@ const CustomToast = ({ message, type }) => {
 const PracticeUnlimited = () => {
   const { category } = useParams();
   const router = useRouter();
-  const { user, signInWithGoogle } = useAuth();
+  const { user, openAuthModal } = useAuth();
   const { topics, subjectData, isLoading, error, hasAccess, showDemoMode } = useTopics(category);
   const questionContainerRef = useRef(null);
 
@@ -237,7 +236,6 @@ const PracticeUnlimited = () => {
   const [difficultyFilter, setDifficultyFilter] = useState("all");
   const [showSettings, setShowSettings] = useState(false);
   const [sortConfig, setSortConfig] = useState({ key: "topic", direction: "ascending" });
-  const [showAuthModal, setShowAuthModal] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [topicView, setTopicView] = useState("grid"); // grid or list
   const [showBookmarked, setShowBookmarked] = useState(false);
@@ -728,7 +726,7 @@ const PracticeUnlimited = () => {
             <h2 className="text-2xl font-bold text-gray-800 mb-4">Sign In Required</h2>
             <p className="text-gray-600 mb-6">Please sign in to access practice content</p>
             <button
-              onClick={() => setShowAuthModal(true)}
+              onClick={() => openAuthModal()}
               className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center justify-center mx-auto shadow-md hover:shadow-lg"
             >
               <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
@@ -740,12 +738,7 @@ const PracticeUnlimited = () => {
             
           </div>
         </div>
-        <AuthModal
-          isOpen={showAuthModal}
-          onClose={() => setShowAuthModal(false)}
-          onGoogleSignIn={signInWithGoogle}
-        />
-</div>
+      </div>
     );
   }
 
@@ -792,12 +785,7 @@ const PracticeUnlimited = () => {
     return (
       <>
       <div className="min-h-screen bg-gray-50">
-        <Navbar
-          user={user}
-          setShowAuthModal={setShowAuthModal}
-          setIsSidebarOpen={setIsSidebarOpen}
-          isSidebarOpen={isSidebarOpen}
-        />
+        <Navbar />
         <div className="container mx-auto p-4 sm:p-6 pt-16 mt-32">
           <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 max-w-4xl mx-auto">
             {/* Demo mode banner */}
@@ -1058,15 +1046,9 @@ const PracticeUnlimited = () => {
               </div>
             )}
           </div>
-         
-        <AuthModal
-          isOpen={showAuthModal}
-          onClose={() => setShowAuthModal(false)}
-          onGoogleSignIn={signInWithGoogle}
-        />
-</div>
-       </div>
-       </>
+        </div>
+      </div>
+      </>
     );
   }
 
@@ -1077,12 +1059,7 @@ const PracticeUnlimited = () => {
                     seoTitle={`Practice Unlimited ${category}`}
                     seoDescription={`Boost your CSE 2025 placement prep with the Placement Tracker Sheet CSE 2025. Organize coding practice, aptitude tests, interviews, and deadlines.`}
                   />
-      <Navbar
-        user={user}
-        setShowAuthModal={setShowAuthModal}
-        setIsSidebarOpen={setIsSidebarOpen}
-        isSidebarOpen={isSidebarOpen}
-      />
+      <Navbar />
       <div className="container mx-auto p-4 sm:p-6 pt-16 mt-32">
         <div className="bg-white rounded-lg shadow-md overflow-hidden max-w-4xl mx-auto">
           {/* Practice header */}
@@ -1431,12 +1408,7 @@ const PracticeUnlimited = () => {
           )}
         </div>
       </div>
-      <AuthModal
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-        onGoogleSignIn={signInWithGoogle}
-      />
-</div>
+    </div>
   );
 };
 

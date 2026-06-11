@@ -2,34 +2,17 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { MathJax, MathJaxContext } from "better-react-mathjax";
 import { useParams } from "next/navigation";
-import { getAuth, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
-import { initializeApp } from "firebase/app";
 import { createClient } from "@supabase/supabase-js";
 import { upsertUserProgress } from "@/lib/userProgressUpsert";
 import toast from "react-hot-toast";
 import debounce from "lodash/debounce";
+import { useAuth } from "@/app/context/AuthContext";
+import { applyProgressUserFilter, getProgressUserId, mergeProgressRows } from "@/lib/progressIdentity";
 import ProgressBar from "../../../../../components/ProgressBar";
 import QuestionCard from "../../../../../components/QuestionCard";
-import AuthModal from "../../../../../components/AuthModal";
-import Navbar from "../../../../../components/Navbar"; // Reusable Navbar
-import Sidebar from "../../../../../components/Sidebar"; // Reusable Sidebar
+import Navbar from "../../../../../components/Navbar";
+import Sidebar from "../../../../../components/Sidebar";
 import { motion, AnimatePresence } from "framer-motion";
-
-// Firebase configuration
-const firebaseConfig = {
-  apiKey: "AIzaSyCyHHobmWFRWb_ZnKhs3JXSCKdbTQaNHW8",
-  authDomain: "examtracker-6731e.firebaseapp.com",
-  projectId: "examtracker-6731e",
-  storageBucket: "examtracker-6731e.firebasestorage.app",
-  messagingSenderId: "492165379080",
-  appId: "1:492165379080:web:6c71aa16d2447f81348dbd",
-  measurementId: "G-Z5B4SRV9H7",
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const provider = new GoogleAuthProvider();
 
 // Supabase configuration
 const supabase = createClient(
@@ -60,9 +43,9 @@ const Pagetracker = () => {
     messageStyle: "none",
   };
   const { pagetopic } = useParams();
+  const { user, openAuthModal } = useAuth();
   const [data, setData] = useState([]);
   const [userData, setUserData] = useState({});
-  const [user, setUser] = useState(null);
   const [questions, setQuestions] = useState([]);
   const [activeDifficulty, setActiveDifficulty] = useState("easy");
   const [progress, setProgress] = useState({
@@ -71,7 +54,6 @@ const Pagetracker = () => {
     points: 0,
   });
   const [isLoading, setIsLoading] = useState(true);
-  const [showAuthModal, setShowAuthModal] = useState(false);
   const [editingQuestionId, setEditingQuestionId] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeSubject, setActiveSubject] = useState(null); // Added missing state
@@ -94,26 +76,32 @@ const Pagetracker = () => {
   }, []);
 
   const debouncedFetchUserProgress = useCallback(
-    debounce(async (uid) => {
+    debounce(async () => {
+      if (!user?.id) return;
       try {
-        const { data, error } = await supabase
+        let query = supabase
           .from("user_progress")
           .select("completedquestions, correctanswers, points")
-          .eq("user_id", uid)
           .eq("topic", pagetopic)
-          .eq("area", "upsc")
-          .maybeSingle();
+          .eq("area", "upsc");
+        query = applyProgressUserFilter(query, user);
+
+        const { data, error } = await query;
 
         if (error && error.code !== "PGRST116") throw error;
-        setProgress(
-          data ?? { completedquestions: [], correctanswers: [], points: 0 }
-        );
+        const rows = Array.isArray(data) ? data : data ? [data] : [];
+        const merged = mergeProgressRows(rows);
+        setProgress({
+          completedquestions: merged.completed,
+          correctanswers: merged.correct,
+          points: merged.points,
+        });
       } catch (error) {
         console.error("Progress fetch error:", error);
         toast.error("Failed to load progress");
       }
     }, 300),
-    [pagetopic]
+    [pagetopic, user]
   );
 
   const apiEndpoint = "/api/upscprelims/allsubtopics";
@@ -141,19 +129,14 @@ const Pagetracker = () => {
     fetchData();
   }, []);
 
-  // Authentication handling
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((currentUser) => {
-      setUser(currentUser);
-      if (currentUser) {
-        debouncedFetchUserProgress(currentUser.uid);
-      }
-    });
+    if (user?.id) {
+      debouncedFetchUserProgress();
+    }
     return () => {
-      unsubscribe();
       debouncedFetchUserProgress.cancel();
     };
-  }, [pagetopic, debouncedFetchUserProgress]);
+  }, [pagetopic, user, debouncedFetchUserProgress]);
 
   // Fetch questions
   useEffect(() => {
@@ -180,19 +163,6 @@ const Pagetracker = () => {
     fetchData();
   }, [pagetopic]);
 
-  const handleGoogleSignIn = async () => {
-    try {
-      const result = await signInWithPopup(auth, provider);
-      setUser(result.user);
-      setShowAuthModal(false);
-      toast.success("Successfully signed in!");
-      debouncedFetchUserProgress(result.user.uid);
-    } catch (error) {
-      toast.error("Authentication failed");
-      console.error(error);
-    }
-  };
-
   const debouncedUpdateProgress = useCallback(
     debounce(async (updatedProgress) => {
       if (!user) return;
@@ -201,7 +171,7 @@ const Pagetracker = () => {
         const { data, error } = await upsertUserProgress(
           supabase,
           {
-            user_id: user.uid,
+            user_id: getProgressUserId(user),
             topic: pagetopic,
             completedquestions: updatedProgress.completedquestions,
             correctanswers: updatedProgress.correctanswers,
@@ -223,7 +193,7 @@ const Pagetracker = () => {
 
   const updateProgress = (questionId, isCorrect) => {
     if (!user) {
-      setShowAuthModal(true);
+      openAuthModal();
       return;
     }
 
@@ -248,7 +218,7 @@ const Pagetracker = () => {
 
   const reportQuestion = async (questionId, reason) => {
     if (!user) {
-      setShowAuthModal(true);
+      openAuthModal();
       return;
     }
 
@@ -337,12 +307,7 @@ const Pagetracker = () => {
   return (
     <>
       {/* Navbar */}
-      <Navbar
-        setIsSidebarOpen={setIsSidebarOpen}
-        isSidebarOpen={isSidebarOpen}
-        user={user}
-        setShowAuthModal={setShowAuthModal}
-      />
+      <Navbar />
 
       {/* Sidebar */}
       <Sidebar
@@ -441,12 +406,7 @@ const Pagetracker = () => {
           </main>
         </div>
 
-        <AuthModal
-          isOpen={showAuthModal}
-          onClose={() => setShowAuthModal(false)}
-          onGoogleSignIn={handleGoogleSignIn}
-        />
-</div>
+        </div>
     </>
   );
 };

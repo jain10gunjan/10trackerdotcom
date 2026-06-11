@@ -6,8 +6,10 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
+import { usePathname } from 'next/navigation';
 import { useAuth } from '@/app/context/AuthContext';
 import { CREDIT_COST, SIGNUP_BONUS_CREDITS } from '@/lib/credits/constants';
 import {
@@ -31,6 +33,7 @@ const CreditsContext = createContext({
   signupBonus: SIGNUP_BONUS_CREDITS,
   signupBonusGranted: false,
   refreshWallet: async () => {},
+  applyWalletSnapshot: async () => {},
   setCreditsBalance: () => {},
   flushSync: async () => {},
   showPaywall: false,
@@ -42,17 +45,55 @@ export function useCredits() {
 }
 
 export function CreditsProvider({ children }) {
+  const pathname = usePathname();
   const { isAuthenticated, user } = useAuth();
   const userId = user?.id;
   const [loading, setLoading] = useState(true);
   const [wallet, setWallet] = useState(null);
   const [walletError, setWalletError] = useState(null);
   const [showPaywall, setShowPaywall] = useState(false);
+  const walletSeededRef = useRef(false);
 
-  const refreshWallet = useCallback(async () => {
+  const applyWalletSnapshot = useCallback(
+    async (data) => {
+      if (!isAuthenticated || !userId || !data) return;
+      try {
+        await hydrateCreditsFromServer(userId, {
+          credits: data.credits,
+          unlimited: data.unlimited,
+          costs: data.costs,
+        });
+
+        const displayCredits = getLocalCreditBalance(userId);
+
+        setWallet({
+          ...data,
+          credits: displayCredits,
+        });
+        setWalletError(null);
+        walletSeededRef.current = true;
+        setLoading(false);
+      } catch (e) {
+        if (process.env.NODE_ENV === 'development') {
+          console.error('applyWalletSnapshot', e);
+        }
+      }
+    },
+    [isAuthenticated, userId]
+  );
+
+  const refreshWallet = useCallback(async (opts = {}) => {
+    const force = Boolean(opts.force);
+    if (!force && pathname === '/' && isAuthenticated && walletSeededRef.current) {
+      return;
+    }
+    if (!force && pathname === '/' && isAuthenticated) {
+      return;
+    }
     if (!isAuthenticated || !userId) {
       setWallet(null);
       setWalletError(null);
+      walletSeededRef.current = false;
       setLoading(false);
       return;
     }
@@ -92,7 +133,7 @@ export function CreditsProvider({ children }) {
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated, userId]);
+  }, [isAuthenticated, userId, pathname]);
 
   const flushSync = useCallback(async () => {
     if (!userId) return;
@@ -104,6 +145,10 @@ export function CreditsProvider({ children }) {
       setWallet((prev) => (prev ? { ...prev, credits: result.credits } : prev));
     }
     return result;
+  }, [userId]);
+
+  useEffect(() => {
+    walletSeededRef.current = false;
   }, [userId]);
 
   useEffect(() => {
@@ -172,12 +217,13 @@ export function CreditsProvider({ children }) {
       walletReady: Boolean(wallet) || Boolean(userId),
       walletError,
       refreshWallet,
+      applyWalletSnapshot,
       setCreditsBalance,
       flushSync,
       showPaywall,
       setShowPaywall,
     }),
-    [loading, wallet, walletError, refreshWallet, setCreditsBalance, flushSync, showPaywall, userId]
+    [loading, wallet, walletError, refreshWallet, applyWalletSnapshot, setCreditsBalance, flushSync, showPaywall, userId]
   );
 
   return (

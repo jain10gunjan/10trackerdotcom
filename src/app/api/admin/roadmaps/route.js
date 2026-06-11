@@ -59,6 +59,9 @@ export async function POST(request) {
     const free_preview_days = Number(body.free_preview_days);
     const sort_order = Number(body.sort_order) || 0;
     const is_active = body.is_active !== false;
+    const exam_slug = body.exam_slug
+      ? normalizeSlug(String(body.exam_slug))
+      : null;
 
     if (!isValidSlug(slug)) {
       return NextResponse.json(
@@ -90,6 +93,7 @@ export async function POST(request) {
         free_preview_days: Math.round(free_preview_days),
         sort_order,
         is_active,
+        exam_slug: exam_slug || null,
         updated_at: new Date().toISOString(),
       })
       .select('*')
@@ -140,6 +144,9 @@ export async function PATCH(request) {
     }
     if (body.sort_order != null) patch.sort_order = Number(body.sort_order) || 0;
     if (body.is_active != null) patch.is_active = Boolean(body.is_active);
+    if (body.exam_slug !== undefined) {
+      patch.exam_slug = body.exam_slug ? normalizeSlug(String(body.exam_slug)) : null;
+    }
 
     const supabase = getSupabaseAdmin();
     const { data, error } = await supabase

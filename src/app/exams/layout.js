@@ -1,31 +1,30 @@
 export const metadata = {
-  title: "All Competitive Exams | 10tracker",
-  description: "Browse all competitive exams available on 10tracker. Practice topic-wise questions, track your progress, and excel in GATE, CAT, UPSC, JEE, NEET, SSC and more.",
+  title: 'Exam Catalog | 10Tracker',
+  description:
+    'Browse all active competitive exams on 10Tracker. Practice topic-wise MCQs and take mock tests for UPSC, GATE, aptitude, and more.',
   keywords: [
     'competitive exams',
     'exam preparation',
     'GATE exam',
-    'CAT exam',
     'UPSC preparation',
-    'JEE preparation',
-    'NEET preparation',
-    'SSC exam',
-    'practice questions',
-    'exam tracker'
+    'mock tests',
+    'MCQ practice',
+    '10Tracker',
   ],
   openGraph: {
-    title: "All Competitive Exams | 10tracker",
-    description: "Browse all competitive exams available on 10tracker. Practice topic-wise questions, track your progress, and excel in your exam preparation.",
-    type: "website",
+    title: 'Exam Catalog | 10Tracker',
+    description:
+      'Browse all active competitive exams on 10Tracker. Practice topic-wise MCQs and take mock tests.',
+    type: 'website',
   },
   twitter: {
-    card: "summary_large_image",
-    title: "All Competitive Exams | 10tracker",
-    description: "Browse all competitive exams available on 10tracker. Practice topic-wise questions, track your progress, and excel in your exam preparation.",
+    card: 'summary_large_image',
+    title: 'Exam Catalog | 10Tracker',
+    description:
+      'Browse all active competitive exams on 10Tracker. Practice topic-wise MCQs and take mock tests.',
   },
 };
 
 export default function ExamsLayout({ children }) {
   return children;
 }
-

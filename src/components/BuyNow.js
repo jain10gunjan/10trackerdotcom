@@ -2,18 +2,17 @@
 
 import { useState } from 'react';
 import { useAuth } from "@/app/context/AuthContext";
+import { getPurchaseAuthModalContext } from '@/lib/auth/authModalContext';
 import { CheckCircle, Book, FileText, LayoutGrid, Activity, Calendar } from 'lucide-react';
 import RazorpayButton from './RazorpayButton';
-import AuthModal from '@/components/AuthModal';
 import toast from 'react-hot-toast';
-import { useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 
 export default function BuyNow({ category, userEmail, userName }) {
-  const { user, googleSignIn } = useAuth();
+  const { user, openAuthModal } = useAuth();
+  const pathname = usePathname();
   const [activeTab, setActiveTab] = useState('features');
   const [error, setError] = useState(null);
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const router = useRouter();
 
   const features = [
     {
@@ -54,17 +53,6 @@ export default function BuyNow({ category, userEmail, userName }) {
         .replace(/\b\w/g, (char) => char.toUpperCase())
     : '';
 
-  const handleGoogleSignIn = async () => {
-    try {
-      await googleSignIn();
-      setShowAuthModal(false);
-      toast.success('Successfully signed in!');
-    } catch (err) {
-      toast.error('Authentication failed');
-      console.error(err);
-    }
-  };
-
   if (!user) {
     return (
       <div className="bg-gradient-to-br from-slate-50 to-blue-50 min-h-screen px-4 py-16 flex items-center justify-center">
@@ -74,7 +62,7 @@ export default function BuyNow({ category, userEmail, userName }) {
             Please sign in to purchase the {formattedCategory} Premium Package.
           </p>
           <button
-            onClick={() => setShowAuthModal(true)}
+            onClick={() => openAuthModal(getPurchaseAuthModalContext(pathname))}
             className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition duration-200 shadow-md hover:shadow-lg flex items-center justify-center mx-auto"
           >
             <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
@@ -82,12 +70,7 @@ export default function BuyNow({ category, userEmail, userName }) {
             </svg>
             Sign in with Google
           </button>
-          <AuthModal
-            isOpen={showAuthModal}
-            onClose={() => setShowAuthModal(false)}
-            onGoogleSignIn={handleGoogleSignIn}
-          />
-</div>
+        </div>
       </div>
     );
   }
@@ -209,7 +192,7 @@ export default function BuyNow({ category, userEmail, userName }) {
                     </div>
                     <div className="flex items-center mt-1">
                       <span className="line-through opacity-70 text-sm">₹199</span>
-                      <span className="ml-2 bg-white text-blue-600 text-xs px-2 py-0.5 rounded-fullVECTOR font-medium">75% OFF</span>
+                      <span className="ml-2 bg-white text-blue-600 text-xs px-2 py-0.5 rounded-full font-medium">75% OFF</span>
                     </div>
                   </div>
                 </div>
@@ -258,6 +241,6 @@ export default function BuyNow({ category, userEmail, userName }) {
           </div>
         </div>
       </div>
-</div>
+    </div>
   );
 }

@@ -1,251 +1,124 @@
-import React from 'react';
-import { createClient } from '@supabase/supabase-js';
 import Link from 'next/link';
-import ArticlePageClient from './ArticlePageClient';
+import { redirect } from 'next/navigation';
+import ArticleDetailContent from '@/components/articles/ArticleDetailContent';
+import {
+  buildArticleBreadcrumbJsonLd,
+  buildArticleJsonLd,
+  buildArticleMetadata,
+  fetchArticleBySlug,
+  fetchRelatedForArticle,
+  incrementArticleViews,
+  parseSocialEmbeds,
+  RELATED_PAGE_SIZE,
+  safeRelatedPage,
+} from '@/lib/articles/fetchArticle';
+import { isArticleCategorySlug } from '@/lib/articles/fetchCategoryArticles';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
-
-// Force dynamic rendering - fetch from DB on every request
 export const dynamic = 'force-dynamic';
-export const revalidate = 0; // No caching, always fresh data
+export const revalidate = 0;
 
-// Fetch article data on the server
+function NotFoundView() {
+  return (
+    <div className="min-h-screen bg-neutral-50 flex items-center justify-center pt-20">
+      <div className="text-center px-4">
+        <div className="w-16 h-16 bg-neutral-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg className="w-8 h-8 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+            />
+          </svg>
+        </div>
+        <h1 className="text-2xl font-semibold text-neutral-900 mb-2">Article not found</h1>
+        <p className="text-neutral-600 mb-6">The article you&apos;re looking for doesn&apos;t exist.</p>
+        <Link
+          href="/"
+          className="inline-flex items-center gap-2 px-6 py-2.5 bg-neutral-900 text-white rounded-xl hover:bg-neutral-800 transition-colors text-sm font-semibold"
+        >
+          Back to home
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function ErrorView() {
+  return (
+    <div className="min-h-screen bg-neutral-50 flex items-center justify-center pt-20">
+      <div className="text-center px-4">
+        <h1 className="text-2xl font-semibold text-neutral-900 mb-2">Error loading article</h1>
+        <p className="text-neutral-600 mb-6">Please try again in a moment.</p>
+        <Link
+          href="/"
+          className="inline-flex items-center gap-2 px-6 py-2.5 bg-neutral-900 text-white rounded-xl hover:bg-neutral-800 transition-colors text-sm font-semibold"
+        >
+          Back to home
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 export async function generateMetadata({ params }) {
   const { slug } = await params;
-  
-  try {
-    const { data: article, error } = await supabase
-      .from('published_articles')
-      .select('*')
-      .eq('slug', slug)
-      .single();
 
-    if (error || !article) {
+  try {
+    const article = await fetchArticleBySlug(slug);
+    if (!article) {
       return {
-        title: 'Article Not Found | 10tracker',
+        title: 'Article Not Found | 10Tracker',
         description: 'The article you are looking for could not be found.',
+        robots: { index: false, follow: false },
       };
     }
-
-  const getCategoryName = (categorySlug) => {
-    const names = {
-      'categories': 'Categories',
-      'latest-jobs': 'Latest Jobs',
-      'exam-results': 'Exam Results',
-      'answer-key': 'Answer Key',
-      'admit-cards': 'Admit Cards',
-      'news': 'News'
-    };
-    return names[categorySlug] || categorySlug;
-  };
-
-    // Prefer configured site URL, fall back to the primary live domain
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://10tracker.com';
-    const fullUrl = `${siteUrl}/articles/${article.slug}`;
-    // Build an absolute, share-safe image URL for Open Graph / Twitter
-    const fallbackOgImage = `${siteUrl}/10tracker.png`;
-    const fullImage = article.featured_image_url 
-      ? (article.featured_image_url.startsWith('http') 
-          ? article.featured_image_url 
-          : `${siteUrl}${article.featured_image_url}`)
-      : fallbackOgImage;
-
-    const description =
-      article.excerpt ||
-      (article.content ? article.content.substring(0, 160) : '');
-
+    return buildArticleMetadata(article);
+  } catch (error) {
+    console.error('[article metadata]', slug, error);
     return {
-      title: `${article.title} | 10tracker`,
-      description,
-      keywords: [
-        'exam preparation',
-        'CAT exam',
-        'GATE exam',
-        'UPSC preparation',
-        'JEE preparation',
-        'NEET preparation',
-        'competitive exams',
-        ...(article.tags || [])
-      ],
-      authors: [{ name: '10tracker Team' }],
-      creator: '10tracker',
-      publisher: '10tracker',
-      formatDetection: {
-        email: false,
-        address: false,
-        telephone: false,
-      },
-      metadataBase: new URL(siteUrl),
-      alternates: {
-        canonical: fullUrl,
-      },
-      openGraph: {
-        type: 'article',
-        locale: 'en_US',
-        url: fullUrl,
-        title: article.title,
-        description,
-        siteName: '10tracker',
-        images: [
-          {
-            url: fullImage,
-            width: 1200,
-            height: 630,
-            alt: article.title,
-          },
-        ],
-        publishedTime: article.created_at,
-        modifiedTime: article.updated_at || article.created_at,
-        authors: ['10tracker Team'],
-        section: getCategoryName(article.category),
-        tags: article.tags || [],
-      },
-      twitter: {
-        card: 'summary_large_image',
-        site: '@10Tracker',
-        creator: '@10Tracker',
-        title: article.title,
-        description,
-        images: [
-          {
-            url: fullImage,
-            alt: article.title,
-          },
-        ],
-      },
-      robots: {
-        index: true,
-        follow: true,
-        googleBot: {
-          index: true,
-          follow: true,
-          'max-video-preview': -1,
-          'max-image-preview': 'large',
-          'max-snippet': -1,
-        },
-      },
-      other: {
-        'article:reading_time': Math.ceil(article.content.length / 500).toString(),
-        'article:view_count': (article.view_count || 0).toString(),
-      },
-    };
-      } catch (error) {
-    console.error('Error generating metadata:', error);
-    return {
-      title: 'Article Not Found | 10tracker',
+      title: 'Article Not Found | 10Tracker',
       description: 'The article you are looking for could not be found.',
     };
   }
 }
 
-// Server component that fetches data
-export default async function ArticlePage({ params }) {
+export default async function ArticlePage({ params, searchParams }) {
   const { slug } = await params;
-  
+  const resolved = await searchParams;
+  const relatedPage = safeRelatedPage(resolved?.relatedPage);
+
   try {
-    // Fetch the main article - try both view and direct table
-    let { data: article, error: articleError } = await supabase
-      .from('published_articles')
-      .select('*')
-      .eq('slug', slug)
-      .single();
-    
-    // If view doesn't have social_media_embeds, fetch directly from articles table
-    if (article && !article.hasOwnProperty('social_media_embeds')) {
-      const { data: directArticle } = await supabase
-        .from('articles')
-        .select('social_media_embeds')
-        .eq('id', article.id)
-        .single();
-      
-      if (directArticle) {
-        article.social_media_embeds = directArticle.social_media_embeds;
+    const article = await fetchArticleBySlug(slug);
+    if (!article) {
+      if (await isArticleCategorySlug(slug)) {
+        redirect(`/articles/category/${slug}`);
       }
+      return <NotFoundView />;
     }
 
-    if (articleError || !article) {
-    return (
-      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
-          <div className="text-center">
-            <div className="w-16 h-16 bg-neutral-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-            </div>
-            <h1 className="text-2xl font-semibold text-neutral-900 mb-2">Article Not Found</h1>
-            <p className="text-neutral-600 mb-6">The article you&apos;re looking for doesn&apos;t exist.</p>
-            <Link
-              href="/"
-              className="inline-flex items-center gap-2 px-6 py-2 bg-neutral-800 text-white rounded-lg hover:bg-neutral-700 transition-colors duration-200"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
-              Back to Home
-            </Link>
-          </div>
-      </div>
+    const { articles: relatedArticles, totalCount } = await fetchRelatedForArticle(
+      article,
+      relatedPage,
+      RELATED_PAGE_SIZE
     );
-  }
 
-    // Fetch related articles
-    const { data: relatedArticles, error: relatedError } = await supabase
-      .from('published_articles')
-      .select('*')
-      .neq('id', article.id)
-      .eq('category', article.category)
-      .order('created_at', { ascending: false })
-      .limit(3);
+    const totalRelatedPages = Math.max(1, Math.ceil(totalCount / RELATED_PAGE_SIZE));
 
-    // If no related articles in same category, get recent articles
-    let finalRelatedArticles = relatedArticles || [];
-    if (finalRelatedArticles.length === 0) {
-      const { data: recentArticles } = await supabase
-        .from('published_articles')
-        .select('*')
-        .neq('id', article.id)
-        .order('created_at', { ascending: false })
-        .limit(3);
-      finalRelatedArticles = recentArticles || [];
+    if (relatedPage > totalRelatedPages && totalCount > 0) {
+      redirect(
+        totalRelatedPages <= 1
+          ? `/articles/${slug}`
+          : `/articles/${slug}?relatedPage=${totalRelatedPages}`
+      );
     }
 
-    // Increment view count (fire and forget)
-    supabase
-      .from('articles')
-      .update({ view_count: (article.view_count || 0) + 1 })
-      .eq('id', article.id)
-      .then(() => {}) // Fire and forget
-      .catch(() => {}); // Ignore errors
+    incrementArticleViews(article.id, article.view_count).catch(() => {});
 
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://10tracker.com';
-    const fullUrl = `${siteUrl}/articles/${article.slug}`;
-    const ogImage = article.featured_image_url
-      ? article.featured_image_url.startsWith('http')
-        ? article.featured_image_url
-        : `${siteUrl}${article.featured_image_url}`
-      : `${siteUrl}/10tracker.png`;
-    const jsonLd = {
-      '@context': 'https://schema.org',
-      '@type': 'Article',
-      headline: article.title,
-      description:
-        article.excerpt || (article.content ? article.content.substring(0, 160) : ''),
-      image: ogImage,
-      url: fullUrl,
-      datePublished: article.created_at,
-      dateModified: article.updated_at || article.created_at,
-      author: { '@type': 'Organization', name: '10tracker' },
-      publisher: {
-        '@type': 'Organization',
-        name: '10tracker',
-        logo: { '@type': 'ImageObject', url: `${siteUrl}/10tracker.png` },
-      },
-      mainEntityOfPage: { '@type': 'WebPage', '@id': fullUrl },
-      keywords: Array.isArray(article.tags) ? article.tags.join(', ') : undefined,
-    };
+    const jsonLd = buildArticleJsonLd(article, siteUrl);
+    const breadcrumbJsonLd = buildArticleBreadcrumbJsonLd(article, siteUrl);
+    const socialEmbeds = parseSocialEmbeds(article.social_media_embeds);
 
     return (
       <>
@@ -253,32 +126,22 @@ export default async function ArticlePage({ params }) {
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
-        <ArticlePageClient article={article} relatedArticles={finalRelatedArticles} />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+        />
+        <ArticleDetailContent
+          article={article}
+          relatedArticles={relatedArticles}
+          relatedPage={relatedPage}
+          totalRelatedPages={totalRelatedPages}
+          totalRelatedCount={totalCount}
+          socialEmbeds={socialEmbeds}
+        />
       </>
     );
   } catch (error) {
-    console.error('Error fetching article data:', error);
-    return (
-      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 bg-neutral-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-            </svg>
-          </div>
-          <h1 className="text-2xl font-semibold text-neutral-900 mb-2">Error Loading Article</h1>
-          <p className="text-neutral-600 mb-6">There was an error loading this article.</p>
-            <Link
-              href="/"
-              className="inline-flex items-center gap-2 px-6 py-2 bg-neutral-800 text-white rounded-lg hover:bg-neutral-700 transition-colors duration-200"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
-              Back to Home
-            </Link>
-        </div>
-      </div>
-    );
+    console.error('[article page]', slug, error);
+    return <ErrorView />;
   }
 }

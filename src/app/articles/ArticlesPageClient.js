@@ -1,303 +1,250 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
-import {
-  Calendar,
-  Eye,
-  ArrowRight,
-  BookOpen,
-  Search,
-  Filter,
-} from 'lucide-react';
-import Navbar from '@/components/Navbar';
+import { useRouter } from 'next/navigation';
+import { Search } from 'lucide-react';
+import ArticleListCard from '@/components/articles/ArticleListCard';
+import { articlesListHref } from '@/lib/articles/articlesListHref';
 
-const ITEMS_PER_PAGE = 20;
-
-export default function ArticlesPageClient({ initialArticles = [], initialCategories = [] }) {
-  const [articles] = useState(initialArticles);
-  const [categories] = useState(initialCategories);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
-
-  const formatDate = (dateString) => {
-    try {
-      return new Date(dateString).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-      });
-    } catch {
-      return '';
-    }
-  };
-
-  const getCategoryColor = (categorySlug) => {
-    const category = categories.find((cat) => cat.slug === categorySlug);
-    return category?.color || '#3B82F6';
-  };
-
-  const getCategoryName = (categorySlug) => {
-    const category = categories.find((cat) => cat.slug === categorySlug);
-    return category?.name || categorySlug;
-  };
-
-  const filteredArticles = useMemo(() => {
-    const q = searchTerm.trim().toLowerCase();
-    return articles.filter((article) => {
-      const matchesSearch =
-        !q ||
-        article.title?.toLowerCase().includes(q) ||
-        article.excerpt?.toLowerCase().includes(q);
-      const matchesCategory = !selectedCategory || article.category === selectedCategory;
-      return matchesSearch && matchesCategory;
-    });
-  }, [articles, searchTerm, selectedCategory]);
-
-  const totalPages = Math.ceil(filteredArticles.length / ITEMS_PER_PAGE);
-  const paginatedArticles = filteredArticles.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
-  );
+export default function ArticlesPageClient({
+  articles = [],
+  totalCount = 0,
+  page = 1,
+  pageSize = 18,
+  category = '',
+  query = '',
+  categories = [],
+  fetchError = null,
+}) {
+  const router = useRouter();
+  const [searchInput, setSearchInput] = useState(query);
 
   React.useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, selectedCategory]);
+    setSearchInput(query);
+  }, [query]);
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+  const activeCategory = categories.find((c) => c.slug === category);
+  const accentColor = activeCategory?.color || '#2563eb';
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    router.push(
+      articlesListHref({
+        page: 1,
+        category,
+        query: searchInput,
+      })
+    );
+  };
+
+  const clearFiltersHref = articlesListHref({ page: 1 });
 
   return (
-    <>
-      <Navbar />
-      <div className="min-h-screen bg-white pt-28">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="mb-12 text-center"
-          >
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-neutral-900 mb-4 tracking-tight">
-              Articles
-            </h1>
-            <p className="text-xl text-neutral-600 max-w-2xl mx-auto font-light">
-              Latest updates, exam tips, and preparation strategies.
-            </p>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="mb-8 bg-white border border-neutral-200 rounded-2xl p-6 shadow-sm"
-          >
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-neutral-400" />
-                <input
-                  type="text"
-                  placeholder="Search articles…"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-neutral-800 focus:border-neutral-800 transition-all"
-                />
-              </div>
-
-              <div className="relative">
-                <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-neutral-400" />
-                <select
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="pl-10 pr-8 py-3 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-neutral-800 focus:border-neutral-800 transition-all appearance-none bg-white cursor-pointer"
-                >
-                  <option value="">All Categories</option>
-                  {categories.map((cat) => (
-                    <option key={cat.slug} value={cat.slug}>
-                      {cat.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </motion.div>
-
-          <div className="mb-6 text-sm text-neutral-600">
-            Showing {paginatedArticles.length} of {filteredArticles.length} articles
-          </div>
-
-          {paginatedArticles.length > 0 ? (
-            <>
-              <div className="hidden md:block bg-white border border-neutral-200 rounded-2xl shadow-sm overflow-hidden mb-8">
-                <table className="w-full">
-                  <thead className="bg-neutral-50 border-b border-neutral-200">
-                    <tr>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-neutral-700 uppercase tracking-wider">
-                        Title
-                      </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-neutral-700 uppercase tracking-wider">
-                        Category
-                      </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-neutral-700 uppercase tracking-wider">
-                        Date
-                      </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-neutral-700 uppercase tracking-wider">
-                        Views
-                      </th>
-                      <th className="px-6 py-4 text-right text-xs font-semibold text-neutral-700 uppercase tracking-wider">
-                        Action
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-neutral-200">
-                    {paginatedArticles.map((article, index) => (
-                      <motion.tr
-                        key={article.id}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.3, delay: index * 0.02 }}
-                        className="hover:bg-neutral-50 transition-colors"
-                      >
-                        <td className="px-6 py-4">
-                          <Link href={`/articles/${article.slug}`} className="group block">
-                            <div className="text-sm font-semibold text-neutral-900 group-hover:text-neutral-700 transition-colors line-clamp-2 mb-1">
-                              {article.title}
-                              {article.is_featured && (
-                                <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">
-                                  Featured
-                                </span>
-                              )}
-                            </div>
-                            {article.excerpt && (
-                              <p className="text-xs text-neutral-500 line-clamp-1">{article.excerpt}</p>
-                            )}
-                          </Link>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span
-                            className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold"
-                            style={{
-                              backgroundColor: `${getCategoryColor(article.category)}20`,
-                              color: getCategoryColor(article.category),
-                            }}
-                          >
-                            {getCategoryName(article.category)}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-1.5 text-sm text-neutral-600">
-                            <Calendar className="w-4 h-4 text-neutral-400" />
-                            {formatDate(article.created_at)}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-1.5 text-sm text-neutral-600">
-                            <Eye className="w-4 h-4 text-neutral-400" />
-                            {article.view_count || 0}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <Link
-                            href={`/articles/${article.slug}`}
-                            className="inline-flex items-center gap-1 text-sm font-medium text-neutral-700 hover:text-neutral-900 transition-colors group"
-                          >
-                            View
-                            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                          </Link>
-                        </td>
-                      </motion.tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="md:hidden space-y-4 mb-8">
-                {paginatedArticles.map((article, index) => (
-                  <motion.div
-                    key={article.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: index * 0.05 }}
-                  >
-                    <Link
-                      href={`/articles/${article.slug}`}
-                      className="block bg-white border border-neutral-200 rounded-xl p-5 hover:shadow-lg transition-all duration-300"
-                    >
-                      <div className="flex items-start justify-between gap-3 mb-3">
-                        <div className="flex-1 min-w-0">
-                          <h3 className="text-base font-semibold text-neutral-900 mb-2 line-clamp-2">
-                            {article.title}
-                          </h3>
-                          {article.excerpt && (
-                            <p className="text-sm text-neutral-500 mb-3 line-clamp-2">{article.excerpt}</p>
-                          )}
-                        </div>
-                        {article.is_featured && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 flex-shrink-0">
-                            Featured
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-4 text-xs text-neutral-500">
-                          <div className="flex items-center gap-1.5">
-                            <Calendar className="w-3.5 h-3.5" />
-                            {formatDate(article.created_at)}
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <Eye className="w-3.5 h-3.5" />
-                            {article.view_count || 0}
-                          </div>
-                        </div>
-                        <span
-                          className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold flex-shrink-0"
-                          style={{
-                            backgroundColor: `${getCategoryColor(article.category)}20`,
-                            color: getCategoryColor(article.category),
-                          }}
-                        >
-                          {getCategoryName(article.category)}
-                        </span>
-                      </div>
-                    </Link>
-                  </motion.div>
-                ))}
-              </div>
-
-              {totalPages > 1 && (
-                <div className="flex justify-center items-center gap-2 mt-8">
-                  <button
-                    onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-                    disabled={currentPage === 1}
-                    className="px-4 py-2 border border-neutral-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-neutral-50 transition-colors"
-                  >
-                    Previous
-                  </button>
-                  <span className="px-4 py-2 text-sm text-neutral-600">
-                    Page {currentPage} of {totalPages}
-                  </span>
-                  <button
-                    onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
-                    disabled={currentPage === totalPages}
-                    className="px-4 py-2 border border-neutral-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-neutral-50 transition-colors"
-                  >
-                    Next
-                  </button>
-                </div>
-              )}
-            </>
-          ) : (
-            <div className="text-center py-16 bg-white border border-neutral-200 rounded-2xl">
-              <BookOpen className="w-16 h-16 text-neutral-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-neutral-900 mb-2">No articles found</h3>
-              <p className="text-neutral-600">
-                {searchTerm || selectedCategory
-                  ? 'Try adjusting your filters'
-                  : 'No articles available at the moment'}
-              </p>
-            </div>
-          )}
+    <div className="min-h-screen bg-neutral-50 pt-20">
+      <div className="border-b border-neutral-200/80 bg-white">
+        <div
+          className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10"
+          style={{
+            background: 'linear-gradient(135deg, #2563eb06 0%, white 50%, white 100%)',
+          }}
+        >
+          <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400 mb-2">
+            10Tracker
+          </p>
+          <h1 className="text-3xl sm:text-4xl font-bold text-neutral-900 tracking-tight">
+            Updates
+          </h1>
+          <p className="mt-2 text-sm sm:text-base text-neutral-600 max-w-2xl">
+            Latest news, current affairs, exam alerts, and preparation updates — all in one place.
+          </p>
+          <p className="mt-3 text-sm text-neutral-500 tabular-nums">
+            {totalCount} {totalCount === 1 ? 'article' : 'articles'}
+            {category && activeCategory ? ` in ${activeCategory.name}` : ''}
+            {query ? ` matching “${query}”` : ''}
+            {totalPages > 1 ? ` · Page ${page} of ${totalPages}` : ''}
+          </p>
         </div>
       </div>
-    </>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        <div className="mb-5 rounded-2xl bg-white ring-1 ring-neutral-200/80 p-4 sm:p-5 shadow-sm">
+          <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-3" role="search">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" />
+              <input
+                type="search"
+                name="q"
+                placeholder="Search updates…"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                className="w-full pl-9 pr-4 py-2.5 rounded-xl ring-1 ring-neutral-200 bg-neutral-50/50 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:bg-white transition-colors"
+              />
+            </div>
+            <button
+              type="submit"
+              className="shrink-0 px-5 py-2.5 rounded-xl bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-800 transition-colors"
+            >
+              Search
+            </button>
+          </form>
+          {query ? (
+            <p className="mt-3 text-sm text-neutral-600">
+              Showing results for &ldquo;{query}&rdquo; —{' '}
+              <Link
+                href={articlesListHref({ page: 1, category })}
+                className="font-medium text-neutral-900 underline"
+              >
+                clear search
+              </Link>
+            </p>
+          ) : null}
+        </div>
+
+        {categories.length > 0 ? (
+          <div className="mb-6">
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400">
+                Filter by category
+              </p>
+              {category ? (
+                <Link
+                  href={articlesListHref({ page: 1, query })}
+                  className="text-xs font-medium text-neutral-600 hover:text-neutral-900"
+                >
+                  Clear
+                </Link>
+              ) : null}
+            </div>
+            <div className="flex gap-2 overflow-x-auto pb-1 snap-x [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <Link
+                href={articlesListHref({ page: 1, query })}
+                className={`snap-start shrink-0 px-3.5 py-2 rounded-full text-xs font-semibold transition-all ${
+                  !category
+                    ? 'bg-neutral-900 text-white shadow-sm'
+                    : 'bg-white text-neutral-700 ring-1 ring-neutral-200/80 hover:ring-neutral-300'
+                }`}
+              >
+                All
+              </Link>
+              {categories.map((cat) => {
+                const active = category === cat.slug;
+                return (
+                  <Link
+                    key={cat.slug}
+                    href={articlesListHref({ page: 1, category: cat.slug, query })}
+                    className={`snap-start shrink-0 px-3.5 py-2 rounded-full text-xs font-semibold transition-all ${
+                      active
+                        ? 'text-white shadow-sm'
+                        : 'bg-white text-neutral-700 ring-1 ring-neutral-200/80 hover:ring-neutral-300'
+                    }`}
+                    style={active ? { backgroundColor: cat.color || '#2563eb' } : undefined}
+                  >
+                    {cat.name}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
+
+        {fetchError ? (
+          <div className="text-center py-16 sm:py-20 rounded-2xl bg-white ring-1 ring-red-200/80">
+            <h2 className="text-xl font-semibold text-neutral-900 mb-2">Something went wrong</h2>
+            <p className="text-neutral-600 mb-6 text-sm max-w-sm mx-auto">{fetchError}</p>
+            <Link href="/articles" className="text-sm font-medium text-neutral-900 underline">
+              Retry
+            </Link>
+          </div>
+        ) : articles.length > 0 ? (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5 lg:gap-6">
+              {articles.map((article) => (
+                <ArticleListCard
+                  key={article.id}
+                  article={article}
+                  accentColor={
+                    categories.find((c) => c.slug === article.category)?.color || accentColor
+                  }
+                />
+              ))}
+            </div>
+
+            {totalPages > 1 ? (
+              <nav
+                className="mt-10 flex items-center justify-center gap-3 rounded-2xl bg-white ring-1 ring-neutral-200/80 px-4 py-3"
+                aria-label="Pagination"
+              >
+                {page > 1 ? (
+                  <Link
+                    href={articlesListHref({ page: page - 1, category, query })}
+                    rel="prev"
+                    className="px-4 py-2 rounded-xl text-sm font-medium ring-1 ring-neutral-200 hover:bg-neutral-50"
+                  >
+                    Previous
+                  </Link>
+                ) : (
+                  <span className="px-4 py-2 rounded-xl text-sm font-medium ring-1 ring-neutral-100 text-neutral-300 cursor-not-allowed">
+                    Previous
+                  </span>
+                )}
+                <span className="text-sm text-neutral-600 tabular-nums">
+                  Page {page} of {totalPages}
+                </span>
+                {page < totalPages ? (
+                  <Link
+                    href={articlesListHref({ page: page + 1, category, query })}
+                    rel="next"
+                    className="px-4 py-2 rounded-xl text-sm font-medium ring-1 ring-neutral-200 hover:bg-neutral-50"
+                  >
+                    Next
+                  </Link>
+                ) : (
+                  <span className="px-4 py-2 rounded-xl text-sm font-medium ring-1 ring-neutral-100 text-neutral-300 cursor-not-allowed">
+                    Next
+                  </span>
+                )}
+              </nav>
+            ) : null}
+          </>
+        ) : (
+          <div className="text-center py-16 sm:py-20 rounded-2xl bg-white ring-1 ring-neutral-200/80">
+            <h2 className="text-xl font-semibold text-neutral-900 mb-2">No updates found</h2>
+            <p className="text-neutral-600 mb-6 text-sm max-w-sm mx-auto">
+              {query || category
+                ? 'Try a different search or category.'
+                : 'New articles will appear here soon.'}
+            </p>
+            {(query || category) && (
+              <Link href={clearFiltersHref} className="text-sm font-medium text-neutral-900 underline">
+                Clear filters
+              </Link>
+            )}
+          </div>
+        )}
+
+        {categories.length > 0 ? (
+          <div className="mt-10 pt-8 border-t border-neutral-200/80">
+            <h2 className="text-sm font-semibold text-neutral-900 mb-4">Browse by category</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+              {categories.map((cat) => (
+                <Link
+                  key={cat.slug}
+                  href={`/articles/category/${cat.slug}`}
+                  className="rounded-xl bg-white ring-1 ring-neutral-200/80 px-4 py-3 text-sm font-medium text-neutral-800 hover:ring-neutral-300 hover:shadow-sm transition-all"
+                >
+                  <span
+                    className="inline-block w-2 h-2 rounded-full mr-2 align-middle"
+                    style={{ backgroundColor: cat.color || '#737373' }}
+                  />
+                  {cat.name}
+                </Link>
+              ))}
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </div>
   );
 }

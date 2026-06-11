@@ -1,4 +1,5 @@
 "use client";
+
 import React, { useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
@@ -7,13 +8,80 @@ import { Twitter, Instagram, Mail, MapPin } from "lucide-react";
 import ReactGA from "react-ga4";
 import logo from "@/assests/10tracker.png";
 
+const MOBILE_LINKS = [
+  { label: "Exams", href: "/exams" },
+  { label: "Pricing", href: "/pricing" },
+  { label: "Roadmaps", href: "/roadmaps" },
+  { label: "Updates", href: "/articles" },
+  { label: "Contact", href: "/contact-us" },
+];
+
+const LEGAL_LINKS = [
+  { label: "Privacy", href: "/privacy-policy" },
+  { label: "Terms", href: "/terms-and-services" },
+  { label: "Disclaimer", href: "/disclaimer" },
+];
+
+const PRACTICE_LINKS = [
+  { label: "All exams", href: "/exams" },
+  { label: "Study roadmaps", href: "/roadmaps" },
+  { label: "Plans & pricing", href: "/pricing" },
+  { label: "Practice unlimited", href: "/practice-unlimited" },
+];
+
+const NEWS_LINKS = [
+  { label: "Updates", href: "/articles" },
+  { label: "Govt jobs", href: "/article/latest-jobs" },
+];
+
+const COMPANY_LINKS = [
+  { label: "About", href: "/about-us" },
+  { label: "Contact", href: "/contact-us" },
+  { label: "Privacy", href: "/privacy-policy" },
+  { label: "Terms", href: "/terms-and-services" },
+  { label: "Disclaimer", href: "/disclaimer" },
+];
+
+function SocialLinks({ compact = false }) {
+  const btnClass = compact
+    ? "flex h-8 w-8 items-center justify-center rounded-lg border border-neutral-200 bg-white text-neutral-600 transition-colors hover:border-neutral-300 hover:text-neutral-900"
+    : "flex h-10 w-10 items-center justify-center rounded-xl border border-neutral-200 bg-white text-neutral-600 transition-colors hover:border-emerald-200 hover:text-emerald-800 hover:bg-emerald-50/50";
+
+  const iconSize = compact ? 15 : 18;
+
+  return (
+    <div className={`flex items-center ${compact ? "gap-2" : "gap-2.5"}`}>
+      <Link href="mailto:contact@10tracker.com" className={btnClass} aria-label="Email">
+        <Mail size={iconSize} />
+      </Link>
+      <Link
+        href="https://x.com/10Tracker"
+        className={btnClass}
+        aria-label="Twitter"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        <Twitter size={iconSize} />
+      </Link>
+      <Link
+        href="https://www.instagram.com/10tracker/"
+        className={btnClass}
+        aria-label="Instagram"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        <Instagram size={iconSize} />
+      </Link>
+    </div>
+  );
+}
+
 const Footer = () => {
   const pathname = usePathname();
-  const isAuthPage = pathname === '/sign-up' || pathname === '/sign-in';
-  
+  const isAuthPage = pathname === "/sign-up" || pathname === "/sign-in";
+
   useEffect(() => {
-    // Don't initialize GA on auth pages for better performance
-    if (!isAuthPage && typeof window !== 'undefined') {
+    if (!isAuthPage && typeof window !== "undefined") {
       try {
         ReactGA.initialize("G-VYBMV6GVQQ");
         ReactGA.send("pageview");
@@ -23,179 +91,160 @@ const Footer = () => {
     }
   }, [isAuthPage]);
 
+  const year = new Date().getFullYear();
+
   return (
-    <footer className="bg-white border-t border-gray-100">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        {/* Top: Brand + navigation + social */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-10 pb-8">
-          {/* Brand Section */}
-          <div className="md:col-span-4 flex flex-col items-start max-w-md">
-            <Link href="/" className="mb-3 inline-flex items-center">
-              <Image
-                src={logo}
-                alt="10tracker.com"
-                className="h-auto w-36 sm:w-40 md:w-44"
-              />
-              <span className="sr-only">10tracker.com</span>
-            </Link>
-            <p className="text-sm md:text-base text-gray-600 italic font-light leading-relaxed">
-              Practice smarter, track better, achieve more. Exams, PYQs, jobs and
-              news — in one clean dashboard.
-            </p>
-            <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-gray-50 border border-gray-200 px-3 py-1 text-[11px] font-medium text-gray-600">
-              <MapPin className="w-3.5 h-3.5 text-emerald-600" />
-              Made with care in India
-            </div>
+    <footer className="border-t border-neutral-200 bg-white">
+      {/* Mobile — compact */}
+      <div className="md:hidden px-4 pt-5 pb-24">
+        <div className="mx-auto max-w-lg text-center">
+          <Link href="/" className="inline-flex items-center justify-center">
+            <Image
+              src={logo}
+              alt="10tracker.com"
+              width={853}
+              height={205}
+              className="h-10 w-[186px] object-contain"
+            />
+          </Link>
+
+          <p className="mt-2 text-xs leading-relaxed text-neutral-500">
+            Exam practice, mock tests & daily updates — in one place.
+          </p>
+
+          <nav
+            className="mt-4 flex flex-wrap items-center justify-center gap-2"
+            aria-label="Footer navigation"
+          >
+            {MOBILE_LINKS.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-xs font-medium text-neutral-700 transition-colors hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-900"
+              >
+                {link.label}
+              </Link>
+            ))}
+          </nav>
+
+          <div className="mt-4 flex justify-center">
+            <SocialLinks compact />
           </div>
 
-          {/* Link columns */}
-          <div className="md:col-span-5 grid grid-cols-2 sm:grid-cols-3 gap-6 text-sm">
-            <div>
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-3">
-                Exams & practice
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] text-neutral-400">
+            {LEGAL_LINKS.map((link, i) => (
+              <React.Fragment key={link.href}>
+                {i > 0 ? <span aria-hidden="true">·</span> : null}
+                <Link href={link.href} className="hover:text-neutral-700 transition-colors">
+                  {link.label}
+                </Link>
+              </React.Fragment>
+            ))}
+          </div>
+
+          <p className="mt-3 text-[11px] text-neutral-400">
+            &copy; {year} 10tracker. All rights reserved.
+          </p>
+        </div>
+      </div>
+
+      {/* Desktop — full */}
+      <div className="hidden md:block">
+        <div className="mx-auto max-w-7xl px-6 lg:px-8 py-12 lg:py-14">
+          <div className="grid grid-cols-12 gap-10 lg:gap-12">
+            <div className="col-span-12 lg:col-span-4">
+              <Link href="/" className="inline-flex">
+                <Image
+                  src={logo}
+                  alt="10tracker.com"
+                  width={853}
+                  height={205}
+                  className="h-12 w-[224px] object-contain object-left"
+                />
+              </Link>
+              <p className="mt-4 max-w-sm text-sm leading-relaxed text-neutral-600">
+                Practice smarter, track better, achieve more. Topic-wise MCQs, mock tests, jobs,
+                and exam news — built for competitive prep.
+              </p>
+              <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-xs font-medium text-neutral-600">
+                <MapPin className="h-3.5 w-3.5 text-emerald-600" />
+                Made with care in India
+              </div>
+            </div>
+
+            <div className="col-span-12 sm:col-span-4 lg:col-span-2 lg:col-start-6">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
+                Practice
               </h3>
-              <ul className="space-y-1.5 text-gray-600">
-                <li>
-                  <Link href="/exams" className="hover:text-gray-900 transition-colors">
-                    All exams
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/gate-cse" className="hover:text-gray-900 transition-colors">
-                    GATE CSE
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/upsc/prelims" className="hover:text-gray-900 transition-colors">
-                    UPSC Prelims
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/roadmaps" className="hover:text-gray-900 transition-colors">
-                    Study roadmaps
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/pricing" className="hover:text-gray-900 transition-colors">
-                    Plans & pricing
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/practice-unlimited" className="hover:text-gray-900 transition-colors">
-                    Practice unlimited
-                  </Link>
-                </li>
+              <ul className="mt-4 space-y-2.5 text-sm text-neutral-600">
+                {PRACTICE_LINKS.map((link) => (
+                  <li key={link.href}>
+                    <Link
+                      href={link.href}
+                      className="transition-colors hover:text-neutral-900"
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
               </ul>
             </div>
 
-            <div>
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-3">
+            <div className="col-span-6 sm:col-span-4 lg:col-span-2">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
                 News & jobs
               </h3>
-              <ul className="space-y-1.5 text-gray-600">
-                <li>
-                  <Link href="/article/news" className="hover:text-gray-900 transition-colors">
-                    News & updates
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/article/latest-jobs" className="hover:text-gray-900 transition-colors">
-                    Govt jobs
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/articles" className="hover:text-gray-900 transition-colors">
-                    All articles
-                  </Link>
-                </li>
+              <ul className="mt-4 space-y-2.5 text-sm text-neutral-600">
+                {NEWS_LINKS.map((link) => (
+                  <li key={link.href}>
+                    <Link
+                      href={link.href}
+                      className="transition-colors hover:text-neutral-900"
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
               </ul>
             </div>
 
-            <div className="hidden sm:block">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-3">
-                About
+            <div className="col-span-6 sm:col-span-4 lg:col-span-2">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
+                Company
               </h3>
-              <ul className="space-y-1.5 text-gray-600">
-                <li>
-                  <Link href="/about-us" className="hover:text-gray-900 transition-colors">
-                    About
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/contact-us" className="hover:text-gray-900 transition-colors">
-                    Contact
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/privacy-policy" className="hover:text-gray-900 transition-colors">
-                    Privacy
-                  </Link>
-                </li>
+              <ul className="mt-4 space-y-2.5 text-sm text-neutral-600">
+                {COMPANY_LINKS.map((link) => (
+                  <li key={link.href}>
+                    <Link
+                      href={link.href}
+                      className="transition-colors hover:text-neutral-900"
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
               </ul>
             </div>
           </div>
 
-          {/* Social Section */}
-          <div className="md:col-span-3 flex flex-col items-start md:items-end">
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-700 mb-4">
-              Stay in touch
+          <div className="mt-10 flex flex-col gap-5 border-t border-neutral-200 pt-8 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-neutral-500">
+              &copy; {year} 10tracker. All rights reserved.
             </p>
-            <div className="flex items-center gap-3">
-              <Link
-                href="mailto:contact@10tracker.com"
-                className="w-10 h-10 rounded-md border border-gray-300 bg-white flex items-center justify-center text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition-colors"
-                aria-label="Email"
-              >
-                <Mail size={18} />
-              </Link>
-              <Link
-                href="https://x.com/10Tracker"
-                className="w-10 h-10 rounded-md border border-gray-300 bg-white flex items-center justify-center text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition-colors"
-                aria-label="Twitter"
-              >
-                <Twitter size={18} />
-              </Link>
-              <Link
-                href="https://www.instagram.com/10tracker/"
-                className="w-10 h-10 rounded-md border border-gray-300 bg-white flex items-center justify-center text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition-colors"
-                aria-label="Instagram"
-              >
-                <Instagram size={18} />
-              </Link>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
+              <SocialLinks />
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-neutral-500">
+                {LEGAL_LINKS.map((link) => (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className="transition-colors hover:text-neutral-800"
+                  >
+                    {link.label}
+                  </Link>
+                ))}
+              </div>
             </div>
-          </div>
-        </div>
-
-        {/* Divider */}
-        <div className="border-t border-gray-200 my-6" />
-
-        {/* Bottom bar */}
-        <div className="flex flex-col md:flex-row items-center justify-between gap-3 pt-2 text-xs text-gray-500">
-          <p>&copy; {new Date().getFullYear()} 10tracker. All rights reserved.</p>
-          <div className="flex items-center flex-wrap justify-center gap-3">
-            <Link href="/privacy-policy" className="hover:text-gray-700 transition-colors">
-              Privacy
-            </Link>
-            <span className="text-gray-300 hidden sm:inline">•</span>
-            <Link href="/roadmaps" className="hover:text-gray-700 transition-colors">
-              Roadmaps
-            </Link>
-            <span className="text-gray-300 hidden sm:inline">•</span>
-            <Link href="/pricing" className="hover:text-gray-700 transition-colors">
-              Pricing
-            </Link>
-            <span className="text-gray-300 hidden sm:inline">•</span>
-            <Link href="/terms-and-services" className="hover:text-gray-700 transition-colors">
-              Terms
-            </Link>
-            <span className="text-gray-300 hidden sm:inline">•</span>
-            <Link href="/disclaimer" className="hover:text-gray-700 transition-colors">
-              Disclaimer
-            </Link>
-            <span className="text-gray-300 hidden sm:inline">•</span>
-            <Link href="/articles" className="hover:text-gray-700 transition-colors">
-              Articles
-            </Link>
           </div>
         </div>
       </div>

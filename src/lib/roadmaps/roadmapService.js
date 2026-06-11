@@ -133,6 +133,80 @@ export async function buildRoadmapDetail(slug, userEmail = null) {
   };
 }
 
+/** Lightweight summaries for catalog "My roadmaps" strip — batched queries, no N+1. */
+export async function listUserRoadmapSummaries(userEmail) {
+  const email = normalizeEmail(userEmail);
+  if (!email) return [];
+
+  const supabase = db();
+  const { data: purchases, error } = await supabase
+    .from('roadmap_purchases')
+    .select('roadmap_id, purchased_at')
+    .eq('user_email', email)
+    .order('purchased_at', { ascending: false });
+
+  if (error) {
+    if (error.code === '42P01') return [];
+    throw error;
+  }
+  if (!purchases?.length) return [];
+
+  const roadmapIds = purchases.map((p) => p.roadmap_id);
+
+  const [{ data: roadmaps, error: rErr }, { data: daysRaw, error: dErr }, { data: progressRows, error: pErr }] =
+    await Promise.all([
+      supabase
+        .from('roadmaps')
+        .select('id, slug, title, description')
+        .in('id', roadmapIds),
+      supabase
+        .from('roadmap_days')
+        .select('roadmap_id, day_number, focus_areas')
+        .in('roadmap_id', roadmapIds)
+        .order('day_number', { ascending: true }),
+      supabase
+        .from('roadmap_user_progress')
+        .select('roadmap_id, task_id, status, user_notes')
+        .eq('user_id', email)
+        .in('roadmap_id', roadmapIds),
+    ]);
+
+  if (rErr) throw rErr;
+  if (dErr) throw dErr;
+  if (pErr) throw pErr;
+
+  const metaById = Object.fromEntries((roadmaps || []).map((r) => [r.id, r]));
+  const daysByRoadmap = {};
+  for (const day of daysRaw || []) {
+    if (!daysByRoadmap[day.roadmap_id]) daysByRoadmap[day.roadmap_id] = [];
+    daysByRoadmap[day.roadmap_id].push(day);
+  }
+
+  const progressByRoadmap = {};
+  for (const row of progressRows || []) {
+    if (!progressByRoadmap[row.roadmap_id]) progressByRoadmap[row.roadmap_id] = [];
+    progressByRoadmap[row.roadmap_id].push(row);
+  }
+
+  const results = [];
+  for (const p of purchases) {
+    const meta = metaById[p.roadmap_id];
+    if (!meta) continue;
+    const days = daysByRoadmap[p.roadmap_id] || [];
+    const progressMap = progressMapFromRows(progressByRoadmap[p.roadmap_id] || []);
+    const progress = calculateRoadmapProgress(days, progressMap);
+    results.push({
+      slug: meta.slug,
+      title: meta.title,
+      description: meta.description,
+      purchasedAt: p.purchased_at,
+      progressPercent: progress.percent,
+      href: `/roadmaps/${meta.slug}`,
+    });
+  }
+  return results;
+}
+
 export async function listUserPurchasedRoadmaps(userEmail) {
   const email = normalizeEmail(userEmail);
   if (!email) return [];
@@ -192,6 +266,26 @@ export async function upsertTaskProgress(userId, roadmapId, taskId, patch) {
   };
 
   const { error } = await supabase.from('roadmap_user_progress').upsert(row, {
+    onConflict: 'user_id,roadmap_id,task_id',
+  });
+
+  if (error) throw error;
+}
+
+export async function upsertTaskProgressBatch(userId, roadmapId, tasks) {
+  if (!tasks?.length) return;
+  const supabase = db();
+  const now = new Date().toISOString();
+  const rows = tasks.map(({ taskId, status, userNotes }) => ({
+    user_id: userId,
+    roadmap_id: roadmapId,
+    task_id: taskId,
+    status: status === 'completed' ? 'completed' : 'not_completed',
+    user_notes: typeof userNotes === 'string' ? userNotes : '',
+    updated_at: now,
+  }));
+
+  const { error } = await supabase.from('roadmap_user_progress').upsert(rows, {
     onConflict: 'user_id,roadmap_id,task_id',
   });
 

@@ -15,13 +15,15 @@ import {
   Download,
   FileJson,
   Loader2,
+  MoreHorizontal,
   Pencil,
   RotateCcw,
+  Search,
+  SlidersHorizontal,
+  Sparkles,
   Trash2,
   Upload,
   Database,
-  Search,
-  Sparkles,
   X,
 } from "lucide-react";
 import Link from "next/link";
@@ -67,6 +69,34 @@ function Chip({ label, active }) {
   );
 }
 
+function BottomSheet({ open, onClose, title, children }) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-[60] flex flex-col justify-end md:hidden">
+      <button
+        type="button"
+        className="absolute inset-0 bg-black/40"
+        aria-label="Close"
+        onClick={onClose}
+      />
+      <div className="relative max-h-[85dvh] overflow-hidden rounded-t-2xl border border-neutral-200 bg-white shadow-2xl">
+        <div className="flex items-center justify-between border-b border-neutral-100 px-4 py-3">
+          <h2 className="text-sm font-semibold text-neutral-900">{title}</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg p-2 text-neutral-500 hover:bg-neutral-100"
+            aria-label="Close"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="overflow-y-auto overscroll-contain px-4 py-4">{children}</div>
+      </div>
+    </div>
+  );
+}
+
 function QText({ text, className = "" }) {
   if (!text) return null;
   const hasHtml = /<[a-z][\s\S]*>/i.test(text);
@@ -104,11 +134,15 @@ function QText({ text, className = "" }) {
   );
 }
 
-function QuestionBlock({ label, sublabel, text }) {
+function QuestionBlock({ label, sublabel, text, tall = false }) {
   if (!text) return null;
   return (
-    <section className="rounded-xl border border-neutral-200 bg-neutral-50 p-4 sm:p-5">
-      <div className="mb-3 flex items-baseline justify-between gap-2">
+    <section
+      className={`rounded-xl border border-neutral-200 bg-neutral-50 p-4 sm:p-5 ${
+        tall ? "min-h-[5.5rem] sm:min-h-[6rem]" : ""
+      }`}
+    >
+      <div className="mb-2.5 flex items-baseline justify-between gap-2 sm:mb-3">
         <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-500">
           {label}
         </span>
@@ -116,7 +150,7 @@ function QuestionBlock({ label, sublabel, text }) {
           <span className="text-[10px] text-neutral-400">{sublabel}</span>
         )}
       </div>
-      <div className="text-sm font-medium leading-relaxed text-neutral-900 sm:text-[15px]">
+      <div className="text-[15px] font-medium leading-relaxed text-neutral-900 sm:text-base">
         <QText text={text} />
       </div>
     </section>
@@ -365,7 +399,7 @@ function ExtractPanel({
   };
 
   return (
-    <div className="mx-auto w-full max-w-md px-4 py-5">
+    <div className="mx-auto w-full max-w-lg px-3 py-4 sm:px-4 sm:py-5">
       <div
         onDragOver={(e) => {
           e.preventDefault();
@@ -374,14 +408,14 @@ function ExtractPanel({
         onDragLeave={() => setDrag(false)}
         onDrop={onDrop}
         onClick={() => !running && inputRef.current?.click()}
-        className={`mb-5 cursor-pointer rounded-2xl border-2 border-dashed px-6 py-10 text-center transition-colors ${
+        className={`mb-4 cursor-pointer rounded-2xl border-2 border-dashed px-4 py-8 text-center transition-colors sm:mb-5 sm:px-6 sm:py-10 ${
           running
             ? "cursor-not-allowed opacity-50 border-neutral-200"
             : drag
               ? "border-neutral-900 bg-neutral-50"
               : file
-                ? "border-emerald-300 bg-emerald-50/50"
-                : "border-neutral-300 hover:border-neutral-400 hover:bg-neutral-50"
+                ? "border-emerald-400 bg-emerald-50/60"
+                : "border-neutral-300 bg-white hover:border-neutral-400 hover:bg-neutral-50"
         }`}
       >
         <input
@@ -483,13 +517,19 @@ function ExtractPanel({
         type="button"
         onClick={extract}
         disabled={!file || running}
-        className="mb-4 flex w-full items-center justify-center gap-2 rounded-xl bg-neutral-900 px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+        className={`mb-4 flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3.5 text-sm font-semibold transition-colors ${
+          !file || running
+            ? "cursor-not-allowed bg-neutral-200 text-neutral-500"
+            : "bg-neutral-900 text-white hover:bg-neutral-800 active:bg-neutral-950"
+        }`}
       >
         {running ? (
           <>
             <Spinner className="h-4 w-4 text-white" />
             Extracting…
           </>
+        ) : !file ? (
+          "Select a PDF to extract"
         ) : (
           "Extract questions"
         )}
@@ -523,17 +563,17 @@ function ExtractPanel({
 
 function QuestionNavBar({ index, total, onPrev, onNext }) {
   return (
-    <div className="z-20 flex shrink-0 items-center justify-between gap-3 border-t border-neutral-200 bg-white px-4 py-3 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] sm:px-6">
+    <div className="z-20 flex shrink-0 items-center justify-between gap-2 border-t border-neutral-200 bg-white px-3 py-2.5 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] sm:gap-3 sm:px-6 sm:py-3">
       <button
         type="button"
         onClick={onPrev}
         disabled={index === 0}
-        className="inline-flex min-w-[100px] items-center justify-center gap-1 rounded-xl border border-neutral-300 bg-white px-4 py-2.5 text-sm font-semibold text-neutral-800 shadow-sm disabled:opacity-40"
+        className="inline-flex min-h-11 min-w-[4.5rem] items-center justify-center gap-0.5 rounded-xl border border-neutral-300 bg-white px-2 py-2 text-sm font-semibold text-neutral-800 shadow-sm disabled:opacity-40 sm:min-w-[100px] sm:gap-1 sm:px-4 sm:py-2.5"
       >
         <ChevronLeft className="h-4 w-4" />
-        Previous
+        <span className="hidden sm:inline">Previous</span>
       </button>
-      <div className="flex items-center gap-2 font-mono text-sm text-neutral-600">
+      <div className="flex items-center gap-1.5 font-mono text-sm text-neutral-600 sm:gap-2">
         <input
           type="number"
           min={1}
@@ -550,7 +590,7 @@ function QuestionNavBar({ index, total, onPrev, onNext }) {
               }
             }
           }}
-          className="w-14 rounded-lg border border-neutral-300 py-2 text-center text-sm font-semibold"
+          className="w-12 rounded-lg border border-neutral-300 py-2 text-center text-sm font-semibold sm:w-14"
         />
         <span className="text-neutral-500">/ {total}</span>
       </div>
@@ -558,16 +598,16 @@ function QuestionNavBar({ index, total, onPrev, onNext }) {
         type="button"
         onClick={onNext}
         disabled={index === total - 1}
-        className="inline-flex min-w-[100px] items-center justify-center gap-1 rounded-xl border border-neutral-300 bg-white px-4 py-2.5 text-sm font-semibold text-neutral-800 shadow-sm disabled:opacity-40"
+        className="inline-flex min-h-11 min-w-[4.5rem] items-center justify-center gap-0.5 rounded-xl border border-neutral-300 bg-white px-2 py-2 text-sm font-semibold text-neutral-800 shadow-sm disabled:opacity-40 sm:min-w-[100px] sm:gap-1 sm:px-4 sm:py-2.5"
       >
-        Next
+        <span className="hidden sm:inline">Next</span>
         <ChevronRight className="h-4 w-4" />
       </button>
     </div>
   );
 }
 
-function QuestionCard({ question, onEdit, onDelete }) {
+function QuestionCard({ question, onEdit, onDelete, compact = false }) {
   const cardRef = useRef();
   useLayoutEffect(() => {
     if (window.MathJax?.typesetPromise && cardRef.current) {
@@ -587,55 +627,70 @@ function QuestionCard({ question, onEdit, onDelete }) {
   const metaLine = [q.subject, q.chapter, q.topic].filter(Boolean).join(" · ");
 
   return (
-    <div ref={cardRef} className="h-full overflow-y-auto">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200 px-4 py-4 sm:px-6">
-        <div className="min-w-0">
-          <p className="mb-1 font-mono text-xs text-neutral-500">{q._id}</p>
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-base font-semibold text-neutral-900 sm:text-lg">
-              Question
-            </h2>
-            <Chip label={q.difficulty || "medium"} />
-            {q.category && <Chip label={q.category} />}
-            {q.has_image && <Chip label="Image" active />}
+    <div ref={cardRef} className="h-full overflow-y-auto overscroll-contain">
+      <div
+        className={`border-b border-neutral-200 px-3 sm:px-6 ${
+          compact ? "py-2.5" : "px-4 py-4"
+        }`}
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+              {q.year && (
+                <span className="text-xs font-medium text-neutral-700">{q.year}</span>
+              )}
+              <Chip label={q.difficulty || "medium"} />
+              {q.category && <Chip label={q.category} />}
+              {q.has_image && <Chip label="Image" active />}
+            </div>
+            {!compact && (
+              <>
+                <p className="mt-1 font-mono text-[10px] text-neutral-400">{q._id}</p>
+                {metaLine && (
+                  <p className="mt-0.5 truncate text-xs text-neutral-500">{metaLine}</p>
+                )}
+              </>
+            )}
           </div>
-          {metaLine && (
-            <p className="mt-1 truncate text-xs text-neutral-500">{metaLine}</p>
-          )}
+          <div className="flex shrink-0 gap-1.5">
+            <button
+              type="button"
+              onClick={onEdit}
+              aria-label="Edit question"
+              className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-xl border border-neutral-200 text-neutral-700 hover:bg-neutral-50 sm:min-h-0 sm:min-w-0 sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-xs sm:font-medium"
+            >
+              <Pencil className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
+              <span className="hidden sm:inline">Edit</span>
+            </button>
+            <button
+              type="button"
+              onClick={onDelete}
+              aria-label="Delete question"
+              className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-xl border border-red-200 text-red-700 hover:bg-red-50 sm:min-h-0 sm:min-w-0 sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-xs sm:font-medium"
+            >
+              <Trash2 className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
+              <span className="hidden sm:inline">Delete</span>
+            </button>
+          </div>
         </div>
-        <div className="flex shrink-0 gap-1">
-          <button
-            type="button"
-            onClick={onEdit}
-            className="inline-flex items-center gap-1 rounded-lg border border-neutral-200 px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50"
-          >
-            <Pencil className="h-3.5 w-3.5" />
-            Edit
-          </button>
-          <button
-            type="button"
-            onClick={onDelete}
-            className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-            Delete
-          </button>
-        </div>
+        {compact && metaLine && (
+          <p className="mt-1.5 truncate text-[11px] text-neutral-500">{metaLine}</p>
+        )}
       </div>
 
-      <div className="px-4 py-6 sm:px-6 sm:py-8">
-        <div className="mx-auto max-w-2xl space-y-6">
-          {q.year && <p className="text-xs text-neutral-500">{q.year}</p>}
+      <div className="px-3 py-4 pb-6 sm:px-6 sm:py-8 sm:pb-8">
+        <div className="mx-auto max-w-2xl space-y-4 sm:space-y-6">
           {q.directionHTML && (
             <div
               className="overflow-hidden rounded-xl border border-neutral-200 bg-white p-4 prose prose-sm max-w-none"
               dangerouslySetInnerHTML={{ __html: q.directionHTML }}
             />
           )}
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             <QuestionBlock
               label="From PDF"
               sublabel={hasOriginal ? null : "Re-extract to capture"}
+              tall
               text={
                 hasOriginal ? q.original_question : "Original text not available."
               }
@@ -643,11 +698,12 @@ function QuestionCard({ question, onEdit, onDelete }) {
             <QuestionBlock
               label="Rewritten"
               sublabel="For publication"
+              tall
               text={q.question}
             />
           </div>
           <div>
-            <p className="mb-3 text-[10px] font-semibold uppercase tracking-wide text-neutral-500">
+            <p className="mb-2.5 text-[10px] font-semibold uppercase tracking-wide text-neutral-500 sm:mb-3">
               Options
             </p>
             <div className="space-y-2">
@@ -656,14 +712,14 @@ function QuestionCard({ question, onEdit, onDelete }) {
                 return (
                   <div
                     key={key}
-                    className={`flex gap-3 rounded-xl border px-3 py-3 ${
+                    className={`flex gap-3 rounded-xl border px-3 py-3.5 sm:py-3 ${
                       isCorrect
                         ? "border-emerald-200 bg-emerald-50"
                         : "border-neutral-200 bg-white"
                     }`}
                   >
                     <span
-                      className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-xs font-semibold ${
+                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-semibold sm:h-7 sm:w-7 sm:rounded-md ${
                         isCorrect
                           ? "bg-emerald-200 text-emerald-900"
                           : "bg-neutral-100 text-neutral-600"
@@ -672,7 +728,7 @@ function QuestionCard({ question, onEdit, onDelete }) {
                       {key}
                     </span>
                     <span
-                      className={`flex-1 pt-0.5 text-sm leading-relaxed ${
+                      className={`flex-1 pt-0.5 text-[15px] leading-relaxed sm:text-sm ${
                         isCorrect ? "text-neutral-900" : "text-neutral-600"
                       }`}
                     >
@@ -797,7 +853,84 @@ function Sidebar({
   );
 }
 
-function ReviewFiltersBar({
+function ReviewFilterFields({
+  filterCategory,
+  filterSubject,
+  filterChapter,
+  filterOptions,
+  onChange,
+  pageSize,
+  onPageSizeChange,
+  loadingFilters,
+  stacked = false,
+}) {
+  const fieldClass = stacked ? "w-full" : "flex min-w-[140px] flex-1 flex-col gap-1";
+  return (
+    <>
+      {loadingFilters && (
+        <p className="mb-2 flex items-center gap-2 text-xs text-neutral-500">
+          <Spinner className="h-3 w-3" />
+          Loading filter options…
+        </p>
+      )}
+      <label className={fieldClass}>
+        <span className="text-xs font-medium text-neutral-600">Category</span>
+        <select
+          value={filterCategory}
+          onChange={(e) => onChange({ category: e.target.value, subject: "", chapter: "" })}
+          className="rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-sm"
+        >
+          <option value="">Choose category</option>
+          {(filterOptions.categories || []).map((c) => (
+            <option key={c} value={c}>{c}</option>
+          ))}
+        </select>
+      </label>
+      <label className={fieldClass}>
+        <span className="text-xs font-medium text-neutral-600">Subject</span>
+        <select
+          value={filterSubject}
+          disabled={!filterCategory}
+          onChange={(e) => onChange({ subject: e.target.value, chapter: "" })}
+          className="rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-sm disabled:opacity-50"
+        >
+          <option value="">Choose subject</option>
+          {(filterOptions.subjects || []).map((s) => (
+            <option key={s} value={s}>{s}</option>
+          ))}
+        </select>
+      </label>
+      <label className={fieldClass}>
+        <span className="text-xs font-medium text-neutral-600">Chapter</span>
+        <select
+          value={filterChapter}
+          disabled={!filterCategory || !filterSubject}
+          onChange={(e) => onChange({ chapter: e.target.value })}
+          className="rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-sm disabled:opacity-50"
+        >
+          <option value="">Choose chapter</option>
+          {(filterOptions.chapters || []).map((c) => (
+            <option key={c} value={c}>{c}</option>
+          ))}
+        </select>
+      </label>
+      <label className={stacked ? "w-full" : "flex w-24 flex-col gap-1"}>
+        <span className="text-xs font-medium text-neutral-600">Per page</span>
+        <select
+          value={pageSize}
+          onChange={(e) => onPageSizeChange(Number(e.target.value))}
+          className="rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-sm"
+        >
+          {REVIEW_PAGE_SIZES.map((n) => (
+            <option key={n} value={n}>{n}</option>
+          ))}
+        </select>
+      </label>
+    </>
+  );
+}
+
+function ReviewFiltersSection({
   filterCategory,
   filterSubject,
   filterChapter,
@@ -811,108 +944,159 @@ function ReviewFiltersBar({
   loadedCount,
   pageSize,
   onPageSizeChange,
+  drawerOpen,
+  onDrawerOpen,
+  onDrawerClose,
 }) {
   const hasMore = totalCount != null && loadedCount < totalCount;
+  const filtersReady = filterCategory && filterSubject && filterChapter;
+  const summaryParts = [filterCategory, filterSubject, filterChapter].filter(Boolean);
+  const summary =
+    summaryParts.length === 3
+      ? `${filterCategory} · ${filterSubject} · ${filterChapter}`
+      : summaryParts.length > 0
+        ? summaryParts.join(" · ")
+        : "No filters selected";
+
+  const loadAndClose = () => {
+    onLoad();
+    onDrawerClose?.();
+  };
+
   return (
-    <div className="shrink-0 border-b border-neutral-200 bg-neutral-50 px-4 py-3 sm:px-6">
-      {loadingFilters && (
-        <p className="mb-2 flex items-center gap-2 text-xs text-neutral-500">
-          <Spinner className="h-3 w-3" />
-          Updating filter lists…
-        </p>
-      )}
-      <div className="flex flex-wrap items-end gap-3">
-        <label className="flex min-w-[140px] flex-1 flex-col gap-1">
-          <span className="text-[10px] font-semibold uppercase text-neutral-500">Category</span>
-          <select
-            value={filterCategory}
-            onChange={(e) => onChange({ category: e.target.value, subject: "", chapter: "" })}
-            className="rounded-lg border border-neutral-200 bg-white px-2 py-2 text-sm"
-          >
-            <option value="">All categories</option>
-            {(filterOptions.categories || []).map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
-        </label>
-        <label className="flex min-w-[140px] flex-1 flex-col gap-1">
-          <span className="text-[10px] font-semibold uppercase text-neutral-500">Subject</span>
-          <select
-            value={filterSubject}
-            disabled={!filterCategory}
-            onChange={(e) => onChange({ subject: e.target.value, chapter: "" })}
-            className="rounded-lg border border-neutral-200 bg-white px-2 py-2 text-sm disabled:opacity-50"
-          >
-            <option value="">All subjects</option>
-            {(filterOptions.subjects || []).map((s) => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
-        </label>
-        <label className="flex min-w-[140px] flex-1 flex-col gap-1">
-          <span className="text-[10px] font-semibold uppercase text-neutral-500">Chapter</span>
-          <select
-            value={filterChapter}
-            disabled={!filterCategory || !filterSubject}
-            onChange={(e) => onChange({ chapter: e.target.value })}
-            className="rounded-lg border border-neutral-200 bg-white px-2 py-2 text-sm disabled:opacity-50"
-          >
-            <option value="">All chapters</option>
-            {(filterOptions.chapters || []).map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
-        </label>
-        <label className="flex w-24 flex-col gap-1">
-          <span className="text-[10px] font-semibold uppercase text-neutral-500">Per page</span>
-          <select
-            value={pageSize}
-            onChange={(e) => onPageSizeChange(Number(e.target.value))}
-            className="rounded-lg border border-neutral-200 bg-white px-2 py-2 text-sm"
-          >
-            {REVIEW_PAGE_SIZES.map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
-        </label>
+    <>
+      {/* Mobile: compact summary + open drawer */}
+      <div className="shrink-0 border-b border-neutral-200 bg-neutral-50 px-3 py-2.5 md:hidden">
         <button
           type="button"
-          onClick={onLoad}
-          disabled={loading || !filterCategory || !filterSubject || !filterChapter}
-          title={
-            !filterCategory || !filterSubject || !filterChapter
-              ? "Select category, subject, and chapter first"
-              : "Load questions for this filter"
-          }
-          className="inline-flex items-center gap-2 rounded-xl bg-neutral-900 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+          onClick={() => onDrawerOpen(true)}
+          className="flex w-full items-center gap-3 rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-left active:bg-neutral-50"
         >
-          {loading ? <Spinner className="h-4 w-4 text-white" /> : <Search className="h-4 w-4" />}
-          Load questions
+          <SlidersHorizontal className="h-4 w-4 shrink-0 text-neutral-500" />
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-medium uppercase tracking-wide text-neutral-500">
+              Filters
+            </p>
+            <p className="truncate text-sm text-neutral-800">{summary}</p>
+          </div>
+          {totalCount != null && loadedCount > 0 && (
+            <span className="shrink-0 rounded-lg bg-neutral-100 px-2 py-1 text-xs font-medium text-neutral-700">
+              {loadedCount}/{totalCount}
+            </span>
+          )}
         </button>
         {hasMore && loadedCount > 0 && (
           <button
             type="button"
             onClick={onLoadMore}
             disabled={loading}
-            className="inline-flex items-center gap-2 rounded-xl border border-neutral-300 bg-white px-4 py-2.5 text-sm font-semibold text-neutral-800 disabled:opacity-50"
+            className="mt-2 w-full rounded-xl border border-neutral-300 bg-white py-2.5 text-sm font-medium text-neutral-800 disabled:opacity-50"
           >
-            Load more
+            {loading ? "Loading…" : `Load more (${loadedCount} loaded)`}
           </button>
         )}
       </div>
-      <p className="mt-2 text-xs text-neutral-500">
-        Filters use SQL DISTINCT (RPC). Load questions only after category, subject, and chapter
-        are selected.
-      </p>
-      {totalCount != null && (
-        <p className="mt-1 text-xs text-neutral-600">
-          Showing {loadedCount} of {totalCount} matching rows
-          {hasMore ? " — use Load more for the next page" : ""}
-        </p>
-      )}
-    </div>
+
+      <BottomSheet open={drawerOpen} onClose={onDrawerClose} title="Filter questions">
+        <div className="space-y-4">
+          <ReviewFilterFields
+            filterCategory={filterCategory}
+            filterSubject={filterSubject}
+            filterChapter={filterChapter}
+            filterOptions={filterOptions}
+            onChange={onChange}
+            pageSize={pageSize}
+            onPageSizeChange={onPageSizeChange}
+            loadingFilters={loadingFilters}
+            stacked
+          />
+          <p className="text-xs text-neutral-500">
+            Choose category, subject, and chapter, then load questions from the database.
+          </p>
+          <button
+            type="button"
+            onClick={loadAndClose}
+            disabled={loading || !filtersReady}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-neutral-900 px-4 py-3 text-sm font-semibold text-white disabled:bg-neutral-200 disabled:text-neutral-500"
+          >
+            {loading ? <Spinner className="h-4 w-4 text-white" /> : <Search className="h-4 w-4" />}
+            Load questions
+          </button>
+          {totalCount != null && loadedCount > 0 && (
+            <p className="text-center text-xs text-neutral-600">
+              Showing {loadedCount} of {totalCount} questions
+            </p>
+          )}
+        </div>
+      </BottomSheet>
+
+      {/* Desktop: inline filters */}
+      <div className="hidden shrink-0 border-b border-neutral-200 bg-neutral-50 px-4 py-3 md:block sm:px-6">
+        <div className="flex flex-wrap items-end gap-3">
+          <ReviewFilterFields
+            filterCategory={filterCategory}
+            filterSubject={filterSubject}
+            filterChapter={filterChapter}
+            filterOptions={filterOptions}
+            onChange={onChange}
+            pageSize={pageSize}
+            onPageSizeChange={onPageSizeChange}
+            loadingFilters={loadingFilters}
+          />
+          <button
+            type="button"
+            onClick={onLoad}
+            disabled={loading || !filtersReady}
+            className="inline-flex items-center gap-2 rounded-xl bg-neutral-900 px-4 py-2.5 text-sm font-semibold text-white disabled:bg-neutral-200 disabled:text-neutral-500"
+          >
+            {loading ? <Spinner className="h-4 w-4 text-white" /> : <Search className="h-4 w-4" />}
+            Load questions
+          </button>
+          {hasMore && loadedCount > 0 && (
+            <button
+              type="button"
+              onClick={onLoadMore}
+              disabled={loading}
+              className="inline-flex items-center gap-2 rounded-xl border border-neutral-300 bg-white px-4 py-2.5 text-sm font-semibold text-neutral-800 disabled:opacity-50"
+            >
+              Load more
+            </button>
+          )}
+        </div>
+        {totalCount != null && (
+          <p className="mt-2 text-xs text-neutral-600">
+            Showing {loadedCount} of {totalCount} questions
+            {hasMore ? " — load more for the next page" : ""}
+          </p>
+        )}
+      </div>
+    </>
+  );
+}
+
+function ToolbarAction({
+  onClick,
+  disabled,
+  icon: Icon,
+  label,
+  variant = "default",
+  className = "",
+}) {
+  const variants = {
+    default: "border-neutral-200 text-neutral-700 hover:bg-neutral-50",
+    primary: "border-emerald-300 bg-emerald-50 text-emerald-900 hover:bg-emerald-100",
+    danger: "border-red-200 text-red-700 hover:bg-red-50",
+  };
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-medium disabled:opacity-50 ${variants[variant]} ${className}`}
+    >
+      {Icon && <Icon className="h-3.5 w-3.5 shrink-0" />}
+      <span className="truncate">{label}</span>
+    </button>
   );
 }
 
@@ -929,6 +1113,17 @@ function Toolbar({
   saving,
 }) {
   const fileRef = useRef();
+  const moreRef = useRef();
+  const [moreOpen, setMoreOpen] = useState(false);
+
+  useEffect(() => {
+    if (!moreOpen) return;
+    const close = (e) => {
+      if (moreRef.current && !moreRef.current.contains(e.target)) setMoreOpen(false);
+    };
+    document.addEventListener("pointerdown", close);
+    return () => document.removeEventListener("pointerdown", close);
+  }, [moreOpen]);
 
   const buildOutput = () => ({
     meta: meta || {
@@ -941,6 +1136,7 @@ function Toolbar({
   const copyJSON = () => {
     navigator.clipboard.writeText(JSON.stringify(buildOutput(), null, 2));
     toast.success("Full JSON copied");
+    setMoreOpen(false);
   };
 
   const downloadJSON = () => {
@@ -954,6 +1150,7 @@ function Toolbar({
     a.click();
     URL.revokeObjectURL(url);
     toast.success("JSON downloaded");
+    setMoreOpen(false);
   };
 
   const loadFile = (e) => {
@@ -974,113 +1171,194 @@ function Toolbar({
     e.target.value = "";
   };
 
-  return (
-    <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-neutral-200 bg-white px-4 py-3 sm:px-6">
-      <div className="flex min-w-0 flex-wrap items-center gap-3">
-        <div>
-          <h1 className="text-sm font-semibold text-neutral-900">MCQ Extractor</h1>
-          <p className="text-[11px] text-neutral-500 truncate">
-            {extracting
-              ? "Extracting…"
-              : mode === "review"
-                ? "Review examtracker"
-                : "Extract API (proxied)"}
-          </p>
-        </div>
-        <div className="flex rounded-lg border border-neutral-200 p-0.5 text-xs">
-          <button
-            type="button"
-            onClick={() => onModeChange("extract")}
-            className={`rounded-md px-2.5 py-1 font-medium ${mode === "extract" ? "bg-neutral-900 text-white" : "text-neutral-600"}`}
-          >
-            Extract PDF
-          </button>
-          <button
-            type="button"
-            onClick={() => onModeChange("review")}
-            className={`rounded-md px-2.5 py-1 font-medium ${mode === "review" ? "bg-neutral-900 text-white" : "text-neutral-600"}`}
-          >
-            Review DB
-          </button>
-        </div>
-      </div>
-      <div className="flex flex-wrap items-center gap-1">
-        <input ref={fileRef} type="file" accept=".json" hidden onChange={loadFile} />
-        <button
-          type="button"
-          onClick={() => fileRef.current?.click()}
-          className="inline-flex items-center gap-1 rounded-lg border border-neutral-200 px-2.5 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50"
+  const statusLabel = extracting
+    ? "Extracting…"
+    : mcqs.length > 0
+      ? `${mcqs.length} question${mcqs.length === 1 ? "" : "s"}`
+      : mode === "review"
+        ? "Pick filters to load"
+        : "Upload a PDF to start";
+
+  const modeToggle = (
+    <div className="flex rounded-xl border border-neutral-200 p-0.5 text-xs">
+      <button
+        type="button"
+        onClick={() => onModeChange("extract")}
+        className={`rounded-lg px-3 py-1.5 font-medium transition-colors ${
+          mode === "extract" ? "bg-neutral-900 text-white" : "text-neutral-600"
+        }`}
+      >
+        Extract PDF
+      </button>
+      <button
+        type="button"
+        onClick={() => onModeChange("review")}
+        className={`rounded-lg px-3 py-1.5 font-medium transition-colors ${
+          mode === "review" ? "bg-neutral-900 text-white" : "text-neutral-600"
+        }`}
+      >
+        Review DB
+      </button>
+    </div>
+  );
+
+  const primaryActions = (
+    <>
+      <input ref={fileRef} type="file" accept=".json" hidden onChange={loadFile} />
+      <ToolbarAction
+        icon={FileJson}
+        label="Import"
+        onClick={() => fileRef.current?.click()}
+      />
+      {mcqs.length > 0 && (
+        <>
+          <ToolbarAction
+            icon={Database}
+            label={saving ? "Saving…" : "Save to Supabase"}
+            variant="primary"
+            disabled={saving}
+            onClick={onSaveCurrent}
+            className="hidden sm:inline-flex"
+          />
+          <ToolbarAction
+            icon={Database}
+            label={saving ? "…" : "Save"}
+            variant="primary"
+            disabled={saving}
+            onClick={onSaveCurrent}
+            className="sm:hidden"
+          />
+          <ToolbarAction
+            label={`Save all (${mcqs.length})`}
+            variant="primary"
+            disabled={saving}
+            onClick={onSaveAll}
+            className="hidden sm:inline-flex"
+          />
+          <ToolbarAction
+            label={`All (${mcqs.length})`}
+            variant="primary"
+            disabled={saving}
+            onClick={onSaveAll}
+            className="sm:hidden"
+          />
+        </>
+      )}
+    </>
+  );
+
+  const secondaryActions = mcqs.length > 0 && (
+    <>
+      <button
+        type="button"
+        onClick={copyJSON}
+        className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-neutral-700 hover:bg-neutral-50"
+      >
+        <Copy className="h-4 w-4" />
+        Copy JSON
+      </button>
+      <button
+        type="button"
+        onClick={downloadJSON}
+        className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-neutral-700 hover:bg-neutral-50"
+      >
+        <Download className="h-4 w-4" />
+        Export JSON
+      </button>
+      {meta?.downloadUrl && (
+        <a
+          href={toMcqProxyUrl(meta.downloadUrl)}
+          download
+          onClick={() => setMoreOpen(false)}
+          className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-emerald-800 hover:bg-emerald-50"
         >
-          <FileJson className="h-3.5 w-3.5" />
-          Import
-        </button>
-        {mcqs.length > 0 && (
-          <>
-            <button
-              type="button"
-              onClick={onSaveCurrent}
-              disabled={saving}
-              className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 py-1.5 text-xs font-medium text-emerald-900 hover:bg-emerald-100 disabled:opacity-50"
-            >
-              <Database className="h-3.5 w-3.5" />
-              {saving ? "Saving…" : "Save to Supabase"}
-            </button>
-            <button
-              type="button"
-              onClick={onSaveAll}
-              disabled={saving}
-              className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 px-2.5 py-1.5 text-xs font-medium text-emerald-800 disabled:opacity-50"
-            >
-              Save all ({mcqs.length})
-            </button>
-            <button
-              type="button"
-              onClick={copyJSON}
-              className="inline-flex items-center gap-1 rounded-lg border border-neutral-200 px-2.5 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50"
-            >
-              <Copy className="h-3.5 w-3.5" />
-              Copy
-            </button>
-            <button
-              type="button"
-              onClick={downloadJSON}
-              className="inline-flex items-center gap-1 rounded-lg border border-neutral-200 px-2.5 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50"
-            >
-              <Download className="h-3.5 w-3.5" />
-              Export
-            </button>
-            {meta?.downloadUrl && (
-              <a
-                href={toMcqProxyUrl(meta.downloadUrl)}
-                download
-                className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-medium text-emerald-800"
+          <Download className="h-4 w-4" />
+          Download server file
+        </a>
+      )}
+      <button
+        type="button"
+        onClick={() => {
+          onReset();
+          setMoreOpen(false);
+        }}
+        className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-red-700 hover:bg-red-50"
+      >
+        <RotateCcw className="h-4 w-4" />
+        Clear workspace
+      </button>
+      <Link
+        href="/admin/bulk-questions"
+        onClick={() => setMoreOpen(false)}
+        className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-neutral-700 hover:bg-neutral-50"
+      >
+        Bulk import →
+      </Link>
+    </>
+  );
+
+  return (
+    <div className="shrink-0 border-b border-neutral-200 bg-white px-3 py-2.5 sm:px-6 sm:py-3">
+      <div className="flex items-center justify-between gap-2">
+        {modeToggle}
+        <p className="hidden truncate text-xs text-neutral-500 sm:block">{statusLabel}</p>
+        <div className="flex items-center gap-1">
+          <div className="flex flex-wrap items-center gap-1">{primaryActions}</div>
+          {mcqs.length > 0 && (
+            <div className="relative lg:hidden" ref={moreRef}>
+              <button
+                type="button"
+                onClick={() => setMoreOpen((o) => !o)}
+                className="inline-flex items-center justify-center rounded-lg border border-neutral-200 p-2 text-neutral-700 hover:bg-neutral-50"
+                aria-label="More actions"
               >
-                <Download className="h-3.5 w-3.5" />
-                Server JSON
-              </a>
+                <MoreHorizontal className="h-4 w-4" />
+              </button>
+              {moreOpen && (
+                <div className="absolute right-0 top-full z-50 mt-1 w-52 overflow-hidden rounded-xl border border-neutral-200 bg-white py-1 shadow-lg">
+                  {secondaryActions}
+                </div>
+              )}
+            </div>
+          )}
+          <div className="hidden flex-wrap items-center gap-1 lg:flex">
+            {mcqs.length > 0 && (
+              <>
+                <ToolbarAction icon={Copy} label="Copy" onClick={copyJSON} />
+                <ToolbarAction icon={Download} label="Export" onClick={downloadJSON} />
+                {meta?.downloadUrl && (
+                  <a
+                    href={toMcqProxyUrl(meta.downloadUrl)}
+                    download
+                    className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-medium text-emerald-800"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    Server file
+                  </a>
+                )}
+                <ToolbarAction
+                  icon={RotateCcw}
+                  label="Clear"
+                  variant="danger"
+                  onClick={onReset}
+                />
+                <Link
+                  href="/admin/bulk-questions"
+                  className="inline-flex items-center gap-1 rounded-lg border border-neutral-200 px-2.5 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50"
+                >
+                  Bulk import →
+                </Link>
+              </>
             )}
-            <button
-              type="button"
-              onClick={onReset}
-              className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
-            >
-              <RotateCcw className="h-3.5 w-3.5" />
-              Reset
-            </button>
-            <Link
-              href="/admin/bulk-questions"
-              className="inline-flex items-center gap-1 rounded-lg border border-neutral-200 px-2.5 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50"
-            >
-              Bulk import →
-            </Link>
-          </>
-        )}
+          </div>
+        </div>
       </div>
+      <p className="mt-1.5 truncate text-xs text-neutral-500 sm:hidden">{statusLabel}</p>
     </div>
   );
 }
 
-export default function McqExtractorApp() {
+export default function McqExtractorApp({ onViewingQuestionsChange }) {
   const [mcqs, setMcqs] = useState([]);
   const [meta, setMeta] = useState(null);
   const [idx, setIdx] = useState(0);
@@ -1105,6 +1383,7 @@ export default function McqExtractorApp() {
   const [loadingFilters, setLoadingFilters] = useState(false);
   const [reviewPageSize, setReviewPageSize] = useState(20);
   const [bulkRewriteOpen, setBulkRewriteOpen] = useState(false);
+  const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
   /** Index in loaded list where the next "continue" bulk batch should start. */
   const [bulkRewriteNextIndex, setBulkRewriteNextIndex] = useState(0);
   /** How many rows the last review fetch returned (initial load or load more). */
@@ -1372,6 +1651,12 @@ export default function McqExtractorApp() {
     if (idx >= mcqs.length) setIdx(mcqs.length - 1);
   }, [mcqs.length, idx]);
 
+  const viewingQuestions = mcqs.length > 0;
+
+  useEffect(() => {
+    onViewingQuestionsChange?.(viewingQuestions);
+  }, [viewingQuestions, onViewingQuestionsChange]);
+
   const handleChunk = (chunk) => {
     setMcqs((prev) => mergeMcqLists(prev, chunk));
     setShowUpload(false);
@@ -1526,7 +1811,13 @@ export default function McqExtractorApp() {
 
   return (
     <McqMathProvider>
-      <div className="-mx-4 flex h-[calc(100vh-11rem)] min-h-[520px] max-h-[900px] flex-col overflow-hidden border border-neutral-200 bg-white sm:-mx-6 sm:rounded-2xl lg:-mx-8">
+      <div
+        className={`-mx-4 flex flex-col overflow-hidden border border-neutral-200 bg-white sm:-mx-6 sm:rounded-2xl lg:-mx-8 ${
+          viewingQuestions
+            ? "h-[calc(100dvh-6.5rem)] min-h-[min(480px,78dvh)] max-md:mb-[4.75rem] sm:h-[calc(100dvh-11rem)] sm:min-h-[560px] sm:max-h-[900px]"
+            : "h-[calc(100dvh-10.5rem)] min-h-[min(520px,70dvh)] sm:h-[calc(100dvh-13rem)] sm:min-h-[520px] sm:max-h-[900px]"
+        }`}
+      >
         <Toolbar
           mcqs={mcqs}
           meta={meta}
@@ -1551,7 +1842,7 @@ export default function McqExtractorApp() {
         />
 
         {workspaceMode === "review" && (
-          <ReviewFiltersBar
+          <ReviewFiltersSection
             filterCategory={filterCategory}
             filterSubject={filterSubject}
             filterChapter={filterChapter}
@@ -1562,6 +1853,9 @@ export default function McqExtractorApp() {
             loadedCount={mcqs.length}
             pageSize={reviewPageSize}
             onPageSizeChange={setReviewPageSize}
+            drawerOpen={filterDrawerOpen}
+            onDrawerOpen={setFilterDrawerOpen}
+            onDrawerClose={() => setFilterDrawerOpen(false)}
             onChange={({ category, subject, chapter }) => {
               if (category !== undefined) {
                 setFilterCategory(category);
@@ -1587,45 +1881,45 @@ export default function McqExtractorApp() {
           />
         )}
 
-        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-neutral-200 px-4 py-2 sm:px-6">
-          <div className="flex min-w-0 items-center gap-2">
-            {mcqs.length > 0 && (
+        {(mcqs.length > 0 || (workspaceMode === "extract" && !viewingQuestions)) && (
+          <div
+            className={`flex shrink-0 items-center justify-between gap-2 border-b border-neutral-200 px-3 sm:px-6 ${
+              viewingQuestions ? "py-1.5" : "py-2"
+            }`}
+          >
+            <div className="flex min-w-0 items-center gap-2">
+              {mcqs.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setSidebarOpen((o) => !o)}
+                  className="inline-flex min-h-9 items-center rounded-xl border border-neutral-200 px-3 py-1.5 text-xs font-medium text-neutral-800 md:hidden"
+                >
+                  List · {mcqs.length}
+                </button>
+              )}
+            </div>
+            {workspaceMode === "review" && mcqs.length > 0 && (
               <button
                 type="button"
-                onClick={() => setSidebarOpen((o) => !o)}
-                className="rounded-lg border border-neutral-200 px-2.5 py-1.5 text-xs font-medium md:hidden"
+                onClick={() => setBulkRewriteOpen(true)}
+                className="inline-flex min-h-9 items-center gap-1.5 rounded-xl border border-violet-200 bg-violet-50 px-3 py-1.5 text-xs font-medium text-violet-800 hover:bg-violet-100"
               >
-                List · {mcqs.length}
+                <Sparkles className="h-3.5 w-3.5" />
+                <span className="sm:hidden">Rewrite</span>
+                <span className="hidden sm:inline">Bulk AI rewrite</span>
               </button>
             )}
-            <span className="hidden truncate text-xs text-neutral-500 sm:inline">
-              {extracting
-                ? "Streaming…"
-                : mcqs.length
-                  ? `${mcqs.length} loaded`
-                  : "Ready"}
-            </span>
+            {workspaceMode === "extract" && (
+              <button
+                type="button"
+                onClick={() => setShowUpload((u) => !u)}
+                className="min-h-9 rounded-xl px-2 text-xs font-medium text-neutral-700 hover:bg-neutral-50 hover:text-neutral-900"
+              >
+                {showUpload ? "Hide upload" : "New PDF"}
+              </button>
+            )}
           </div>
-          {workspaceMode === "review" && mcqs.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setBulkRewriteOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-violet-200 bg-violet-50 px-3 py-1.5 text-xs font-medium text-violet-800 hover:bg-violet-100"
-            >
-              <Sparkles className="h-3.5 w-3.5" />
-              Bulk AI rewrite
-            </button>
-          )}
-          {workspaceMode === "extract" && (
-            <button
-              type="button"
-              onClick={() => setShowUpload((u) => !u)}
-              className="text-xs font-medium text-neutral-700 hover:text-neutral-900"
-            >
-              {showUpload ? "Close upload" : "New PDF"}
-            </button>
-          )}
-        </div>
+        )}
 
         <div className="relative flex min-h-0 flex-1 overflow-hidden">
           {sidebarOpen && mcqs.length > 0 && (
@@ -1663,7 +1957,7 @@ export default function McqExtractorApp() {
 
           <main className="flex min-h-0 min-w-0 flex-1 flex-col">
             {workspaceMode === "extract" && showUpload && (
-              <div className="max-h-[52vh] shrink-0 overflow-y-auto border-b border-neutral-200 bg-neutral-50 pb-4">
+              <div className="max-h-[min(48dvh,420px)] shrink-0 overflow-y-auto border-b border-neutral-200 bg-neutral-50 pb-2 sm:max-h-[52vh] sm:pb-4">
                 <ExtractPanel
                   onStart={handleExtractStart}
                   onChunk={handleChunk}
@@ -1684,9 +1978,32 @@ export default function McqExtractorApp() {
               </div>
             )}
 
-            {!extracting && !mcqs.length && !showUpload && (
-              <div className="flex flex-1 items-center justify-center p-8 text-center text-sm text-neutral-500">
-                Import a JSON file or upload a PDF to get started
+            {!extracting && !mcqs.length && !showUpload && workspaceMode === "extract" && (
+              <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center sm:p-8">
+                <p className="text-sm text-neutral-600">Upload a PDF or import a JSON file to get started.</p>
+                <button
+                  type="button"
+                  onClick={() => setShowUpload(true)}
+                  className="rounded-xl bg-neutral-900 px-4 py-2.5 text-sm font-semibold text-white"
+                >
+                  Upload PDF
+                </button>
+              </div>
+            )}
+
+            {!extracting && !mcqs.length && workspaceMode === "review" && (
+              <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center sm:p-8">
+                <p className="text-sm text-neutral-600">
+                  Open filters and load questions from the database.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setFilterDrawerOpen(true)}
+                  className="inline-flex items-center gap-2 rounded-xl bg-neutral-900 px-4 py-2.5 text-sm font-semibold text-white md:hidden"
+                >
+                  <SlidersHorizontal className="h-4 w-4" />
+                  Open filters
+                </button>
               </div>
             )}
 
@@ -1695,6 +2012,7 @@ export default function McqExtractorApp() {
                 <div className="min-h-0 flex-1 overflow-hidden">
                   <QuestionCard
                     question={currentQ}
+                    compact={viewingQuestions}
                     onEdit={() => setEditing(true)}
                     onDelete={handleDelete}
                   />

@@ -2,16 +2,15 @@
 
 import { useState } from 'react';
 import { useAuth } from "@/app/context/AuthContext";
+import { getPurchaseAuthModalContext } from '@/lib/auth/authModalContext';
 import { CheckCircle, Book, FileText, LayoutGrid, Activity, Calendar } from 'lucide-react';
-import AuthModal from '@/components/AuthModal';
-import toast from 'react-hot-toast';
-import { useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 
 export default function BuyNowWithoutRazorPay({ category }) {
-  const { signInWithGoogle } = useAuth();
+  const { openAuthModal } = useAuth();
+  const pathname = usePathname();
   const [activeTab, setActiveTab] = useState('features');
   const [error, setError] = useState(null);
-  const [showAuthModal, setShowAuthModal] = useState(false);
 
   const features = [
     {
@@ -195,7 +194,7 @@ export default function BuyNowWithoutRazorPay({ category }) {
                  
                  
                 <button
-                onClick={() => setShowAuthModal(true)}
+                onClick={() => openAuthModal(getPurchaseAuthModalContext(pathname))}
                   className="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-indigo-700 transition duration-200 shadow-md hover:shadow-lg flex items-center justify-center mx-auto"
                 >
                   <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
@@ -203,11 +202,6 @@ export default function BuyNowWithoutRazorPay({ category }) {
                   </svg>
                   Sign in with Google
                 </button>
-                <AuthModal
-            isOpen={showAuthModal}
-            onClose={() => setShowAuthModal(false)}
-            onGoogleSignIn={signInWithGoogle}
-          />
                 <p className="text-center text-sm mt-4 opacity-80">Secure payment • Instant access</p>
               </div>
             </div>

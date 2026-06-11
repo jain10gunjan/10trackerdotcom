@@ -148,4 +148,8 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.roadmap_purchases TO anon, authen
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.roadmap_orders TO anon, authenticated, service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.roadmap_user_progress TO anon, authenticated, service_role;
 
+-- Optional exam tag for catalog filters (see scripts/add_roadmap_exam_slug.sql)
+ALTER TABLE public.roadmaps ADD COLUMN IF NOT EXISTS exam_slug TEXT;
+CREATE INDEX IF NOT EXISTS idx_roadmaps_exam_slug ON public.roadmaps(exam_slug);
+
 NOTIFY pgrst, 'reload schema';
