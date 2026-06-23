@@ -2,7 +2,6 @@
 export const SUBREDDITS = [
   { name: 'r/bangalore', flairID: '6698f31a-a1b8-11e7-a258-0e6fed7c0ce2' },
   { name: 'r/mumbai', flairID: 'ebd60416-a7b3-11e9-abe9-0e666d5b3874' },
-  { name: 'r/Chennai', flairID: 'e58513ae-917b-11ec-90c0-9eb9cbfdb110' },
   { name: 'r/hyderabad', flairID: '39c93b7c-96a4-11ea-a47f-0e392b9484a9' },
   { name: 'r/Kerala', flairID: '5bb0f24e-ff54-11e9-aade-0e8505761f60' },
   { name: 'r/kolkata', flairID: '90c964a8-e357-11ed-bd6b-82e9025cdad7' },
