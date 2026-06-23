@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { verifyAdminAuth } from '@/middleware/adminAuth';
 import { getSupabaseAdmin, formatAdminDbError } from '@/lib/supabaseAdmin';
+import { invalidateCached } from '@/lib/cache/serverTtlCache';
 import {
   isValidSlug,
   normalizeSlug,
@@ -108,6 +109,7 @@ export async function POST(request) {
       }
       throw error;
     }
+    invalidateCached('roadmap-catalog:all');
     return NextResponse.json({ success: true, roadmap: data });
   } catch (err) {
     console.error('[admin roadmaps POST]', err);
@@ -165,6 +167,7 @@ export async function PATCH(request) {
       }
       throw error;
     }
+    invalidateCached('roadmap-catalog:all');
     return NextResponse.json({ success: true, roadmap: data });
   } catch (err) {
     console.error('[admin roadmaps PATCH]', err);

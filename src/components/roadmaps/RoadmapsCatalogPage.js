@@ -1,8 +1,9 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, BadgeCheck, Map, Search } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { ArrowRight, BadgeCheck, ChevronLeft, ChevronRight, Map, Search } from 'lucide-react';
 import { useAuth } from '@/app/context/AuthContext';
 import { useMyRoadmaps } from '@/hooks/useMyRoadmaps';
 import {
@@ -10,6 +11,7 @@ import {
   filterAndSortRoadmaps,
   pickFeaturedRoadmaps,
 } from '@/lib/roadmaps/roadmapCatalogUtils';
+import { ROADMAP_CATALOG_PAGE_SIZE } from '@/lib/roadmaps/constants';
 import RoadmapCatalogCard from '@/components/roadmaps/RoadmapCatalogCard';
 import RoadmapsDisclaimerBanner from '@/components/roadmaps/RoadmapsDisclaimerBanner';
 import RoadmapsFeaturedPanel from '@/components/roadmaps/RoadmapsFeaturedPanel';
@@ -26,16 +28,44 @@ function Pill({ children }) {
 }
 
 export default function RoadmapsCatalogPage({ initialRoadmaps = [] }) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useAuth();
   const { roadmaps: myRoadmaps, purchasedSlugs, loading: mineLoading } = useMyRoadmaps();
 
-  const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState('featured');
-  const [activeCategory, setActiveCategory] = useState('All');
+  const pageFromUrl = Math.max(1, Number(searchParams.get('page')) || 1);
+  const searchFromUrl = searchParams.get('search') || '';
+  const sortFromUrl = searchParams.get('sort') || 'featured';
+  const categoryFromUrl = searchParams.get('category') || 'All';
+
+  const [searchTerm, setSearchTerm] = useState(searchFromUrl);
+  const [sortBy, setSortBy] = useState(sortFromUrl);
+  const [activeCategory, setActiveCategory] = useState(categoryFromUrl);
+  const [page, setPage] = useState(pageFromUrl);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
 
   const roadmaps = initialRoadmaps;
   const categories = useMemo(() => examCategoriesFromRoadmaps(roadmaps), [roadmaps]);
+
+  const syncUrl = useCallback(
+    (next) => {
+      const params = new URLSearchParams();
+      if (next.search) params.set('search', next.search);
+      if (next.sort && next.sort !== 'featured') params.set('sort', next.sort);
+      if (next.category && next.category !== 'All') params.set('category', next.category);
+      if (next.page && next.page > 1) params.set('page', String(next.page));
+      const qs = params.toString();
+      router.replace(qs ? `/roadmaps?${qs}` : '/roadmaps', { scroll: false });
+    },
+    [router]
+  );
+
+  useEffect(() => {
+    setSearchTerm(searchFromUrl);
+    setSortBy(sortFromUrl);
+    setActiveCategory(categoryFromUrl);
+    setPage(pageFromUrl);
+  }, [searchFromUrl, sortFromUrl, categoryFromUrl, pageFromUrl]);
 
   const progressBySlug = useMemo(() => {
     const map = {};
@@ -47,10 +77,32 @@ export default function RoadmapsCatalogPage({ initialRoadmaps = [] }) {
 
   const featured = useMemo(() => pickFeaturedRoadmaps(roadmaps, { limit: 3 }), [roadmaps]);
 
-  const visibleRoadmaps = useMemo(
+  const filteredRoadmaps = useMemo(
     () => filterAndSortRoadmaps(roadmaps, { searchTerm, category: activeCategory, sortBy }),
     [roadmaps, searchTerm, activeCategory, sortBy]
   );
+
+  const totalPages = Math.max(1, Math.ceil(filteredRoadmaps.length / ROADMAP_CATALOG_PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const visibleRoadmaps = useMemo(() => {
+    const offset = (safePage - 1) * ROADMAP_CATALOG_PAGE_SIZE;
+    return filteredRoadmaps.slice(offset, offset + ROADMAP_CATALOG_PAGE_SIZE);
+  }, [filteredRoadmaps, safePage]);
+
+  const updateFilters = (patch) => {
+    const next = {
+      search: patch.searchTerm ?? searchTerm,
+      sort: patch.sortBy ?? sortBy,
+      category: patch.activeCategory ?? activeCategory,
+      page: patch.page ?? 1,
+    };
+    if (patch.searchTerm != null) setSearchTerm(patch.searchTerm);
+    if (patch.sortBy != null) setSortBy(patch.sortBy);
+    if (patch.activeCategory != null) setActiveCategory(patch.activeCategory);
+    if (patch.page != null) setPage(patch.page);
+    else setPage(1);
+    syncUrl(next);
+  };
 
   const isEmptyCatalog = roadmaps.length === 0;
 
@@ -103,13 +155,13 @@ export default function RoadmapsCatalogPage({ initialRoadmaps = [] }) {
       {!isEmptyCatalog ? (
         <RoadmapsFilterBar
           searchTerm={searchTerm}
-          onSearchChange={setSearchTerm}
+          onSearchChange={(v) => updateFilters({ searchTerm: v, page: 1 })}
           sortBy={sortBy}
-          onSortChange={setSortBy}
+          onSortChange={(v) => updateFilters({ sortBy: v, page: 1 })}
           categories={categories}
           activeCategory={activeCategory}
-          onCategoryChange={setActiveCategory}
-          resultCount={visibleRoadmaps.length}
+          onCategoryChange={(v) => updateFilters({ activeCategory: v, page: 1 })}
+          resultCount={filteredRoadmaps.length}
           showMobileFilters={showMobileFilters}
           onToggleMobileFilters={() => setShowMobileFilters((v) => !v)}
         />
@@ -145,7 +197,7 @@ export default function RoadmapsCatalogPage({ initialRoadmaps = [] }) {
                 </Link>
               </div>
             </div>
-          ) : visibleRoadmaps.length === 0 ? (
+          ) : filteredRoadmaps.length === 0 ? (
             <div className="rounded-3xl border border-neutral-200 bg-white py-16 text-center px-6">
               <div className="w-12 h-12 rounded-2xl bg-neutral-100 flex items-center justify-center mx-auto mb-4">
                 <Search className="w-6 h-6 text-neutral-400" />
@@ -156,30 +208,56 @@ export default function RoadmapsCatalogPage({ initialRoadmaps = [] }) {
               </p>
               <button
                 type="button"
-                onClick={() => {
-                  setSearchTerm('');
-                  setActiveCategory('All');
-                  setSortBy('featured');
-                }}
+                onClick={() =>
+                  updateFilters({ searchTerm: '', activeCategory: 'All', sortBy: 'featured', page: 1 })
+                }
                 className="mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-800"
               >
                 Reset filters
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5">
-              {visibleRoadmaps.map((roadmap) => {
-                const owned = purchasedSlugs.includes(roadmap.slug);
-                return (
-                  <RoadmapCatalogCard
-                    key={roadmap.id}
-                    roadmap={roadmap}
-                    owned={owned}
-                    progressPercent={owned ? progressBySlug[roadmap.slug] : null}
-                  />
-                );
-              })}
-            </div>
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5">
+                {visibleRoadmaps.map((roadmap) => {
+                  const owned = purchasedSlugs.includes(roadmap.slug);
+                  return (
+                    <RoadmapCatalogCard
+                      key={roadmap.id}
+                      roadmap={roadmap}
+                      owned={owned}
+                      progressPercent={owned ? progressBySlug[roadmap.slug] : null}
+                    />
+                  );
+                })}
+              </div>
+
+              {totalPages > 1 ? (
+                <div className="mt-8 flex items-center justify-center gap-3">
+                  <button
+                    type="button"
+                    disabled={safePage <= 1}
+                    onClick={() => updateFilters({ page: safePage - 1 })}
+                    className="inline-flex items-center gap-1 rounded-xl border border-neutral-200 bg-white px-4 py-2 text-sm font-semibold text-neutral-700 hover:bg-neutral-50 disabled:opacity-40"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    Previous
+                  </button>
+                  <span className="text-sm text-neutral-500 tabular-nums">
+                    Page {safePage} of {totalPages}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={safePage >= totalPages}
+                    onClick={() => updateFilters({ page: safePage + 1 })}
+                    className="inline-flex items-center gap-1 rounded-xl border border-neutral-200 bg-white px-4 py-2 text-sm font-semibold text-neutral-700 hover:bg-neutral-50 disabled:opacity-40"
+                  >
+                    Next
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : null}
+            </>
           )}
         </div>
       </section>

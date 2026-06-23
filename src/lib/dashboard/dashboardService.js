@@ -23,7 +23,7 @@ import {
 } from '@/lib/mockTestLeaderboard';
 import { fetchLeaderboardData } from '@/lib/mockTestLeaderboardFetch';
 import { formatExamSlug } from '@/lib/platformExams';
-import { listUserPurchasedRoadmaps } from '@/lib/roadmaps/roadmapService';
+import { listUserRoadmapSummaries } from '@/lib/roadmaps/roadmapService';
 import { getOrSetCached } from '@/lib/cache/serverTtlCache';
 
 const LEADERBOARD_CACHE_TTL_MS = 90 * 1000;
@@ -388,7 +388,7 @@ export async function getDashboardForUser({ userEmail, userId, heatmapRange = '1
       primarySlug
         ? fetchLeaderboardSnippetCached(userEmail, primarySlug)
         : Promise.resolve({ ...EMPTY_LEADERBOARD }),
-      listUserPurchasedRoadmaps(userEmail),
+      listUserRoadmapSummaries(userEmail),
     ]);
 
   if (progressResult.status === 'rejected') {

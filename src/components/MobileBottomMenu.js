@@ -33,7 +33,6 @@ function getUserInitial(user) {
 
 const MobileBottomMenu = () => {
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [roadmapModalOpen, setRoadmapModalOpen] = useState(false);
   const pathname = usePathname();
   const { user, signOut, isAdmin } = useAuth();
 
@@ -44,15 +43,6 @@ const MobileBottomMenu = () => {
   }, [pathname]);
 
   useEffect(() => {
-    const el = document.documentElement;
-    const sync = () => setRoadmapModalOpen(el.hasAttribute('data-roadmap-day-modal'));
-    sync();
-    const obs = new MutationObserver(sync);
-    obs.observe(el, { attributes: true, attributeFilter: ['data-roadmap-day-modal'] });
-    return () => obs.disconnect();
-  }, []);
-
-  useEffect(() => {
     if (!sheetOpen) return undefined;
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
@@ -61,17 +51,13 @@ const MobileBottomMenu = () => {
     };
   }, [sheetOpen]);
 
-  if (roadmapModalOpen) {
-    return null;
-  }
-
   const tabClass = (active) =>
-    `flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-1 py-2 transition-colors ${
+    `flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-1 py-2 touch-manipulation transition-colors ${
       active ? 'text-emerald-700' : 'text-neutral-500 hover:text-neutral-800'
     }`;
 
   const sheetLinkClass = (active) =>
-    `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
+    `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors touch-manipulation ${
       active
         ? 'bg-emerald-50 text-emerald-900'
         : 'text-neutral-700 hover:bg-neutral-50 hover:text-neutral-900'
@@ -83,10 +69,13 @@ const MobileBottomMenu = () => {
 
   return (
     <>
-      {/* Bottom tab bar — matches navbar (lg breakpoint) */}
+      {/* Bottom tab bar */}
       <nav
-        className="fixed bottom-0 left-0 right-0 z-40 border-t border-neutral-200/90 bg-white/95 backdrop-blur-md supports-[backdrop-filter]:bg-white/90 pb-[env(safe-area-inset-bottom)] lg:hidden"
+        className={`fixed bottom-0 left-0 right-0 z-50 border-t border-neutral-200/90 bg-white/95 backdrop-blur-md supports-[backdrop-filter]:bg-white/90 pb-[env(safe-area-inset-bottom)] lg:hidden ${
+          sheetOpen ? 'pointer-events-none opacity-0' : ''
+        }`}
         aria-label="Mobile navigation"
+        aria-hidden={sheetOpen || undefined}
       >
         <div className="mx-auto flex h-16 max-w-lg items-stretch px-1">
           {MOBILE_TAB_NAV.map((item) => {
@@ -114,7 +103,7 @@ const MobileBottomMenu = () => {
 
           <button
             type="button"
-            onClick={() => setSheetOpen(true)}
+            onClick={() => setSheetOpen((open) => !open)}
             className={tabClass(moreActive || sheetOpen)}
             aria-expanded={sheetOpen}
             aria-haspopup="dialog"
@@ -139,7 +128,7 @@ const MobileBottomMenu = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[60] bg-neutral-900/30 backdrop-blur-[2px] lg:hidden"
+              className="fixed inset-0 z-[60] bg-neutral-900/30 backdrop-blur-[2px] lg:hidden touch-manipulation"
               aria-label="Close menu"
               onClick={() => setSheetOpen(false)}
             />
@@ -163,14 +152,17 @@ const MobileBottomMenu = () => {
                 <button
                   type="button"
                   onClick={() => setSheetOpen(false)}
-                  className="rounded-lg p-2 text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
+                  className="rounded-lg p-2 text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 touch-manipulation"
                   aria-label="Close"
                 >
                   <X className="h-5 w-5" />
                 </button>
               </div>
 
-              <div className="overflow-y-auto px-4 py-3" style={{ maxHeight: 'calc(min(85vh, 640px) - 120px)' }}>
+              <div
+                className="overflow-y-auto overscroll-contain px-4 py-3"
+                style={{ maxHeight: 'calc(min(85vh, 640px) - 120px)' }}
+              >
                 {user ? (
                   <div className="mb-4 flex items-center gap-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-3">
                     <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-neutral-900 text-sm font-semibold text-white">
@@ -264,7 +256,7 @@ const MobileBottomMenu = () => {
                         signOut();
                         setSheetOpen(false);
                       }}
-                      className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
+                      className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 touch-manipulation"
                     >
                       <LogOut className="h-[18px] w-[18px] shrink-0" />
                       Sign out
@@ -275,14 +267,14 @@ const MobileBottomMenu = () => {
                     <Link
                       href="/sign-in"
                       onClick={() => setSheetOpen(false)}
-                      className="rounded-xl border border-neutral-200 px-3 py-2.5 text-center text-sm font-semibold text-neutral-800 hover:bg-neutral-50"
+                      className="rounded-xl border border-neutral-200 px-3 py-2.5 text-center text-sm font-semibold text-neutral-800 hover:bg-neutral-50 touch-manipulation"
                     >
                       Sign in
                     </Link>
                     <Link
                       href="/sign-up"
                       onClick={() => setSheetOpen(false)}
-                      className="rounded-xl bg-neutral-900 px-3 py-2.5 text-center text-sm font-semibold text-white hover:bg-neutral-800"
+                      className="rounded-xl bg-neutral-900 px-3 py-2.5 text-center text-sm font-semibold text-white hover:bg-neutral-800 touch-manipulation"
                     >
                       Sign up
                     </Link>
@@ -298,7 +290,7 @@ const MobileBottomMenu = () => {
                       key={item.path}
                       href={item.path}
                       onClick={() => setSheetOpen(false)}
-                      className="rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-xs font-medium text-neutral-600 transition-colors hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-900"
+                      className="rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-xs font-medium text-neutral-600 transition-colors hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-900 touch-manipulation"
                     >
                       {item.name.replace(' Policy', '').replace(' of Service', '')}
                     </Link>

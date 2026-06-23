@@ -52,6 +52,42 @@ export function isDayUnlocked(dayNumber, freePreviewDays, purchased) {
   return dayNumber <= (freePreviewDays || 0);
 }
 
+/** Slim day row for nav, streaks, and resume — no task payloads. */
+export function buildDaySummary(day, unlocked, progressMap) {
+  const taskCount = countTasksInDay(day);
+  const completedCount = unlocked ? countCompletedInDay(day, progressMap) : 0;
+  const progress = unlocked && taskCount > 0 ? Math.round((completedCount / taskCount) * 100) : 0;
+  const week = Math.ceil(day.day_number / 7);
+
+  if (!unlocked) {
+    return {
+      id: day.id,
+      day_number: day.day_number,
+      time_required: day.time_required,
+      locked: true,
+      focus_area_labels: (day.focus_areas || []).map((fa) => fa.focus_area).filter(Boolean),
+      task_count: taskCount,
+      taskCount,
+      completedCount: 0,
+      progress: 0,
+      week,
+    };
+  }
+
+  return {
+    id: day.id,
+    day_number: day.day_number,
+    time_required: day.time_required,
+    notes: day.notes,
+    locked: false,
+    focus_area_labels: (day.focus_areas || []).map((fa) => fa.focus_area).filter(Boolean),
+    taskCount,
+    completedCount,
+    progress,
+    week,
+  };
+}
+
 export function sanitizeDayForClient(day, unlocked) {
   if (!unlocked) {
     return {

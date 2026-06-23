@@ -1,11 +1,25 @@
 import { NextResponse } from 'next/server';
-import { fetchRoadmapCatalog } from '@/lib/roadmaps/fetchRoadmapCatalog';
+import { fetchRoadmapCatalogPage } from '@/lib/roadmaps/fetchRoadmapCatalog';
 import { ROADMAP_CATALOG_DISCLAIMER } from '@/lib/roadmaps/constants';
 import { ROADMAPS_SETUP_HINT } from '@/lib/roadmaps/roadmapService';
 
-export async function GET() {
+export async function GET(request) {
   try {
-    const { roadmaps, setupRequired } = await fetchRoadmapCatalog();
+    const { searchParams } = new URL(request.url);
+    const page = Number(searchParams.get('page')) || 1;
+    const limit = Number(searchParams.get('limit')) || undefined;
+    const searchTerm = searchParams.get('search') || '';
+    const category = searchParams.get('category') || 'All';
+    const sortBy = searchParams.get('sort') || 'featured';
+
+    const { roadmaps, setupRequired, pagination, error } = await fetchRoadmapCatalogPage({
+      page,
+      limit,
+      searchTerm,
+      category,
+      sortBy,
+    });
+
     if (setupRequired) {
       return NextResponse.json(
         {
@@ -17,11 +31,18 @@ export async function GET() {
       );
     }
 
-    return NextResponse.json({
+    if (error) {
+      return NextResponse.json({ success: false, error }, { status: 500 });
+    }
+
+    const res = NextResponse.json({
       success: true,
       roadmaps,
+      pagination,
       disclaimer: ROADMAP_CATALOG_DISCLAIMER,
     });
+    res.headers.set('Cache-Control', 'public, s-maxage=120, stale-while-revalidate=300');
+    return res;
   } catch (err) {
     console.error('GET /api/roadmaps', err);
     return NextResponse.json(

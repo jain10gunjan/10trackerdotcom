@@ -6,15 +6,14 @@
  *   INTERNAL_API_SECRET=your-strong-random-secret
  *   MCQ_API_URL=http://localhost:3001
  *
- * MCQ_API_URL falls back to NEXT_PUBLIC_MCQ_EXTRACTOR_API then localhost:3001.
+ * MCQ_API_URL falls back to localhost:3001 in development only.
  */
 
 function resolveApiBase() {
-  return (
-    process.env.MCQ_API_URL ||
-    process.env.NEXT_PUBLIC_MCQ_EXTRACTOR_API ||
-    "http://localhost:3001"
-  ).replace(/\/$/, "");
+  const fromEnv = process.env.MCQ_API_URL?.trim();
+  if (fromEnv) return fromEnv.replace(/\/$/, "");
+  if (process.env.NODE_ENV === "development") return "http://localhost:3001";
+  return "";
 }
 
 /**

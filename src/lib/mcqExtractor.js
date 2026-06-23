@@ -7,7 +7,8 @@ import {
 
 /** @deprecated Direct host — use MCQ_EXTRACTOR_PROXY_BASE in the browser. */
 export const MCQ_EXTRACTOR_API_BASE = (
-  process.env.NEXT_PUBLIC_MCQ_EXTRACTOR_API || "http://localhost:3001"
+  process.env.MCQ_API_URL ||
+  (process.env.NODE_ENV === "development" ? "http://localhost:3001" : "")
 ).replace(/\/$/, "");
 
 /** Same-origin proxy for admin UI (secrets stay on server). */

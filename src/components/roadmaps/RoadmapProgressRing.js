@@ -31,10 +31,12 @@ export default function RoadmapProgressRing({ percent = 0, size = 120, label = '
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-base font-bold text-neutral-900 tabular-nums leading-none">
+        <span className="text-sm font-bold text-neutral-900 tabular-nums leading-none">
           {clamped}%
         </span>
-        <span className="text-[9px] text-neutral-400 mt-0.5 uppercase tracking-wide">{label}</span>
+        {label ? (
+          <span className="text-[9px] text-neutral-400 mt-0.5 uppercase tracking-wide">{label}</span>
+        ) : null}
       </div>
     </div>
   );

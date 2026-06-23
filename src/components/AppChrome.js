@@ -11,7 +11,11 @@ import AnalyticsInitializer from '@/components/AnalyticsInitializer';
 import TermsReacceptanceModal from '@/components/profile/TermsReacceptanceModal';
 import TermsReacceptanceBanner from '@/components/profile/TermsReacceptanceBanner';
 import { useProfileGate } from '@/context/ProfileGateContext';
-import { isOnboardingBrowsePath, isHomeDashboardPath } from '@/lib/profileGatePaths';
+import {
+  isImmersiveMobileNavPath,
+  isOnboardingBrowsePath,
+  isHomeDashboardPath,
+} from '@/lib/profileGatePaths';
 
 function TermsReacceptanceBannerSlot() {
   return (
@@ -30,18 +34,23 @@ export default function AppChrome({ children }) {
   const onBrowsePage = isOnboardingBrowsePath(pathname);
   const shellHidden = Boolean(gateActive && !onBrowsePage && !onHome);
   const termsDockActive = Boolean(termsReacceptRequired && onBrowsePage && !shellHidden);
+  const showMobileBottomMenu = !isImmersiveMobileNavPath(pathname);
 
-  const mainPadding = shellHidden
-    ? ''
-    : onProfilePage
-      ? 'pt-24 pb-16 md:pb-0'
-      : termsDockActive
-        ? 'pb-36 md:pb-28'
-        : onHome
-          ? 'pb-16 md:pb-0'
-          : onBrowsePage
-            ? 'pb-16 md:pb-0'
-            : 'pb-16 md:pb-0';
+  const mainPadding = (() => {
+    if (shellHidden) {
+      return showMobileBottomMenu ? 'pb-16 lg:pb-0' : '';
+    }
+    if (onProfilePage) {
+      return 'pt-24 pb-16 md:pb-0';
+    }
+    if (termsDockActive) {
+      return 'pb-36 md:pb-28';
+    }
+    if (onHome || onBrowsePage) {
+      return 'pb-16 md:pb-0';
+    }
+    return 'pb-16 md:pb-0';
+  })();
 
   return (
     <>
@@ -54,7 +63,7 @@ export default function AppChrome({ children }) {
       <div className={mainPadding}>{children}</div>
       {termsDockActive ? <div className="h-20 md:h-16 shrink-0" aria-hidden /> : null}
       {!shellHidden && <Footer />}
-      {!shellHidden && <MobileBottomMenu />}
+      {showMobileBottomMenu ? <MobileBottomMenu /> : null}
       <TermsReacceptanceBannerSlot />
       <TermsReacceptanceModal />
     </>

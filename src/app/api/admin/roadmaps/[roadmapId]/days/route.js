@@ -2,7 +2,11 @@ import { NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import { verifyAdminAuth } from '@/middleware/adminAuth';
 import { getSupabaseAdmin, formatAdminDbError } from '@/lib/supabaseAdmin';
-import { ROADMAPS_SETUP_HINT } from '@/lib/roadmaps/roadmapService';
+import { invalidateCached } from '@/lib/cache/serverTtlCache';
+import {
+  invalidateRoadmapDaysCache,
+  ROADMAPS_SETUP_HINT,
+} from '@/lib/roadmaps/roadmapService';
 
 function adminErr(err, status = 500) {
   return NextResponse.json(
@@ -105,6 +109,8 @@ export async function POST(request, { params }) {
       }
       throw error;
     }
+    invalidateRoadmapDaysCache(roadmapId);
+    invalidateCached('roadmap-catalog:all');
     return NextResponse.json({ success: true, day: data });
   } catch (err) {
     return adminErr(err);
@@ -133,7 +139,75 @@ export async function DELETE(request, { params }) {
       .eq('roadmap_id', roadmapId);
 
     if (error) throw error;
+    invalidateRoadmapDaysCache(roadmapId);
+    invalidateCached('roadmap-catalog:all');
     return NextResponse.json({ success: true });
+  } catch (err) {
+    return adminErr(err);
+  }
+}
+
+export async function PATCH(request, { params }) {
+  const { roadmapId } = await params;
+  const { isAdmin, error: authError } = await verifyAdminAuth();
+  if (!isAdmin) {
+    return NextResponse.json({ error: authError || 'Admin access required' }, { status: 403 });
+  }
+
+  try {
+    const body = await request.json();
+    const dayId = body.id;
+    if (!dayId) {
+      return NextResponse.json({ success: false, error: 'id required' }, { status: 400 });
+    }
+
+    const patch = { updated_at: new Date().toISOString() };
+    if (body.day_number != null) {
+      const day_number = Number(body.day_number);
+      if (!Number.isFinite(day_number) || day_number < 1) {
+        return NextResponse.json({ success: false, error: 'Valid day_number required' }, { status: 400 });
+      }
+      patch.day_number = day_number;
+    }
+    if (body.time_required !== undefined) {
+      patch.time_required = body.time_required ? String(body.time_required).trim() : null;
+    }
+    if (body.notes !== undefined) {
+      patch.notes = body.notes ? String(body.notes).trim() : null;
+    }
+    if (body.focus_areas != null) {
+      const focus_areas = normalizeFocusAreas(body.focus_areas);
+      if (!focus_areas.length) {
+        return NextResponse.json(
+          { success: false, error: 'At least one focus area with tasks required' },
+          { status: 400 }
+        );
+      }
+      patch.focus_areas = focus_areas;
+    }
+
+    const supabase = getSupabaseAdmin();
+    const { data, error } = await supabase
+      .from('roadmap_days')
+      .update(patch)
+      .eq('id', dayId)
+      .eq('roadmap_id', roadmapId)
+      .select('*')
+      .single();
+
+    if (error) {
+      if (error.code === '23505') {
+        return NextResponse.json(
+          { success: false, error: 'That day number already exists for this roadmap' },
+          { status: 409 }
+        );
+      }
+      throw error;
+    }
+
+    invalidateRoadmapDaysCache(roadmapId);
+    invalidateCached('roadmap-catalog:all');
+    return NextResponse.json({ success: true, day: data });
   } catch (err) {
     return adminErr(err);
   }

@@ -46,7 +46,7 @@ export default function TermsReacceptPanel({
   if (isDock) {
     return (
       <div
-        className="fixed bottom-16 md:bottom-0 inset-x-0 z-40 border-t border-neutral-200 bg-white/95 backdrop-blur-md shadow-[0_-4px_24px_rgba(0,0,0,0.06)]"
+        className="fixed bottom-16 md:bottom-0 inset-x-0 z-[90] border-t border-neutral-200 bg-white/95 backdrop-blur-md shadow-[0_-4px_24px_rgba(0,0,0,0.06)]"
         role="region"
         aria-label="Accept updated policies"
       >

@@ -87,6 +87,27 @@ export function useRoadmapDraft(slug, serverProgressMap, userKey) {
     [updateTask]
   );
 
+  const setAllTasksStatus = useCallback(
+    (taskIds, status) => {
+      if (!taskIds?.length) return;
+      setDraft((prev) => {
+        const next = { ...prev };
+        for (const taskId of taskIds) {
+          const server = serverProgressMap[taskId] || { status: 'not_completed', user_notes: '' };
+          const existing = next[taskId] || {};
+          const notes = existing.user_notes ?? server.user_notes ?? '';
+          if (status === server.status && notes === (server.user_notes || '')) {
+            delete next[taskId];
+          } else {
+            next[taskId] = { ...existing, status };
+          }
+        }
+        return next;
+      });
+    },
+    [serverProgressMap]
+  );
+
   const discardChanges = useCallback(() => {
     clearDraft(slug, userKey);
     setDraft({});
@@ -121,6 +142,7 @@ export function useRoadmapDraft(slug, serverProgressMap, userKey) {
     updateTask,
     toggleComplete,
     setNotes,
+    setAllTasksStatus,
     discardChanges,
     getTasksToSave,
     resetDraftAfterSave,

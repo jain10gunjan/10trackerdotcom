@@ -1,6 +1,6 @@
 /**
  * Image host helpers for featured images served by the automation API
- * (e.g. https://services.10tracker.com/api/images/:id).
+ * (e.g. https://api.10tracker.com/api/images/:id).
  */
 
 import { isAutomationImageUrl } from './resolveFeaturedImageUrl.js';
@@ -16,7 +16,7 @@ function parseHostFromUrl(raw) {
 /** Hostnames allowed for next/image (server + client). */
 export function getAutomationImageHostnames() {
   const hosts = new Set([
-    'services.10tracker.com',
+    'api.10tracker.com',
     '10tracker.com',
     'gateoverflow.in',
     'images.unsplash.com',
@@ -24,7 +24,7 @@ export function getAutomationImageHostnames() {
     '127.0.0.1',
   ]);
 
-  for (const key of ['AUTOMATION_API_URL', 'NEXT_PUBLIC_AUTOMATION_API_URL']) {
+  for (const key of ['AUTOMATION_API_URL']) {
     const host = parseHostFromUrl(process.env[key]);
     if (host) hosts.add(host);
   }

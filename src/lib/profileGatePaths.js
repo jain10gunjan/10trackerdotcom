@@ -27,6 +27,19 @@ export function isHomeDashboardPath(pathname) {
   return pathname === '/';
 }
 
+/** Chapter MCQ practice at /[category]/[subject]/[chapter]/practice — has its own bottom bar */
+export function isChapterPracticePath(pathname) {
+  if (!pathname) return false;
+  return /^\/[^/]+\/[^/]+\/[^/]+\/practice\/?$/.test(pathname);
+}
+
+/** Routes where the global mobile bottom nav should be hidden */
+export function isImmersiveMobileNavPath(pathname) {
+  if (!pathname) return false;
+  if (isChapterPracticePath(pathname)) return true;
+  return /\/mock-test\/[^/]+\/attempt\//.test(pathname);
+}
+
 export function isProfileExemptPath(pathname) {
   if (!pathname) return false;
   if (isPublicContentPath(pathname)) return true;

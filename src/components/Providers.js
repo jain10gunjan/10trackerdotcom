@@ -11,7 +11,7 @@ import AppChrome from "@/components/AppChrome";
 
 export default function Providers({ children }) {
   return (
-    <SessionProvider refetchOnWindowFocus={false} refetchInterval={0}>
+    <SessionProvider basePath="/api/auth" refetchOnWindowFocus={false} refetchInterval={0}>
       <AuthProvider>
         <CreditsProvider>
           <ProfileGateProvider>

@@ -8,7 +8,10 @@ function DayListRow({ day, onOpen }) {
   const done = day.progress >= 100;
   const labels = day.locked
     ? (day.focus_area_labels || []).slice(0, 3)
-    : (day.focus_areas || []).map((fa) => fa.focus_area).slice(0, 3);
+    : (day.focus_areas || day.focus_area_labels || [])
+        .map((fa) => (typeof fa === 'string' ? fa : fa.focus_area))
+        .filter(Boolean)
+        .slice(0, 3);
 
   return (
     <button

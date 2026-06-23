@@ -6,11 +6,23 @@ export function buildDayMeta(days, progressMap) {
       return {
         ...day,
         progress: 0,
-        taskCount: day.task_count || 0,
+        taskCount: day.task_count || day.taskCount || 0,
         completedCount: 0,
         week: Math.ceil(day.day_number / 7),
       };
     }
+
+    const hasTaskPayload = (day.focus_areas || []).some((fa) => fa.tasks?.length);
+    if (!hasTaskPayload && day.taskCount != null) {
+      return {
+        ...day,
+        progress: calculateDayProgressFromMap(day, progressMap) ?? day.progress ?? 0,
+        taskCount: day.taskCount,
+        completedCount: day.completedCount ?? 0,
+        week: Math.ceil(day.day_number / 7),
+      };
+    }
+
     const taskCount = countTasksInDay(day);
     let completedCount = 0;
     for (const fa of day.focus_areas || []) {
@@ -26,6 +38,11 @@ export function buildDayMeta(days, progressMap) {
       week: Math.ceil(day.day_number / 7),
     };
   });
+}
+
+function calculateDayProgressFromMap(day, progressMap) {
+  if (!day.focus_areas?.length) return day.progress ?? 0;
+  return calculateDayProgress(day, progressMap);
 }
 
 /** Collapse long runs of locked days for sidebar performance & clarity. */
@@ -71,6 +88,28 @@ export function groupByWeek(dayMeta) {
   return [...weeks.entries()].sort(([a], [b]) => a - b);
 }
 
+export function extractFocusAreas(dayMeta) {
+  const set = new Set();
+  for (const d of dayMeta || []) {
+    const labels =
+      d.focus_area_labels ||
+      (d.focus_areas || []).map((fa) => fa.focus_area).filter(Boolean);
+    for (const label of labels) {
+      if (label) set.add(label);
+    }
+  }
+  return [...set].sort();
+}
+
+export function filterDayMetaByFocus(dayMeta, focusArea) {
+  if (!focusArea || focusArea === 'All') return dayMeta;
+  const target = focusArea.toLowerCase();
+  return dayMeta.filter((d) => {
+    const labels = d.focus_area_labels || (d.focus_areas || []).map((fa) => fa.focus_area);
+    return labels.some((fa) => fa?.toLowerCase() === target);
+  });
+}
+
 export function filterDayMeta(dayMeta, query) {
   const q = query.trim().toLowerCase();
   if (!q) return dayMeta;
@@ -84,6 +123,16 @@ export function filterDayMeta(dayMeta, query) {
         fa.focus_area?.toLowerCase().includes(q) ||
         (fa.tasks || []).some((t) => t.task?.toLowerCase().includes(q))
     );
+  });
+}
+
+/** Merge lightweight summaries with loaded full day payloads. */
+export function mergeSummariesWithDays(summaries, loadedDays) {
+  const byNum = Object.fromEntries((loadedDays || []).map((d) => [d.day_number, d]));
+  return (summaries || []).map((s) => {
+    const full = byNum[s.day_number];
+    if (!full) return s;
+    return { ...s, ...full, progress: s.progress, completedCount: s.completedCount, taskCount: s.taskCount };
   });
 }
 

@@ -5,10 +5,15 @@ import {
   progressMapFromRows,
   sanitizeDayForClient,
   isDayUnlocked,
+  buildDaySummary,
 } from '@/lib/roadmaps/progressUtils';
+import { getOrSetCached, invalidateCached } from '@/lib/cache/serverTtlCache';
+import { ROADMAP_DAYS_PAGE_SIZE } from '@/lib/roadmaps/constants';
 
 export const ROADMAPS_SETUP_HINT =
   'Run scripts/setup_roadmaps.sql and scripts/fix_roadmaps_rls_secure.sql in Supabase SQL Editor, then reload the API schema.';
+
+const ROADMAP_DAYS_CACHE_TTL_MS = 60 * 1000;
 
 function db() {
   return getSupabaseServer(isValidServiceRoleKey());
@@ -93,7 +98,84 @@ export async function fetchRoadmapDays(roadmapId) {
   return data || [];
 }
 
-export async function buildRoadmapDetail(slug, userEmail = null) {
+async function fetchRoadmapDaysCached(roadmapId) {
+  return getOrSetCached(
+    `roadmap-days:${roadmapId}`,
+    ROADMAP_DAYS_CACHE_TTL_MS,
+    () => fetchRoadmapDays(roadmapId)
+  );
+}
+
+export function invalidateRoadmapDaysCache(roadmapId) {
+  invalidateCached(`roadmap-days:${roadmapId}`);
+}
+
+function dayMatchesFocus(day, focusArea) {
+  if (!focusArea) return true;
+  const target = focusArea.toLowerCase();
+  return (day.focus_areas || []).some((fa) => fa.focus_area?.toLowerCase() === target);
+}
+
+function dayMatchesSearch(day, search, unlocked) {
+  if (!search) return true;
+  const q = search.trim().toLowerCase();
+  if (`day ${day.day_number}`.includes(q)) return true;
+  if (!unlocked) {
+    return (day.focus_areas || []).some((fa) => fa.focus_area?.toLowerCase().includes(q));
+  }
+  return (day.focus_areas || []).some(
+    (fa) =>
+      fa.focus_area?.toLowerCase().includes(q) ||
+      (fa.tasks || []).some((t) => t.task?.toLowerCase().includes(q))
+  );
+}
+
+function filterDaysRaw(daysRaw, { focusArea, search, dayNumber, purchased, freePreviewDays }) {
+  return daysRaw.filter((day) => {
+    if (dayNumber != null && day.day_number !== dayNumber) return false;
+    const unlocked = isDayUnlocked(day.day_number, freePreviewDays, purchased);
+    if (focusArea && !dayMatchesFocus(day, focusArea)) return false;
+    if (search && !dayMatchesSearch(day, search, unlocked)) return false;
+    return true;
+  });
+}
+
+function buildSummariesFromRaw(daysRaw, roadmap, purchased, progressMap) {
+  return daysRaw.map((day) => {
+    const unlocked = isDayUnlocked(day.day_number, roadmap.free_preview_days, purchased);
+    return buildDaySummary(day, unlocked, progressMap);
+  });
+}
+
+function sanitizeDaysPage(daysRaw, roadmap, purchased) {
+  return daysRaw.map((day) =>
+    sanitizeDayForClient(
+      day,
+      isDayUnlocked(day.day_number, roadmap.free_preview_days, purchased)
+    )
+  );
+}
+
+function extractFocusAreaList(summaries) {
+  const set = new Set();
+  for (const s of summaries) {
+    if (s.locked) {
+      for (const l of s.focus_area_labels || []) if (l) set.add(l);
+    } else {
+      for (const fa of s.focus_areas || []) if (fa.focus_area) set.add(fa.focus_area);
+    }
+  }
+  return [...set].sort();
+}
+
+/**
+ * Paginated viewer payload — summaries for all days (slim), full days for one page only.
+ */
+export async function buildRoadmapViewerPayload(
+  slug,
+  userEmail = null,
+  { dayOffset = 0, dayLimit = ROADMAP_DAYS_PAGE_SIZE, focusArea = null, search = null } = {}
+) {
   const roadmap = await getRoadmapBySlug(slug);
   if (!roadmap || (!roadmap.is_active && !userEmail)) {
     return null;
@@ -101,14 +183,27 @@ export async function buildRoadmapDetail(slug, userEmail = null) {
 
   const userId = userEmail ? normalizeEmail(userEmail) : null;
   const purchased = userId ? await userHasPurchased(userId, roadmap.id) : false;
-  const daysRaw = await fetchRoadmapDays(roadmap.id);
+  const daysRaw = await fetchRoadmapDaysCached(roadmap.id);
   const progressMap = userId ? await getUserProgress(userId, roadmap.id) : {};
 
-  const days = daysRaw.map((day) =>
-    sanitizeDayForClient(day, isDayUnlocked(day.day_number, roadmap.free_preview_days, purchased))
-  );
+  const daySummaries = buildSummariesFromRaw(daysRaw, roadmap, purchased, progressMap);
+  const focusAreas = extractFocusAreaList(daySummaries);
 
-  const progress = calculateRoadmapProgress(daysRaw, progressMap);
+  const filtered = filterDaysRaw(daysRaw, {
+    focusArea,
+    search,
+    purchased,
+    freePreviewDays: roadmap.free_preview_days,
+  });
+
+  const totalFiltered = filtered.length;
+  const pageRaw = filtered.slice(dayOffset, dayOffset + dayLimit);
+  const days = sanitizeDaysPage(pageRaw, roadmap, purchased);
+
+  const unlockedDaysRaw = daysRaw.filter((d) =>
+    isDayUnlocked(d.day_number, roadmap.free_preview_days, purchased)
+  );
+  const progress = calculateRoadmapProgress(unlockedDaysRaw, progressMap);
   const totalDays = daysRaw.length;
   const unlockedDayCount = purchased
     ? totalDays
@@ -128,8 +223,72 @@ export async function buildRoadmapDetail(slug, userEmail = null) {
     progress,
     totalDays,
     unlockedDayCount,
+    daySummaries,
+    focusAreas,
     days,
+    pagination: {
+      offset: dayOffset,
+      limit: dayLimit,
+      total: totalFiltered,
+      hasMore: dayOffset + dayLimit < totalFiltered,
+      filtered: Boolean(focusArea || search),
+    },
     progressMap: userId ? progressMap : null,
+  };
+}
+
+export async function fetchRoadmapDaysPage(
+  slug,
+  userEmail,
+  { dayOffset = 0, dayLimit = ROADMAP_DAYS_PAGE_SIZE, focusArea = null, search = null, dayNumber = null } = {}
+) {
+  const roadmap = await getRoadmapBySlug(slug);
+  if (!roadmap) return null;
+
+  const userId = userEmail ? normalizeEmail(userEmail) : null;
+  const purchased = userId ? await userHasPurchased(userId, roadmap.id) : false;
+  const daysRaw = await fetchRoadmapDaysCached(roadmap.id);
+
+  const filtered = filterDaysRaw(daysRaw, {
+    focusArea,
+    search,
+    dayNumber: dayNumber != null ? Number(dayNumber) : null,
+    purchased,
+    freePreviewDays: roadmap.free_preview_days,
+  });
+
+  const pageRaw = dayNumber != null ? filtered : filtered.slice(dayOffset, dayOffset + dayLimit);
+  const days = sanitizeDaysPage(pageRaw, roadmap, purchased);
+
+  return {
+    days,
+    pagination: {
+      offset: dayOffset,
+      limit: dayLimit,
+      total: filtered.length,
+      hasMore: dayNumber == null && dayOffset + dayLimit < filtered.length,
+    },
+  };
+}
+
+export async function buildRoadmapDetail(slug, userEmail = null) {
+  const payload = await buildRoadmapViewerPayload(slug, userEmail, {
+    dayOffset: 0,
+    dayLimit: ROADMAP_DAYS_PAGE_SIZE,
+  });
+  if (!payload) return null;
+
+  return {
+    roadmap: payload.roadmap,
+    purchased: payload.purchased,
+    progress: payload.progress,
+    totalDays: payload.totalDays,
+    unlockedDayCount: payload.unlockedDayCount,
+    daySummaries: payload.daySummaries,
+    focusAreas: payload.focusAreas,
+    days: payload.days,
+    pagination: payload.pagination,
+    progressMap: payload.progressMap,
   };
 }
 
@@ -207,51 +366,9 @@ export async function listUserRoadmapSummaries(userEmail) {
   return results;
 }
 
+/** @deprecated Use listUserRoadmapSummaries — kept as alias for compatibility. */
 export async function listUserPurchasedRoadmaps(userEmail) {
-  const email = normalizeEmail(userEmail);
-  if (!email) return [];
-
-  const supabase = db();
-  const { data: purchases, error } = await supabase
-    .from('roadmap_purchases')
-    .select('roadmap_id, purchased_at, amount_paise')
-    .eq('user_email', email)
-    .order('purchased_at', { ascending: false });
-
-  if (error) {
-    if (error.code === '42P01') return [];
-    throw error;
-  }
-  if (!purchases?.length) return [];
-
-  const roadmapIds = purchases.map((p) => p.roadmap_id);
-  const { data: roadmaps, error: rErr } = await supabase
-    .from('roadmaps')
-    .select('id, slug, title, description')
-    .in('id', roadmapIds);
-
-  if (rErr) throw rErr;
-
-  const byId = Object.fromEntries((roadmaps || []).map((r) => [r.id, r]));
-  const userId = email;
-
-  const results = [];
-  for (const p of purchases) {
-    const meta = byId[p.roadmap_id];
-    if (!meta) continue;
-    const daysRaw = await fetchRoadmapDays(meta.id);
-    const progressMap = await getUserProgress(userId, meta.id);
-    const progress = calculateRoadmapProgress(daysRaw, progressMap);
-    results.push({
-      slug: meta.slug,
-      title: meta.title,
-      description: meta.description,
-      purchasedAt: p.purchased_at,
-      progressPercent: progress.percent,
-      href: `/roadmaps/${meta.slug}`,
-    });
-  }
-  return results;
+  return listUserRoadmapSummaries(userEmail);
 }
 
 export async function upsertTaskProgress(userId, roadmapId, taskId, patch) {
