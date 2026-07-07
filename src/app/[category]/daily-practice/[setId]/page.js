@@ -7,6 +7,13 @@ import { MathJax, MathJaxContext } from "better-react-mathjax";
 import { BookOpen, AlertCircle, CheckCircle, XCircle, ChevronDown, ChevronUp } from "lucide-react";
 import SyntaxHighlighter from "react-syntax-highlighter";
 import { docco } from "react-syntax-highlighter/dist/esm/styles/hljs";
+import {
+  isAnswerCorrect,
+  isInlineAnswerQuestion,
+  hasPopulatedOptions,
+  formatAcceptedAnswers,
+} from "@/lib/questionAnswerMode";
+import InlineAnswerInput from "@/components/InlineAnswerInput";
 
 /* ─── constants ───────────────────────────────────────────────── */
 
@@ -251,17 +258,32 @@ function OptionButton({ opt, value, selected, answered, correctOption, onSelect 
 
 function QuestionCard({ q, idx, selected, onAnswer }) {
   const [solutionOpen, setSolutionOpen] = useState(false);
+  const [textAnswer, setTextAnswer] = useState("");
+  const [submitted, setSubmitted] = useState(false);
 
-  const answered = !!selected;
-  const isCorrect = answered && selected === q.correct_option;
+  const inlineMode = isInlineAnswerQuestion(q);
+  const answered = inlineMode ? submitted : !!selected;
+  const userValue = inlineMode ? textAnswer : selected;
+  const isCorrect = answered && isAnswerCorrect(userValue, q.correct_option, q);
 
   const visibleOptions = OPTIONS.filter((opt) => {
     const v = q[`options_${opt}`];
     return typeof v === "string" && v.trim() !== "";
   });
-  const hasOptions = visibleOptions.length > 0;
+  const hasOptions = hasPopulatedOptions(q);
 
-  const showSolution = hasOptions ? answered : solutionOpen;
+  const showSolution = hasOptions ? answered : solutionOpen || answered;
+
+  const handleInlineSubmit = () => {
+    if (!textAnswer.trim() || submitted) return;
+    setSubmitted(true);
+    onAnswer(q._id, textAnswer.trim());
+  };
+
+  useEffect(() => {
+    setTextAnswer("");
+    setSubmitted(false);
+  }, [q._id]);
 
   return (
     <div className="rounded-2xl border border-neutral-200 bg-white overflow-hidden">
@@ -276,7 +298,7 @@ function QuestionCard({ q, idx, selected, onAnswer }) {
           }`}>
             {isCorrect
               ? <><CheckCircle className="h-3.5 w-3.5" /> Correct</>
-              : <><XCircle className="h-3.5 w-3.5" /> Incorrect — {q.correct_option} is right</>
+              : <><XCircle className="h-3.5 w-3.5" /> Incorrect — {formatAcceptedAnswers(q.correct_option)} is right</>
             }
           </span>
         )}
@@ -289,8 +311,19 @@ function QuestionCard({ q, idx, selected, onAnswer }) {
         </div>
       </div>
 
-      {/* Options */}
-      {hasOptions && (
+      {/* Options or inline answer */}
+      {inlineMode ? (
+        <div className="px-4 pb-4 sm:px-5">
+          <InlineAnswerInput
+            value={textAnswer}
+            onChange={setTextAnswer}
+            onSubmit={handleInlineSubmit}
+            submitted={submitted}
+            isCorrect={isCorrect}
+            correctOption={q.correct_option}
+          />
+        </div>
+      ) : hasOptions ? (
         <div className="px-4 pb-4 sm:px-5 space-y-2">
           {visibleOptions.map((opt) => (
             <OptionButton
@@ -304,7 +337,7 @@ function QuestionCard({ q, idx, selected, onAnswer }) {
             />
           ))}
         </div>
-      )}
+      ) : null}
 
       {/* Solution */}
       {q.solution && (
@@ -313,7 +346,7 @@ function QuestionCard({ q, idx, selected, onAnswer }) {
         }`}>
           <div className="flex items-center justify-between">
             <p className="text-xs font-semibold text-neutral-700">Explanation</p>
-            {!hasOptions && (
+            {!hasOptions && !inlineMode && (
               <button
                 type="button"
                 onClick={() => setSolutionOpen((v) => !v)}

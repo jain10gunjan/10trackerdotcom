@@ -1,14 +1,19 @@
 'use client';
 
 import { memo } from 'react';
+import { isInlineAnswerQuestion } from '@/lib/questionAnswerMode';
+import GateSolutionFields from '@/components/admin/GateSolutionFields';
 
 function ChapterAdminEditModal({
   question,
+  category,
   saving,
   onChange,
   onClose,
   onSave,
 }) {
+  const inlineMode = isInlineAnswerQuestion(question);
+
   if (!question) return null;
 
   return (
@@ -48,17 +53,27 @@ function ChapterAdminEditModal({
             ))}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <select
-              value={question.correct_option || 'A'}
-              onChange={(e) => onChange({ ...question, correct_option: e.target.value })}
-              className="w-full p-3 border border-neutral-200 rounded-2xl"
-            >
-              {['A', 'B', 'C', 'D'].map((o) => (
-                <option key={o} value={o}>
-                  Correct: {o}
-                </option>
-              ))}
-            </select>
+            {inlineMode ? (
+              <input
+                type="text"
+                value={question.correct_option || ''}
+                onChange={(e) => onChange({ ...question, correct_option: e.target.value })}
+                className="w-full p-3 border border-neutral-200 rounded-2xl sm:col-span-2"
+                placeholder="Numerical answer, e.g. 42 (use | for multiple: 42|43)"
+              />
+            ) : (
+              <select
+                value={question.correct_option || 'A'}
+                onChange={(e) => onChange({ ...question, correct_option: e.target.value })}
+                className="w-full p-3 border border-neutral-200 rounded-2xl"
+              >
+                {['A', 'B', 'C', 'D'].map((o) => (
+                  <option key={o} value={o}>
+                    Correct: {o}
+                  </option>
+                ))}
+              </select>
+            )}
             <select
               value={question.difficulty || 'easy'}
               onChange={(e) => onChange({ ...question, difficulty: e.target.value })}
@@ -71,12 +86,19 @@ function ChapterAdminEditModal({
               ))}
             </select>
           </div>
-          <textarea
-            value={question.solution || ''}
-            onChange={(e) => onChange({ ...question, solution: e.target.value })}
-            className="w-full p-3 border border-neutral-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-            rows={4}
-            placeholder="Solution"
+
+          <GateSolutionFields
+            category={category || question.category}
+            solution={question.solution || ''}
+            solutiontext={question.solutiontext || ''}
+            questionId={question._id}
+            onChange={({ solution, solutiontext }) =>
+              onChange({
+                ...question,
+                solution,
+                solutiontext,
+              })
+            }
           />
         </div>
         <div className="px-5 py-4 border-t border-neutral-100 flex items-center justify-end gap-2">

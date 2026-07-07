@@ -52,7 +52,7 @@
 //     let q = supabase
 //       .from('examtracker')
 //       .select(
-//         '_id, question, options_A, options_B, options_C, options_D, correct_option, solution, difficulty, year, subject, chapter, topic',
+//         '_id, question, options_A, options_B, options_C, options_D, correct_option, solution, solutiontext, difficulty, year, subject, chapter, topic',
 //         { count: 'exact' }
 //       )
 //       .eq('category', categoryUpper)
@@ -261,7 +261,7 @@ export async function GET(request) {
     let query = supabase
       .from('examtracker')
       .select(
-        '_id, question, options_A, options_B, options_C, options_D, correct_option, solution, difficulty, year, subject, chapter, topic',
+        '_id, question, options_A, options_B, options_C, options_D, correct_option, solution, solutiontext, difficulty, year, subject, chapter, topic',
         { count: 'exact' }
       )
       .eq('category', category.toUpperCase())

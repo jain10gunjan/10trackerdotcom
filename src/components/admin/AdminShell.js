@@ -22,6 +22,7 @@ import {
 
 const NAV = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/admin/mcq-creation", label: "MCQ creation", icon: Sparkles },
   { href: "/admin/mcq-extractor", label: "MCQ extractor", icon: FileText },
   { href: "/admin/gktoday", label: "GKToday", icon: Sparkles },
   { href: "/admin/mock-tests", label: "Mock tests", icon: ClipboardList },

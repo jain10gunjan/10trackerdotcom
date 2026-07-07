@@ -9,6 +9,16 @@ import Image from "next/image";
 import toast from "react-hot-toast";
 import { createClient } from "@supabase/supabase-js";
 import { useAuth } from "@/app/context/AuthContext";
+import {
+  isAnswerCorrect,
+  isInlineAnswerQuestion,
+  hasPopulatedOptions,
+  formatAcceptedAnswers,
+} from "@/lib/questionAnswerMode";
+import InlineAnswerInput from "@/components/InlineAnswerInput";
+import GateSolutionFields from "@/components/admin/GateSolutionFields";
+import { isGateCategory } from "@/lib/gateCategory";
+import { normalizeGateOverflowUrl } from "@/lib/gateoverflowUrl";
 
 // Supabase client (browser)
 const supabase = createClient(
@@ -264,6 +274,7 @@ const QuestionCard = memo(({ question, category, index, onAnswer, onSkip, questi
   const [state, setState] = useState({
     showSolution: false,
     selectedOption: null,
+    textAnswer: "",
     isAnswered: isCompleted,
     difficulty: 0,
     showFeedback: false,
@@ -279,42 +290,74 @@ const QuestionCard = memo(({ question, category, index, onAnswer, onSkip, questi
       options_D: question.options_D,
       correct_option: question.correct_option,
       solution: question.solution,
+      solutiontext: question.solutiontext,
       difficulty: question.difficulty,
     },
     isSaving: false,
   });
 
-  // Keep internal answered/correct state in sync with persisted progress
   useEffect(() => {
-    if (!isCompleted) return;
     setState((prev) => ({
       ...prev,
-      isAnswered: true,
-      // If parent knows correctness, reflect it in local feedback state
-      isCorrect: typeof isCorrect === "boolean" ? isCorrect : prev.isCorrect,
-      showFeedback: typeof isCorrect === "boolean" ? true : prev.showFeedback,
+      selectedOption: null,
+      textAnswer: "",
+      isAnswered: isCompleted,
+      isCorrect: typeof isCorrect === "boolean" ? isCorrect : false,
+      showFeedback: isCompleted && typeof isCorrect === "boolean",
+      showSolution: false,
     }));
-  }, [isCompleted, isCorrect]);
+  }, [question._id, question.id, isCompleted, isCorrect]);
+
+  useEffect(() => {
+    setState((prev) => ({
+      ...prev,
+      editData: {
+        question: question.question,
+        options_A: question.options_A,
+        options_B: question.options_B,
+        options_C: question.options_C,
+        options_D: question.options_D,
+        correct_option: question.correct_option,
+        solution: question.solution,
+        solutiontext: question.solutiontext,
+        difficulty: question.difficulty,
+      },
+    }));
+  }, [
+    question._id,
+    question.id,
+    question.question,
+    question.options_A,
+    question.options_B,
+    question.options_C,
+    question.options_D,
+    question.correct_option,
+    question.solution,
+    question.solutiontext,
+    question.difficulty,
+  ]);
 
   const mayViewSolution =
     isCompleted || (state.isAnswered && state.showFeedback);
 
   const interactionBlocked = creditsLocked && !isCompleted;
 
-// Optimized MathJax config
+  const inlineAnswerMode = useMemo(
+    () => isInlineAnswerQuestion(question),
+    [question]
+  );
+
   const config = useMemo(() => ({
-  "fast-preview": { disabled: false },
+    "fast-preview": { disabled: false },
     tex: { inlineMath: [["$", "$"], ["\\(", "\\)"]], displayMath: [["$$", "$$"], ["\\[", "\\]"]], processEscapes: true },
-  messageStyle: "none",
-  showMathMenu: false,
+    messageStyle: "none",
+    showMathMenu: false,
   }), []);
 
-  // Set MathJax global config
   useEffect(() => {
     window.MathJax = { tex: { inlineMath: [["$", "$"], ["\\(", "\\)"]], processEscapes: true }, svg: { fontCache: "global" } };
   }, []);
 
-  // Set difficulty level
   useEffect(() => {
     const difficultyMap = { easy: 1, medium: 2, hard: 3 };
     setState((prev) => ({ ...prev, difficulty: difficultyMap[question.difficulty] || 0 }));
@@ -335,11 +378,24 @@ const QuestionCard = memo(({ question, category, index, onAnswer, onSkip, questi
       onRequireCredits?.();
       return;
     }
-    if (!state.selectedOption || state.isAnswered) return;
-    const isCorrect = state.selectedOption === question.correct_option;
-    setState((prev) => ({ ...prev, isCorrect, showFeedback: true, isAnswered: true }));
-    setTimeout(() => reportAnswer(isCorrect), 800);
-  }, [state.selectedOption, state.isAnswered, question.correct_option, reportAnswer, interactionBlocked, onRequireCredits]);
+    if (state.isAnswered) return;
+
+    const userAnswer = inlineAnswerMode ? state.textAnswer : state.selectedOption;
+    if (!userAnswer || (inlineAnswerMode && !String(userAnswer).trim())) return;
+
+    const correct = isAnswerCorrect(userAnswer, question.correct_option, question);
+    setState((prev) => ({ ...prev, isCorrect: correct, showFeedback: true, isAnswered: true }));
+    setTimeout(() => reportAnswer(correct), 800);
+  }, [
+    state.selectedOption,
+    state.textAnswer,
+    state.isAnswered,
+    question,
+    inlineAnswerMode,
+    reportAnswer,
+    interactionBlocked,
+    onRequireCredits,
+  ]);
 
   const handleSkip = useCallback(() => {
     if (interactionBlocked) {
@@ -436,8 +492,13 @@ const QuestionCard = memo(({ question, category, index, onAnswer, onSkip, questi
     if (!isAdmin) return;
 
     const { question: qText, options_A, options_B, options_C, options_D, correct_option } = state.editData || {};
-    if (!qText || !options_A || !options_B || !options_C || !options_D || !correct_option) {
-      toast.error("Please fill question, all options and correct option.");
+    const needsOptions = !isInlineAnswerQuestion({ options_A, options_B, options_C, options_D });
+    if (!qText || !correct_option) {
+      toast.error("Please fill question and correct answer.");
+      return;
+    }
+    if (needsOptions && (!options_A || !options_B || !options_C || !options_D)) {
+      toast.error("Please fill all options.");
       return;
     }
 
@@ -453,7 +514,7 @@ const QuestionCard = memo(({ question, category, index, onAnswer, onSkip, questi
           options_D,
           correct_option,
           solution: state.editData.solution || null,
-          solutiontext: state.editData.solution || null,
+          solutiontext: state.editData.solutiontext || null,
           difficulty: state.editData.difficulty || "easy",
         })
         .eq("_id", question._id);
@@ -669,10 +730,24 @@ const QuestionCard = memo(({ question, category, index, onAnswer, onSkip, questi
             </MathJax>
           )}
           {(() => {
-            const hasOptions = ["A", "B", "C", "D"].some(opt => {
-              const optionText = questionData[`options_${opt}`];
-              return optionText && String(optionText).trim().length > 0;
-            });
+            const hasOptions = hasPopulatedOptions(questionData);
+            
+            if (inlineAnswerMode) {
+              return (
+                <div className={`mt-4 ${richLayout ? "sm:mt-5" : ""}`}>
+                  <InlineAnswerInput
+                    value={state.textAnswer}
+                    onChange={(value) => setState((prev) => ({ ...prev, textAnswer: value }))}
+                    onSubmit={handleSubmit}
+                    disabled={interactionBlocked}
+                    submitted={state.isAnswered && state.showFeedback}
+                    isCorrect={state.isCorrect}
+                    correctOption={questionData.correct_option}
+                    inputClassName={embedded ? "" : ""}
+                  />
+                </div>
+              );
+            }
             
             if (!hasOptions) return null;
             
@@ -767,7 +842,7 @@ const QuestionCard = memo(({ question, category, index, onAnswer, onSkip, questi
                 </div>
             );
           })()}
-          {questionData.options_A && !state.isAnswered && state.selectedOption && !isEditing && (
+          {hasPopulatedOptions(questionData) && !state.isAnswered && state.selectedOption && !isEditing && (
             <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200/50">
               <label className="block text-xs font-semibold text-gray-700 mb-1 uppercase">Confidence Level</label>
               <div className="flex items-center space-x-3">
@@ -792,14 +867,26 @@ const QuestionCard = memo(({ question, category, index, onAnswer, onSkip, questi
             <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200/50 space-y-3">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1 uppercase">Correct Option</label>
-                  <select
-                    value={state.editData.correct_option}
-                    onChange={(e) => setState((prev) => ({ ...prev, editData: { ...prev.editData, correct_option: e.target.value } }))}
-                    className="w-full p-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-gray-300/30 focus:border-gray-400"
-                  >
-                    {["A", "B", "C", "D"].map((opt) => <option key={opt} value={opt}>{opt}</option>)}
-                  </select>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1 uppercase">
+                    {inlineAnswerMode ? "Correct Answer" : "Correct Option"}
+                  </label>
+                  {inlineAnswerMode ? (
+                    <input
+                      type="text"
+                      value={state.editData.correct_option || ""}
+                      onChange={(e) => setState((prev) => ({ ...prev, editData: { ...prev.editData, correct_option: e.target.value } }))}
+                      placeholder="Numerical answer, e.g. 42 (use | for multiple: 42|43)"
+                      className="w-full p-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-gray-300/30 focus:border-gray-400"
+                    />
+                  ) : (
+                    <select
+                      value={state.editData.correct_option}
+                      onChange={(e) => setState((prev) => ({ ...prev, editData: { ...prev.editData, correct_option: e.target.value } }))}
+                      className="w-full p-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-gray-300/30 focus:border-gray-400"
+                    >
+                      {["A", "B", "C", "D"].map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+                    </select>
+                  )}
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1 uppercase">Difficulty</label>
@@ -812,15 +899,20 @@ const QuestionCard = memo(({ question, category, index, onAnswer, onSkip, questi
                   </select>
                 </div>
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1 uppercase">Solution</label>
-                <textarea
-                  value={state.editData.solution}
-                  onChange={(e) => setState((prev) => ({ ...prev, editData: { ...prev.editData, solution: e.target.value } }))}
-                  className="w-full p-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-gray-300/30 focus:border-gray-400"
-                  rows={3}
-                />
-                  </div>
+              <GateSolutionFields
+                category={category || question.category}
+                solution={state.editData.solution || ""}
+                solutiontext={state.editData.solutiontext || ""}
+                questionId={question._id}
+                onChange={({ solution, solutiontext }) =>
+                  setState((prev) => ({
+                    ...prev,
+                    editData: { ...prev.editData, solution, solutiontext },
+                  }))
+                }
+                urlClassName="w-full p-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-gray-300/30 focus:border-gray-400 text-sm"
+                textClassName="w-full p-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-gray-300/30 focus:border-gray-400 font-mono text-xs"
+              />
               <button
                 onClick={handleSaveEdit}
                 disabled={state.isSaving}
@@ -848,7 +940,7 @@ const QuestionCard = memo(({ question, category, index, onAnswer, onSkip, questi
 
           {!isEditing && (
             <div className={`mt-4 flex flex-col sm:flex-row gap-2 sm:gap-3 ${richLayout ? "sm:mt-6" : ""}`}>
-              {!state.isAnswered && questionData.options_A && (
+              {!state.isAnswered && hasPopulatedOptions(questionData) && (
                 <button
                   onClick={handleSubmit}
                   disabled={!state.selectedOption || interactionBlocked}
@@ -924,7 +1016,7 @@ const QuestionCard = memo(({ question, category, index, onAnswer, onSkip, questi
                       <AlertTriangle size={16} className="text-red-600" />
                           <div>
                         <span className="font-bold text-red-800 text-sm">Incorrect</span>
-                        <p className="text-red-700 text-xs">Correct answer: <strong>{questionData.correct_option}</strong></p>
+                        <p className="text-red-700 text-xs">Correct answer: <strong>{formatAcceptedAnswers(questionData.correct_option)}</strong></p>
                           </div>
                         </>
                       )}
@@ -940,25 +1032,38 @@ const QuestionCard = memo(({ question, category, index, onAnswer, onSkip, questi
                   </h3>
                   {questionData.correct_option && (
                     <div className="mb-1 p-2 bg-white/70 rounded-lg break-words">
-                      <span className="font-semibold text-indigo-800 text-xs">Correct Answer: {questionData.correct_option}</span>
+                      <span className="font-semibold text-indigo-800 text-xs">Correct Answer: {formatAcceptedAnswers(questionData.correct_option)}</span>
                     </div>
                   )}
                   
 
 <MathJax hideUntilTypeset={"first"} inline dynamic>
   <div className="text-gray-700 text-xs break-words overflow-x-auto [&_*]:max-w-full [&_table]:max-w-full [&_table]:overflow-x-auto [&_img]:max-w-full [&_img]:h-auto">
-  {["gate-cse", "gate-me", "gate-da"].includes(
-    category?.toLowerCase() || ""
-    ) ? (
-      <a
-        href={convertRelativeImageUrls(questionData.solution)}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="text-blue-600 underline"
-      >
-        Discuss solution
-      </a>
-    ) : (
+  {isGateCategory(category || questionData.category) ? (
+    <>
+      {questionData.solutiontext ? (
+        <div
+          className="mb-3"
+          dangerouslySetInnerHTML={{
+            __html: convertNewlinesToBreaks(
+              convertLatexTags(convertRelativeImageUrls(questionData.solutiontext)),
+              isUpscPrelims
+            ),
+          }}
+        />
+      ) : null}
+      {normalizeGateOverflowUrl(questionData.solution) ? (
+        <a
+          href={convertRelativeImageUrls(questionData.solution)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-600 underline"
+        >
+          Discuss solution on GateOverflow
+        </a>
+      ) : null}
+    </>
+  ) : (
       <p
         dangerouslySetInnerHTML={{ __html: convertNewlinesToBreaks(convertLatexTags(convertRelativeImageUrls(questionData.solution)), isUpscPrelims) }}
       >

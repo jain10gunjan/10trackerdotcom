@@ -27,6 +27,13 @@ const CARDS = [
     accent: "from-orange-600 to-amber-600",
   },
   {
+    href: "/admin/mcq-creation",
+    title: "MCQ creation",
+    desc: "PDF or URL → copyright-free MCQs via OpenAI. Extract, rewrite, export JSON.",
+    icon: Sparkles,
+    accent: "from-violet-600 to-purple-600",
+  },
+  {
     href: "/admin/mcq-extractor",
     title: "MCQ extractor",
     desc: "Upload PDFs, review streamed MCQs, edit, and export JSON for import.",

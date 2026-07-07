@@ -409,6 +409,7 @@ export default function ChapterPracticeApp() {
 
       <ChapterAdminEditModal
         question={p.editingQuestion}
+        category={p.category}
         saving={p.savingEdit}
         onChange={p.setEditingQuestion}
         onClose={() => p.setEditingQuestion(null)}

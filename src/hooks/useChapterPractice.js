@@ -28,6 +28,11 @@ import {
   formatSlugTitle,
 } from '@/lib/practice/chapterPracticeUtils';
 import { fetchChapterCounts, fetchChapterQuestions } from '@/lib/practice/fetchChapterPractice';
+import {
+  shouldOfferAdvance,
+  promptDifficultyAdvance,
+} from '@/lib/practice/difficultyAdvance';
+import { buildEffectiveCompletedSet } from '@/lib/practice/practiceCompletedSet';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -79,12 +84,20 @@ export function useChapterPractice() {
   const [loading, setLoading] = useState(true);
   const [loadingQ, setLoadingQ] = useState(false);
   const [progress, setProgress] = useState({ completed: [], correct: [], points: 0 });
-  const progressRef = useRef(progress);
-  useEffect(() => { progressRef.current = progress; }, [progress]);
-
   const [editingQuestion, setEditingQuestion] = useState(null);
   const [savingEdit, setSavingEdit] = useState(false);
-  const autoAdvanceRef = useRef({ difficulty: null, ran: false });
+  const [difficultyQuestionIds, setDifficultyQuestionIds] = useState(() => new Set());
+
+  const progressRef = useRef(progress);
+  const difficultyQuestionIdsRef = useRef(difficultyQuestionIds);
+  const countsRef = useRef(counts);
+  const activeDifficultyRef = useRef(activeDifficulty);
+  const changeDifficultyRef = useRef(null);
+
+  useEffect(() => { progressRef.current = progress; }, [progress]);
+  useEffect(() => { difficultyQuestionIdsRef.current = difficultyQuestionIds; }, [difficultyQuestionIds]);
+  useEffect(() => { countsRef.current = counts; }, [counts]);
+  useEffect(() => { activeDifficultyRef.current = activeDifficulty; }, [activeDifficulty]);
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [rewritingId, setRewritingId] = useState(null);
@@ -106,6 +119,24 @@ export function useChapterPractice() {
     } catch {
       setCounts({ easy: 0, medium: 0, hard: 0 });
       setTotalQ(0);
+    }
+  }, [category, normalizedChapter]);
+
+  const fetchDifficultyQuestionIds = useCallback(async (difficulty) => {
+    if (!category || !normalizedChapter || !difficulty) return;
+    try {
+      const candidates = getChapterCandidates(normalizedChapter);
+      const { data, error } = await supabase
+        .from('examtracker')
+        .select('_id')
+        .eq('category', String(category).toUpperCase())
+        .in('chapter', candidates)
+        .eq('difficulty', difficulty);
+      if (error) throw error;
+      const ids = new Set((data ?? []).map((q) => progressQuestionId(q._id)).filter(Boolean));
+      setDifficultyQuestionIds(ids);
+    } catch {
+      setDifficultyQuestionIds(new Set());
     }
   }, [category, normalizedChapter]);
 
@@ -274,6 +305,21 @@ export function useChapterPractice() {
     if (!creditCharge.ok) return;
     if (creditCharge.skipped) return;
 
+    const completedSet = buildEffectiveCompletedSet({
+      savedCompleted: progressRef.current.completed,
+      userId: userRef.current.id,
+      area,
+    });
+    const diff = activeDifficultyRef.current;
+    const ids = difficultyQuestionIdsRef.current;
+    const total = countsRef.current[diff] ?? ids.size;
+    const offerAdvance = shouldOfferAdvance({
+      questionId: qid,
+      difficultyQuestionIds: ids,
+      completedSet,
+      totalCount: total,
+    });
+
     showPracticeAnswerToast(isCorrect);
 
     const unsavedCount = applyPracticeProgressUpdate({
@@ -286,6 +332,18 @@ export function useChapterPractice() {
       setProgress,
     });
     if (typeof unsavedCount === 'number') setUnsaved(unsavedCount);
+
+    if (offerAdvance) {
+      setTimeout(() => {
+        promptDifficultyAdvance({
+          current: diff,
+          counts: countsRef.current,
+          scopeLabel: 'chapter',
+          onAdvance: (next) => changeDifficultyRef.current?.(next),
+          celebrateFn: (msg) => toast.success(msg, { duration: 3500, icon: '🎉' }),
+        });
+      }, 400);
+    }
   }, [setShowAuthModal, chargeForQuestion]);
 
   useLayoutEffect(() => {
@@ -316,35 +374,19 @@ export function useChapterPractice() {
     setCurrentPage(1);
     setHasMore(true);
     setCurrentIdx(0);
-    autoAdvanceRef.current = { difficulty: d, ran: false };
     const p = new URLSearchParams(searchParams.toString());
     p.set('difficulty', d);
     router.replace(`${pathname}?${p.toString()}`, { scroll: false });
   }, [activeDifficulty, loadingQ, router, searchParams, pathname]);
 
   useEffect(() => {
-    if (loadingQ) return;
-    if (!questions.length) return;
-    if (hasMore) return;
-    if (currentIdx !== questions.length - 1) return;
+    changeDifficultyRef.current = changeDifficulty;
+  }, [changeDifficulty]);
 
-    const cur = questions[currentIdx];
-    if (!cur?._id) return;
-    const completedSet = new Set((progressRef.current.completed ?? []).map(progressQuestionId));
-    if (!completedSet.has(progressQuestionId(cur._id))) return;
-
-    const marker = autoAdvanceRef.current;
-    if (marker.difficulty === activeDifficulty && marker.ran) return;
-
-    const order = ['easy', 'medium', 'hard'];
-    const i = order.indexOf(activeDifficulty);
-    if (i < 0 || i === order.length - 1) return;
-
-    autoAdvanceRef.current = { difficulty: activeDifficulty, ran: true };
-    const next = order[i + 1];
-    toast(`Moving to ${next.toUpperCase()} difficulty…`, { duration: 2200 });
-    changeDifficulty(next);
-  }, [activeDifficulty, changeDifficulty, currentIdx, hasMore, loadingQ, questions, progress.completed]);
+  useEffect(() => {
+    if (!category || !normalizedChapter || !activeDifficulty) return;
+    fetchDifficultyQuestionIds(activeDifficulty);
+  }, [category, normalizedChapter, activeDifficulty, fetchDifficultyQuestionIds]);
 
   const goTo = useCallback((idx) => {
     if (idx < 0 || idx >= questions.length) return;
@@ -473,7 +515,8 @@ export function useChapterPractice() {
         options_C: editingQuestion.options_C,
         options_D: editingQuestion.options_D,
         correct_option: editingQuestion.correct_option,
-        solution: editingQuestion.solution,
+        solution: editingQuestion.solution ?? null,
+        solutiontext: editingQuestion.solutiontext ?? null,
         difficulty: editingQuestion.difficulty,
       });
       if (error) throw error;

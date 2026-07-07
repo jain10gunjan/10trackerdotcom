@@ -37,6 +37,12 @@ import Navbar from "@/components/Navbar";
 import { useAuth } from "@/app/context/AuthContext";
 import MetaDataJobs from "@/components/Seo";
 import { motion, AnimatePresence } from 'framer-motion';
+import {
+  isAnswerCorrect,
+  isInlineAnswerQuestion,
+  getVisibleMcqOptions,
+} from "@/lib/questionAnswerMode";
+import InlineAnswerInput from "@/components/InlineAnswerInput";
 
 // Supabase configuration
 const supabase = createClient(
@@ -473,7 +479,11 @@ const PracticeUnlimited = () => {
   const handleAnswerSelect = useCallback((selectedAnswer) => {
     if (!state.currentQuestion) return;
 
-    const isCorrect = selectedAnswer === state.currentQuestion.correct_option;
+    const isCorrect = isAnswerCorrect(
+      selectedAnswer,
+      state.currentQuestion.correct_option,
+      state.currentQuestion
+    );
     const currentTime = state.timeSpent;
 
     setState((prev) => {
@@ -1168,19 +1178,50 @@ const PracticeUnlimited = () => {
                     </div>
                   </div>
                   
-                  {/* Options */}
+                  {/* Options or inline answer */}
                   <div className="mb-6">
+                    {isInlineAnswerQuestion(state.currentQuestion) ? (
+                      <InlineAnswerInput
+                        value={state.userAnswer || ""}
+                        onChange={(value) =>
+                          setState((prev) => ({ ...prev, userAnswer: value }))
+                        }
+                        onSubmit={() => handleAnswerSelect(state.userAnswer?.trim())}
+                        submitted={state.showSolution}
+                        isCorrect={
+                          state.showSolution &&
+                          isAnswerCorrect(
+                            state.userAnswer,
+                            state.currentQuestion.correct_option,
+                            state.currentQuestion
+                          )
+                        }
+                        correctOption={state.currentQuestion.correct_option}
+                      />
+                    ) : (
+                      <>
                     <h3 className="text-md font-medium text-gray-900 mb-3">Options:</h3>
                     <div className="space-y-3">
-                      {['A', 'B', 'C', 'D'].map((option) => (
+                      {getVisibleMcqOptions(state.currentQuestion).map((option) => (
                         <button
                           key={option}
                           onClick={() => !state.showSolution && handleAnswerSelect(option)}
                           disabled={state.showSolution}
                           className={`w-full text-left p-3 rounded-md border flex items-start transition-colors ${
-                            state.showSolution && option === state.currentQuestion.correct_option
+                            state.showSolution &&
+                            isAnswerCorrect(
+                              option,
+                              state.currentQuestion.correct_option,
+                              state.currentQuestion
+                            )
                               ? "bg-green-50 border-green-300"
-                              : state.showSolution && option === state.userAnswer && option !== state.currentQuestion.correct_option
+                              : state.showSolution &&
+                                state.userAnswer === option &&
+                                !isAnswerCorrect(
+                                  option,
+                                  state.currentQuestion.correct_option,
+                                  state.currentQuestion
+                                )
                               ? "bg-red-50 border-red-300"
                               : state.userAnswer === option
                               ? "bg-indigo-50 border-indigo-300"
@@ -1189,9 +1230,20 @@ const PracticeUnlimited = () => {
                         >
                           <div className="flex-shrink-0 mr-3">
                             <div className={`flex items-center justify-center h-6 w-6 rounded-full ${
-                              state.showSolution && option === state.currentQuestion.correct_option
+                              state.showSolution &&
+                              isAnswerCorrect(
+                                option,
+                                state.currentQuestion.correct_option,
+                                state.currentQuestion
+                              )
                                 ? "bg-green-500 text-white"
-                                : state.showSolution && option === state.userAnswer && option !== state.currentQuestion.correct_option
+                                : state.showSolution &&
+                                  state.userAnswer === option &&
+                                  !isAnswerCorrect(
+                                    option,
+                                    state.currentQuestion.correct_option,
+                                    state.currentQuestion
+                                  )
                                 ? "bg-red-500 text-white"
                                 : state.userAnswer === option
                                 ? "bg-indigo-500 text-white"
@@ -1211,6 +1263,8 @@ const PracticeUnlimited = () => {
                         </button>
                       ))}
                     </div>
+                      </>
+                    )}
                   </div>
                   
                   {/* Solution */}

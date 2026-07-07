@@ -18,6 +18,12 @@ import { useParams } from "next/navigation";
 import { usePDF } from "react-to-pdf";
 import Navbar from "@/components/Navbar";
 import { useAuth } from "@/app/context/AuthContext";
+import {
+  isAnswerCorrect,
+  isInlineAnswerQuestion,
+  getVisibleMcqOptions,
+} from "@/lib/questionAnswerMode";
+import InlineAnswerInput from "@/components/InlineAnswerInput";
 
 // Supabase configuration
 const supabase = createClient(
@@ -287,7 +293,11 @@ const Test = () => {
   const handleAnswerSelect = useCallback((selectedAnswer) => {
     if (!state.currentQuestion) return;
 
-    const isCorrect = selectedAnswer === state.currentQuestion.correct_option;
+    const isCorrect = isAnswerCorrect(
+      selectedAnswer,
+      state.currentQuestion.correct_option,
+      state.currentQuestion
+    );
     const { topic, difficulty } = state.currentQuestion;
 
     dispatch({
@@ -639,7 +649,31 @@ const Test = () => {
                     dangerouslySetInnerHTML={{ __html: state.currentQuestion.question }}
                     className="text-lg mb-8 prose max-w-none leading-relaxed"
                   />
-                  {["A", "B", "C", "D"].map((option) => (
+                  {isInlineAnswerQuestion(state.currentQuestion) ? (
+                    <div className="mb-8">
+                      <InlineAnswerInput
+                        value={state.userAnswer || ""}
+                        onChange={(value) =>
+                          dispatch({
+                            type: "ANSWER_QUESTION",
+                            payload: { userAnswer: value },
+                          })
+                        }
+                        onSubmit={() => handleAnswerSelect(state.userAnswer)}
+                        submitted={!!state.userAnswer && state.answeredQuestionIds.includes(state.currentQuestion._id)}
+                        isCorrect={
+                          state.answeredQuestionIds.includes(state.currentQuestion._id) &&
+                          isAnswerCorrect(
+                            state.userAnswer,
+                            state.currentQuestion.correct_option,
+                            state.currentQuestion
+                          )
+                        }
+                        correctOption={state.currentQuestion.correct_option}
+                      />
+                    </div>
+                  ) : (
+                    getVisibleMcqOptions(state.currentQuestion).map((option) => (
                     <label
                       key={option}
                       className={`flex items-center p-5 border rounded-lg mb-3 cursor-pointer transition-all ${
@@ -661,7 +695,8 @@ const Test = () => {
                         className="flex-1 text-base"
                       />
                     </label>
-                  ))}
+                  ))
+                  )}
                 </MathJax>
                 <div className="flex justify-between mt-8">
                   <button

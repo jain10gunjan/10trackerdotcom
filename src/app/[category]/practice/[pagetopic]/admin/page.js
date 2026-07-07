@@ -29,6 +29,12 @@ import {
   Save,
   X
 } from "lucide-react";
+import {
+  isAnswerCorrect,
+  isInlineAnswerQuestion,
+  formatAcceptedAnswers,
+} from "@/lib/questionAnswerMode";
+import InlineAnswerInput from "@/components/InlineAnswerInput";
 
 // Lazy loaded components - minimal loading states
 const Navbar = dynamic(() => import("@/components/Navbar"), { ssr: false });
@@ -287,11 +293,22 @@ EditQuestionModal.displayName = 'EditQuestionModal';
 // Single Question Display - Highly Optimized
 const QuestionDisplay = memo(({ question, index, total, userAnswer, isSubmitted, onAnswer, user, onQuestionUpdate }) => {
   const [selectedOption, setSelectedOption] = useState(userAnswer || null);
+  const [textAnswer, setTextAnswer] = useState(
+    typeof userAnswer === "string" && userAnswer && !/^[A-D]$/i.test(userAnswer.trim())
+      ? userAnswer
+      : ""
+  );
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const inlineMode = isInlineAnswerQuestion(question);
 
   // Reset selection when question changes
   useEffect(() => {
     setSelectedOption(userAnswer || null);
+    setTextAnswer(
+      typeof userAnswer === "string" && userAnswer && !/^[A-D]$/i.test(userAnswer.trim())
+        ? userAnswer
+        : ""
+    );
   }, [question._id, userAnswer]);
 
   const handleOptionSelect = useCallback((option) => {
@@ -300,10 +317,12 @@ const QuestionDisplay = memo(({ question, index, total, userAnswer, isSubmitted,
   }, [isSubmitted]);
 
   const handleSubmit = useCallback(() => {
-    if (!selectedOption || isSubmitted) return;
-    const isCorrect = selectedOption === question.correct_option;
-    onAnswer(selectedOption, isCorrect);
-  }, [selectedOption, isSubmitted, question.correct_option, onAnswer]);
+    if (isSubmitted) return;
+    const answer = inlineMode ? textAnswer.trim() : selectedOption;
+    if (!answer) return;
+    const correct = isAnswerCorrect(answer, question.correct_option, question);
+    onAnswer(answer, correct);
+  }, [inlineMode, textAnswer, selectedOption, isSubmitted, question, onAnswer]);
 
   // Memoize options to prevent re-computation
   const options = useMemo(() => [
@@ -311,7 +330,7 @@ const QuestionDisplay = memo(({ question, index, total, userAnswer, isSubmitted,
     { key: 'B', value: question.options_B },
     { key: 'C', value: question.options_C },
     { key: 'D', value: question.options_D }
-  ].filter(option => option.value), [question]);
+  ].filter(option => option.value && String(option.value).trim()), [question]);
 
   const getOptionStyle = useCallback((optionKey) => {
     const baseStyle = "w-full p-4 rounded-2xl border-2 text-left transition-all duration-200 relative";
@@ -370,7 +389,7 @@ const QuestionDisplay = memo(({ question, index, total, userAnswer, isSubmitted,
                   ? 'bg-green-100 text-green-600'
                   : 'bg-red-100 text-red-600'
               }`}>
-                {userAnswer === question.correct_option ? (
+                {isAnswerCorrect(userAnswer, question.correct_option, question) ? (
                   <CheckCircle2 size={20} />
                 ) : (
                   <XCircle size={20} />
@@ -389,7 +408,20 @@ const QuestionDisplay = memo(({ question, index, total, userAnswer, isSubmitted,
             </MathJax>
           </div>
 
-          {/* Options */}
+          {/* Options or inline answer */}
+          {inlineMode ? (
+            <div className="mb-8">
+              <InlineAnswerInput
+                value={textAnswer}
+                onChange={setTextAnswer}
+                onSubmit={handleSubmit}
+                disabled={isSubmitted}
+                submitted={isSubmitted}
+                isCorrect={isSubmitted && isAnswerCorrect(userAnswer, question.correct_option, question)}
+                correctOption={question.correct_option}
+              />
+            </div>
+          ) : (
           <div className="space-y-4 mb-8">
             {options.map((option) => (
               <button
@@ -418,9 +450,10 @@ const QuestionDisplay = memo(({ question, index, total, userAnswer, isSubmitted,
               </button>
             ))}
           </div>
+          )}
 
-          {/* Submit Button - Only show when not submitted */}
-          {!isSubmitted && (
+          {/* Submit Button - Only show when not submitted and MCQ mode */}
+          {!isSubmitted && !inlineMode && (
             <button
               onClick={handleSubmit}
               disabled={!selectedOption}
@@ -448,28 +481,34 @@ const QuestionDisplay = memo(({ question, index, total, userAnswer, isSubmitted,
                 <div>
                   <h4 className="font-bold text-blue-800 mb-2">Correct Answer</h4>
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="inline-flex items-center justify-center w-6 h-6 bg-green-100 text-green-800 rounded-full text-sm font-bold">
-                      {question.correct_option}
-                    </span>
                     <span className="text-blue-700 font-medium">
-                      {options.find(opt => opt.key === question.correct_option)?.value ? (
-                        <MathJax>
-                          <div dangerouslySetInnerHTML={{ 
-                            __html: options.find(opt => opt.key === question.correct_option)?.value 
-                          }} />
-                        </MathJax>
+                      {inlineMode ? (
+                        formatAcceptedAnswers(question.correct_option)
                       ) : (
-                        `Option ${question.correct_option}`
+                        <>
+                          <span className="inline-flex items-center justify-center w-6 h-6 bg-green-100 text-green-800 rounded-full text-sm font-bold mr-2">
+                            {question.correct_option}
+                          </span>
+                          {options.find(opt => opt.key === question.correct_option)?.value ? (
+                            <MathJax>
+                              <div dangerouslySetInnerHTML={{ 
+                                __html: options.find(opt => opt.key === question.correct_option)?.value 
+                              }} />
+                            </MathJax>
+                          ) : (
+                            `Option ${question.correct_option}`
+                          )}
+                        </>
                       )}
                     </span>
                   </div>
                   
                   <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-semibold ${
-                    selectedOption === question.correct_option 
+                    isAnswerCorrect(userAnswer, question.correct_option, question)
                       ? 'bg-green-100 text-green-800' 
                       : 'bg-red-100 text-red-800'
                   }`}>
-                    {selectedOption === question.correct_option ? (
+                    {isAnswerCorrect(userAnswer, question.correct_option, question) ? (
                       <>
                         <CheckCircle2 size={16} />
                         Correct! Well done!
@@ -477,7 +516,7 @@ const QuestionDisplay = memo(({ question, index, total, userAnswer, isSubmitted,
                     ) : (
                       <>
                         <XCircle size={16} />
-                        Incorrect. You selected option {selectedOption}
+                        Incorrect. You answered: {userAnswer}
                       </>
                     )}
                   </div>

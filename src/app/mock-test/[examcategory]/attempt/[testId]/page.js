@@ -33,6 +33,11 @@ import {
   calculateMockTestStats,
   usesGateMarking,
 } from '@/lib/mockTestUtils';
+import {
+  isInlineAnswerQuestion,
+  getVisibleMcqOptions,
+} from '@/lib/questionAnswerMode';
+import InlineAnswerInput from '@/components/InlineAnswerInput';
 
 // Supabase configuration
 const supabase = createClient(
@@ -140,6 +145,9 @@ const reducer = (state, action) => {
         ...action.payload,
         interactionLog: interactionLog.slice(-100)
       };
+
+    case "SET_USER_ANSWER_DRAFT":
+      return { ...newState, userAnswer: action.payload ?? "" };
       
     case "NEXT_QUESTION":
       const navigationLog = [...state.navigationHistory, {
@@ -872,7 +880,11 @@ export default function EnhancedMobileMockTestPage() {
     if (!state.currentQuestion || !selectedAnswer) return;
 
     const questionId = state.currentQuestion.id;
-    const isCorrect = isAnswerCorrect(selectedAnswer, state.currentQuestion.correct_option);
+    const isCorrect = isAnswerCorrect(
+      selectedAnswer,
+      state.currentQuestion.correct_option,
+      state.currentQuestion
+    );
     const timeSpent = state.timeSpent;
     const currentTime = Date.now();
 
@@ -1630,9 +1642,28 @@ export default function EnhancedMobileMockTestPage() {
                     className="text-base md:text-lg mb-6 md:mb-8 prose max-w-none leading-relaxed"
                   />
                   
-                  {/* Options - Mobile First */}
+                  {/* Answer input — inline text or MCQ options */}
                   <div className="space-y-3 md:space-y-4">
-                    {["A", "B", "C", "D"].map((option) => (
+                    {isInlineAnswerQuestion(state.currentQuestion) ? (
+                      <InlineAnswerInput
+                        value={state.userAnswer || ""}
+                        onChange={(value) =>
+                          dispatch({ type: "SET_USER_ANSWER_DRAFT", payload: value })
+                        }
+                        onSubmit={() => handleAnswerSelect(state.userAnswer)}
+                        submitted={state.answeredQuestionIds.includes(state.currentQuestion.id)}
+                        isCorrect={
+                          state.answeredQuestionIds.includes(state.currentQuestion.id) &&
+                          isAnswerCorrect(
+                            state.userAnswer,
+                            state.currentQuestion.correct_option,
+                            state.currentQuestion
+                          )
+                        }
+                        correctOption={state.currentQuestion.correct_option}
+                      />
+                    ) : (
+                      getVisibleMcqOptions(state.currentQuestion).map((option) => (
                       <label
                         key={option}
                         className={`flex items-start p-3 md:p-4 border-2 rounded-xl cursor-pointer transition-all ${
@@ -1659,7 +1690,8 @@ export default function EnhancedMobileMockTestPage() {
                           className="flex-1 text-sm md:text-base leading-relaxed"
                         />
                       </label>
-                    ))}
+                    ))
+                    )}
                   </div>
                 </MathJax>
 

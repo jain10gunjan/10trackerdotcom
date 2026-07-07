@@ -20,6 +20,11 @@ import {
 } from "@/lib/progressBuffer";
 import toast from "react-hot-toast";
 import { Clock } from "lucide-react";
+import {
+  shouldOfferAdvance,
+  promptDifficultyAdvance,
+} from "@/lib/practice/difficultyAdvance";
+import { buildEffectiveCompletedSet } from "@/lib/practice/practiceCompletedSet";
 
 // Lazy-loaded components
 const QuestionCard = dynamic(() => import("@/components/QuestionCard"), { 
@@ -142,6 +147,20 @@ const Pagetracker = memo(() => {
     progressRef.current = progress;
   }, [progress]);
   const [difficultyQuestionIds, setDifficultyQuestionIds] = useState(new Set()); // Store question IDs for current difficulty
+  const difficultyQuestionIdsRef = useRef(difficultyQuestionIds);
+  const countsRef = useRef(counts);
+  const activeDifficultyRef = useRef(activeDifficulty);
+  const handleDifficultyChangeRef = useRef(null);
+
+  useEffect(() => {
+    difficultyQuestionIdsRef.current = difficultyQuestionIds;
+  }, [difficultyQuestionIds]);
+  useEffect(() => {
+    countsRef.current = counts;
+  }, [counts]);
+  useEffect(() => {
+    activeDifficultyRef.current = activeDifficulty;
+  }, [activeDifficulty]);
 
   // Single source of truth: derive page from URL to avoid duplicate state + sync effect re-renders
   const currentPage = useMemo(
@@ -252,7 +271,7 @@ const Pagetracker = memo(() => {
 
       if (error) throw error;
 
-      const ids = (data || []).map(q => q._id);
+      const ids = (data || []).map((q) => normalizeQuestionId(q._id)).filter(Boolean);
       setDifficultyQuestionIds(new Set(ids));
       setCached(cacheKey, ids);
     } catch (error) {
@@ -277,7 +296,7 @@ const Pagetracker = memo(() => {
     try {
       const { data, error } = await supabase
         .from("examtracker")
-        .select("_id, question, options_A, options_B, options_C, options_D, correct_option, solution, difficulty, year, subject, order_index, directionHTML, topic")
+        .select("_id, question, options_A, options_B, options_C, options_D, correct_option, solution, solutiontext, difficulty, year, subject, order_index, directionHTML, topic")
         .eq("topic", pagetopic)
         .eq("category", category.toUpperCase())
         .eq("difficulty", difficulty)
@@ -445,6 +464,22 @@ const Pagetracker = memo(() => {
         showPracticeAnswerToast(isCorrect);
       }
 
+      const completedSet = buildEffectiveCompletedSet({
+        savedCompleted: progressRef.current.completed,
+        userId: user.id,
+        area,
+        topic,
+      });
+      const diff = activeDifficultyRef.current;
+      const ids = difficultyQuestionIdsRef.current;
+      const total = countsRef.current[diff] ?? ids.size;
+      const offerAdvance = shouldOfferAdvance({
+        questionId: qid,
+        difficultyQuestionIds: ids,
+        completedSet,
+        totalCount: total,
+      });
+
       const unsaved = applyPracticeProgressUpdate({
         userId: user.id,
         questionId: qid,
@@ -455,6 +490,18 @@ const Pagetracker = memo(() => {
         setProgress,
       });
       if (typeof unsaved === "number") setUnsavedCount(unsaved);
+
+      if (offerAdvance) {
+        setTimeout(() => {
+          promptDifficultyAdvance({
+            current: diff,
+            counts: countsRef.current,
+            scopeLabel: "topic",
+            onAdvance: (next) => handleDifficultyChangeRef.current?.(next),
+            celebrateFn: (msg) => toast.success(msg, { duration: 3500, icon: "🎉" }),
+          });
+        }, 400);
+      }
     },
     [user, setShowAuthModal, category, pagetopic, chargeForQuestion]
   );
@@ -507,6 +554,10 @@ const Pagetracker = memo(() => {
     },
     [activeDifficulty, isLoadingQuestions, router, searchParams, pathname]
   );
+
+  useEffect(() => {
+    handleDifficultyChangeRef.current = handleDifficultyChange;
+  }, [handleDifficultyChange]);
 
   const buildPageHref = useCallback(
     (page) => {

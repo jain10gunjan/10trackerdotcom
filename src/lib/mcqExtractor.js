@@ -73,10 +73,20 @@ export function normalizeMcq(q, i = 0) {
     options_B: pick("options_B", "optionB", "option_b") || opt("B"),
     options_C: pick("options_C", "optionC", "option_c") || opt("C"),
     options_D: pick("options_D", "optionD", "option_d") || opt("D"),
-    correct_option: (pick("correct_option", "correctOption", "answer") || "A")
-      .toUpperCase()
-      .charAt(0),
+    correct_option: normalizeCorrectOption(q, pick, opt),
   };
+}
+
+function normalizeCorrectOption(q, pick, opt) {
+  const raw = pick("correct_option", "correctOption", "answer");
+  const hasOpts = ["A", "B", "C", "D"].some((letter) => {
+    const fromPick = pick(`options_${letter}`, `option${letter}`, `option_${letter.toLowerCase()}`);
+    return fromPick || opt(letter);
+  });
+  if (!hasOpts) {
+    return raw || "";
+  }
+  return (raw || "A").toUpperCase().charAt(0);
 }
 
 export function normalizeMcqList(list) {

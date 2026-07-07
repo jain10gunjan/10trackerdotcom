@@ -89,22 +89,13 @@ export function categoryMatches(dbCategory, examcategory) {
   );
 }
 
-/** Normalize MCQ option id (A/B/C/D) for comparison */
-export function normalizeAnswerOption(value) {
-  if (value == null) return '';
-  const s = String(value).trim();
-  if (!s) return '';
-  const letter = s.match(/^option[_\s-]?([a-d])$/i)?.[1] || s.match(/^([a-d])$/i)?.[1];
-  if (letter) return letter.toUpperCase();
-  return s.toUpperCase();
-}
-
-export function isAnswerCorrect(userAnswer, correctOption) {
-  const u = normalizeAnswerOption(userAnswer);
-  const c = normalizeAnswerOption(correctOption);
-  if (!c) return false;
-  return u === c;
-}
+export {
+  normalizeAnswerOption,
+  isAnswerCorrect,
+  isInlineAnswerQuestion,
+  hasPopulatedOptions,
+  formatAcceptedAnswers,
+} from '@/lib/questionAnswerMode';
 
 /** GATE / GATE-CSE style: +1 correct, −⅓ wrong, 0 unattempted */
 export function usesGateMarking(examcategory) {
