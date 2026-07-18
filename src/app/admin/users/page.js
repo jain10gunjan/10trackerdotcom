@@ -3,10 +3,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircle } from "lucide-react";
-import { useAuth } from "@/app/context/AuthContext";
-import MetaDataJobs from "@/components/Seo";
-import AdminCreditAdjustModal from "@/components/admin/users/AdminCreditAdjustModal";
-import AdminUsersDashboard from "@/components/admin/users/AdminUsersDashboard";
+import { useAuth } from "@/context/AuthContext";
+import MetaDataJobs from "@/components/ui/Seo";
+import AdminCreditAdjustModal from "@/features/admin/components/users/AdminCreditAdjustModal";
+import AdminUsersDashboard from "@/features/admin/components/users/AdminUsersDashboard";
 
 export default function AdminUsersPage() {
   const router = useRouter();

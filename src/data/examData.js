@@ -1,5 +1,5 @@
 // Hardcoded exam data with question counts and active status
-import generalAptitudeImage from '../assests/general-aptitude-logo.jpeg';
+import generalAptitudeImage from '../assets/general-aptitude-logo.jpeg';
 
 export const examData = [
   {

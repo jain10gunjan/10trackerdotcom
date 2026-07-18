@@ -1,9 +1,9 @@
 import crypto from 'crypto';
 import { NextResponse } from 'next/server';
-import { requireSessionEmail } from '@/lib/credits/requireSession';
+import { requireSessionEmail } from '@/features/credits/lib/requireSession';
 import { getSupabaseServer, isValidServiceRoleKey } from '@/lib/supabaseServer';
 import { isRlsPolicyError } from '@/lib/supabaseAdmin';
-import { recordPurchase, ROADMAPS_SETUP_HINT } from '@/lib/roadmaps/roadmapService';
+import { recordPurchase, ROADMAPS_SETUP_HINT } from '@/features/roadmaps/lib/roadmapService';
 
 export async function POST(request) {
   try {

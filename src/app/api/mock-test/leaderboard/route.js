@@ -5,8 +5,8 @@ import {
   buildOverallLeaderboard,
   filterAttemptsByPeriod,
   findUserRank,
-} from '@/lib/mockTestLeaderboard';
-import { fetchLeaderboardData } from '@/lib/mockTestLeaderboardFetch';
+} from '@/features/mock-test/lib/mockTestLeaderboard';
+import { fetchLeaderboardData } from '@/features/mock-test/lib/mockTestLeaderboardFetch';
 import { getSupabaseServer, isValidServiceRoleKey } from '@/lib/supabaseServer';
 
 export async function GET(request) {

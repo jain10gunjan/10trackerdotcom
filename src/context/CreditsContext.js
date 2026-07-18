@@ -10,18 +10,18 @@ import React, {
   useState,
 } from 'react';
 import { usePathname } from 'next/navigation';
-import { useAuth } from '@/app/context/AuthContext';
-import { CREDIT_COST, SIGNUP_BONUS_CREDITS } from '@/lib/credits/constants';
+import { useAuth } from '@/context/AuthContext';
+import { CREDIT_COST, SIGNUP_BONUS_CREDITS } from '@/features/credits/lib/constants';
 import {
   getLocalCreditBalance,
   loadCreditStore,
   saveCreditStore,
-} from '@/lib/credits/creditLocalStore';
+} from '@/features/credits/lib/creditLocalStore';
 import {
   flushCreditSync,
   hydrateCreditsFromServer,
   registerCreditSyncLifecycle,
-} from '@/lib/credits/creditSyncManager';
+} from '@/features/credits/lib/creditSyncManager';
 import { parseJsonResponse } from '@/lib/toastAsync';
 
 const CreditsContext = createContext({

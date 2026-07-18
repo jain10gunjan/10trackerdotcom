@@ -4,10 +4,10 @@ import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { useAuth } from "@/app/context/AuthContext";
-import MetaDataJobs from "@/components/Seo";
-import ExportHistoryTable from "@/components/admin/mcq-creation/ExportHistoryTable";
-import { McqMathProvider } from "@/components/admin/mcq-creation/MathHtmlRenderer";
+import { useAuth } from "@/context/AuthContext";
+import MetaDataJobs from "@/components/ui/Seo";
+import ExportHistoryTable from "@/features/admin/components/mcq-creation/ExportHistoryTable";
+import { McqMathProvider } from "@/features/admin/components/mcq-creation/MathHtmlRenderer";
 import { fetchExportJson, getExportFiles } from "@/lib/mcqCreationApi";
 import { AlertCircle, ArrowLeft } from "lucide-react";
 

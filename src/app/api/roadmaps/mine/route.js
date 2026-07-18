@@ -4,7 +4,7 @@ import { normalizeEmail } from '@/lib/normalizeEmail';
 import {
   listUserRoadmapSummaries,
   ROADMAPS_SETUP_HINT,
-} from '@/lib/roadmaps/roadmapService';
+} from '@/features/roadmaps/lib/roadmapService';
 
 export async function GET() {
   try {

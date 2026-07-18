@@ -3,9 +3,9 @@
 import React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/app/context/AuthContext";
-import MetaDataJobs from "@/components/Seo";
-import McqCreationApp from "@/components/admin/mcq-creation/McqCreationApp";
+import { useAuth } from "@/context/AuthContext";
+import MetaDataJobs from "@/components/ui/Seo";
+import McqCreationApp from "@/features/admin/components/mcq-creation/McqCreationApp";
 import { AlertCircle, ArrowLeft } from "lucide-react";
 
 export default function AdminMcqCreationPage() {

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { verifyAdminAuth } from '@/middleware/adminAuth';
-import { fetchMockTestsForCategory, toLegacyGateTestShape } from '@/lib/mockTestQueries';
+import { fetchMockTestsForCategory, toLegacyGateTestShape } from '@/features/mock-test/lib/mockTestQueries';
 
 /** @deprecated Uses mock_tests */
 export async function GET() {

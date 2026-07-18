@@ -1,5 +1,9 @@
   import { NextResponse } from "next/server";
 import OpenAI from "openai";
+import {
+  forbiddenArticlesWriteResponse,
+  verifyAdminOrAutomationSecret,
+} from '@/features/articles/lib/verifyArticlesWriteAuth';
 
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
@@ -81,6 +85,10 @@ const convertToHtml = (article) => {
 // ---------------- API ----------------
 export async function POST(req) {
   try {
+    const authResult = await verifyAdminOrAutomationSecret(req);
+    if (!authResult.ok) {
+      return forbiddenArticlesWriteResponse(authResult.error);
+    }
     const { headline } = await req.json();
     if (!headline) {
       return NextResponse.json({ error: "Headline is required" }, { status: 400 });
@@ -236,7 +244,11 @@ ${articleJson.article}
   }
 }
 
-export async function GET() {
+export async function GET(request) {
+  const authResult = await verifyAdminOrAutomationSecret(request);
+  if (!authResult.ok) {
+    return forbiddenArticlesWriteResponse(authResult.error);
+  }
   return NextResponse.json({
     message: "POST a headline to generate a verified news article",
     example: { headline: "Netflix and Warner Bros acquisition news" }

@@ -1,5 +1,9 @@
 import axios from "axios";
 import { parse } from "node-html-parser";
+import {
+  forbiddenArticlesWriteResponse,
+  verifyAdminOrAutomationSecret,
+} from '@/features/articles/lib/verifyArticlesWriteAuth';
 
 // Helper function to create a response
 const createResponse = (data, status = 200, headers = {}) => {
@@ -64,6 +68,10 @@ const cleanHTMLContent = (element) => {
 
 // Main function to handle the API request
 export async function GET(request) {
+  const authResult = await verifyAdminOrAutomationSecret(request);
+  if (!authResult.ok) {
+    return forbiddenArticlesWriteResponse(authResult.error);
+  }
   const { method } = request;
 
   // Handle OPTIONS (preflight) requests

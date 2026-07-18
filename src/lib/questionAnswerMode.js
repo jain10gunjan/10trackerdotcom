@@ -6,6 +6,7 @@
  */
 
 const OPTION_LETTERS = ['A', 'B', 'C', 'D'];
+const NUMERIC_TOLERANCE = 1e-6;
 
 export function getOptionField(question, letter) {
   if (!question) return '';
@@ -48,12 +49,41 @@ export function formatAcceptedAnswers(correctOption) {
   return parts.join(' or ');
 }
 
+/** Parse "1/2", "0.5", "2.50", "-3" into a number, or null if not numeric. */
+export function parseNumericAnswer(value) {
+  const s = normalizeInlineAnswer(value).replace(/,/g, '');
+  if (!s) return null;
+  const frac = /^([+-]?\d+(?:\.\d+)?)\s*\/\s*([+-]?\d+(?:\.\d+)?)$/.exec(s);
+  if (frac) {
+    const num = Number(frac[1]);
+    const den = Number(frac[2]);
+    if (!Number.isFinite(num) || !Number.isFinite(den) || den === 0) return null;
+    return num / den;
+  }
+  if (!/^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/.test(s)) return null;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+}
+
+export function numbersNearlyEqual(a, b, tolerance = NUMERIC_TOLERANCE) {
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return false;
+  const scale = Math.max(1, Math.abs(a), Math.abs(b));
+  return Math.abs(a - b) <= tolerance * scale;
+}
+
 export function isInlineAnswerCorrect(userAnswer, correctOption) {
   const normalized = normalizeInlineAnswer(userAnswer);
   if (!normalized) return false;
   const accepted = parseAcceptedAnswers(correctOption);
   if (accepted.length === 0) return false;
-  return accepted.some((answer) => normalized === answer);
+  if (accepted.some((answer) => normalized === answer)) return true;
+
+  const userNum = parseNumericAnswer(normalized);
+  if (userNum == null) return false;
+  return accepted.some((answer) => {
+    const acceptedNum = parseNumericAnswer(answer);
+    return acceptedNum != null && numbersNearlyEqual(userNum, acceptedNum);
+  });
 }
 
 /** Normalize MCQ option id (A/B/C/D) for comparison. */

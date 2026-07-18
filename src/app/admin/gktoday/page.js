@@ -3,9 +3,9 @@
 import React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/app/context/AuthContext";
-import MetaDataJobs from "@/components/Seo";
-import GkTodayAdmin from "@/components/admin/gktoday/GkTodayAdmin";
+import { useAuth } from "@/context/AuthContext";
+import MetaDataJobs from "@/components/ui/Seo";
+import GkTodayAdmin from "@/features/admin/components/gktoday/GkTodayAdmin";
 import { AlertCircle, ArrowLeft } from "lucide-react";
 
 export default function AdminGkTodayPage() {

@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import { NextResponse } from 'next/server';
-import { requireSessionEmail } from '@/lib/credits/requireSession';
-import { activateSubscription } from '@/lib/credits/walletService';
+import { requireSessionEmail } from '@/features/credits/lib/requireSession';
+import { activateSubscription } from '@/features/credits/lib/walletService';
 import { getSupabaseServer, isValidServiceRoleKey } from '@/lib/supabaseServer';
 
 export async function POST(request) {

@@ -1,5 +1,5 @@
 import { auth } from '@/auth';
-import { isAdminEmail } from '@/lib/mockTestUtils';
+import { isAdminEmail } from '@/features/mock-test/lib/mockTestUtils';
 
 export async function verifyAdminAuth() {
   try {

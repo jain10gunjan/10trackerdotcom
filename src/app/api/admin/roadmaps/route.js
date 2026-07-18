@@ -6,7 +6,7 @@ import {
   isValidSlug,
   normalizeSlug,
   ROADMAPS_SETUP_HINT,
-} from '@/lib/roadmaps/roadmapService';
+} from '@/features/roadmaps/lib/roadmapService';
 
 function adminErr(err, status = 500) {
   return NextResponse.json(

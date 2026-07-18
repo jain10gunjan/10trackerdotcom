@@ -1,8 +1,8 @@
-import HomePageRouter from '@/components/HomePageRouter';
-import { fetchActiveExamCatalog } from '@/lib/exams/fetchActiveExamCatalog';
-import { pickFeaturedExams } from '@/lib/exams/examCatalogUtils';
-import { fetchRoadmapCatalog } from '@/lib/roadmaps/fetchRoadmapCatalog';
-import { pickFeaturedRoadmaps } from '@/lib/roadmaps/roadmapCatalogUtils';
+import HomePageRouter from '@/components/layout/HomePageRouter';
+import { fetchActiveExamCatalog } from '@/features/exams/lib/fetchActiveExamCatalog';
+import { pickFeaturedExams } from '@/features/exams/lib/examCatalogUtils';
+import { fetchRoadmapCatalog } from '@/features/roadmaps/lib/fetchRoadmapCatalog';
+import { pickFeaturedRoadmaps } from '@/features/roadmaps/lib/roadmapCatalogUtils';
 
 export const metadata = {
   title: '10Tracker - Exam Practice & Study Roadmaps',

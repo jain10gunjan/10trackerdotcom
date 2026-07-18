@@ -18,13 +18,14 @@ export function getAutomationImageHostnames() {
   const hosts = new Set([
     'api.10tracker.com',
     '10tracker.com',
+    'www.10tracker.com',
     'gateoverflow.in',
     'images.unsplash.com',
     'localhost',
     '127.0.0.1',
   ]);
 
-  for (const key of ['AUTOMATION_API_URL']) {
+  for (const key of ['AUTOMATION_API_URL', 'NEXT_PUBLIC_SUPABASE_URL']) {
     const host = parseHostFromUrl(process.env[key]);
     if (host) hosts.add(host);
   }

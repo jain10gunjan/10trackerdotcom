@@ -3,9 +3,9 @@
 import React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/app/context/AuthContext";
-import MetaDataJobs from "@/components/Seo";
-import McqExtractorApp from "@/components/admin/mcq-extractor/McqExtractorApp";
+import { useAuth } from "@/context/AuthContext";
+import MetaDataJobs from "@/components/ui/Seo";
+import McqExtractorApp from "@/features/admin/components/mcq-extractor/McqExtractorApp";
 import { AlertCircle, ArrowLeft } from "lucide-react";
 
 export default function AdminMcqExtractorPage() {

@@ -1,6 +1,10 @@
 import * as cheerio from "cheerio";
 import axios from "axios";
 import { NextResponse } from "next/server";
+import {
+  forbiddenArticlesWriteResponse,
+  verifyAdminOrAutomationSecret,
+} from '@/features/articles/lib/verifyArticlesWriteAuth';
 
 /**
  * Parses the .content-wrap div into structured sections.
@@ -245,6 +249,10 @@ function parseArticle(html, url = "") {
  */
 export async function GET(request) {
   try {
+    const authResult = await verifyAdminOrAutomationSecret(request);
+    if (!authResult.ok) {
+      return forbiddenArticlesWriteResponse(authResult.error);
+    }
     const inputUrl = request.nextUrl.searchParams.get("url");
     const url = inputUrl?.trim() || "https://www.gktoday.in/";
 

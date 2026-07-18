@@ -8,7 +8,7 @@ import {
 import {
   getPricingConfig,
   invalidatePricingCache,
-} from '@/lib/credits/pricingService';
+} from '@/features/credits/lib/pricingService';
 
 const PRICING_SETUP_HINT =
   'Run scripts/setup_pricing_admin.sql in Supabase SQL Editor for admin-managed pricing tables and RLS.';

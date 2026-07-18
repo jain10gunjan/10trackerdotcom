@@ -1,6 +1,6 @@
 'use client';
 
-import RoadmapsAdmin from '@/components/admin/roadmaps/RoadmapsAdmin';
+import RoadmapsAdmin from '@/features/admin/components/roadmaps/RoadmapsAdmin';
 
 export default function AdminRoadmapsPage() {
   return (

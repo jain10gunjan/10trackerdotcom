@@ -1,136 +1,90 @@
+/**
+ * Legacy unauthenticated save-progress endpoint.
+ * Prefer POST /api/practice/progress (session-auth'd).
+ * This route now requires auth and accepts buffer-style `{ entries }` as well.
+ */
 import { NextResponse } from 'next/server';
-import { supabase } from '@/app/lib/supabase';
-import { upsertUserProgress } from '@/lib/userProgressUpsert';
-
-// Helper: Merge progress updates
-const mergeProgressUpdates = (existing, updates) => {
-  const aggregated = updates.reduce((acc, update) => ({
-    completed: [...new Set([...acc.completed, ...(update.completed || [])])],
-    correct: [...new Set([...acc.correct, ...(update.correct || [])])],
-    points: acc.points + (update.points || 0)
-  }), { completed: [], correct: [], points: 0 });
-
-  return {
-    completed: [...new Set([...existing.completed, ...aggregated.completed])],
-    correct: [...new Set([...existing.correct, ...aggregated.correct])],
-    points: existing.points + aggregated.points
-  };
-};
+import { requireSessionEmail } from '@/features/credits/lib/requireSession';
+import { getProgressUserId } from '@/lib/progressIdentity';
+import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
+import { mergeProgressEntriesToSupabase } from '@/lib/server/mergeProgressEntries';
+import { checkApiRateLimit, rateLimitResponse } from '@/lib/apiRateLimit';
 
 export async function POST(request) {
+  const { email, error, status } = await requireSessionEmail();
+  if (error) {
+    return NextResponse.json({ success: false, error }, { status });
+  }
+
+  const limit = checkApiRateLimit(email, 'save-progress-legacy', {
+    windowMs: 60_000,
+    max: 40,
+  });
+  if (!limit.ok) {
+    const r = rateLimitResponse(limit);
+    return NextResponse.json(r.body, { status: r.status, headers: r.headers });
+  }
+
   try {
-    // Parse request body - handle both JSON and Blob (from sendBeacon)
     let body;
     const contentType = request.headers.get('content-type') || '';
-    
-    try {
-      if (contentType.includes('application/json')) {
-        body = await request.json();
-      } else {
-        // Handle Blob from sendBeacon or other formats
-        const text = await request.text();
-        body = JSON.parse(text);
-      }
-    } catch (parseError) {
+    if (contentType.includes('application/json')) {
+      body = await request.json();
+    } else {
+      body = JSON.parse(await request.text());
+    }
+
+    const userId = getProgressUserId({ email });
+    const supabase = getSupabaseAdmin();
+
+    // New buffer format
+    if (body?.entries && typeof body.entries === 'object') {
+      const result = await mergeProgressEntriesToSupabase(
+        supabase,
+        userId,
+        email,
+        body.entries
+      );
+      return NextResponse.json({ success: true, saved: result.saved });
+    }
+
+    // Legacy single-topic format
+    const { updates, topic, area } = body || {};
+    if (!topic || !area || !Array.isArray(updates) || !updates.length) {
       return NextResponse.json(
-        { success: false, error: 'Invalid request body format' },
+        { success: false, error: 'Missing required fields (use /api/practice/progress)' },
         { status: 400 }
       );
     }
-    
-    const { updates, userId, topic, area, email } = body;
 
-    // Validate required fields
-    if (!userId || !topic || !area || !Array.isArray(updates) || updates.length === 0) {
-      return NextResponse.json(
-        { success: false, error: 'Missing required fields' },
-        { status: 400 }
-      );
-    }
-
-    // Fetch existing progress
-    const { data: existingProgress, error: fetchError } = await supabase
-      .from("user_progress")
-      .select("completedquestions, correctanswers, points")
-      .eq("user_id", userId)
-      .eq("topic", topic)
-      .eq("area", area)
-      .maybeSingle();
-
-    if (fetchError && fetchError.code !== "PGRST116") {
-      throw fetchError;
-    }
-
-    // Get existing arrays (or empty if no record exists)
-    const existing = {
-      completed: Array.isArray(existingProgress?.completedquestions) 
-        ? existingProgress.completedquestions 
-        : [],
-      correct: Array.isArray(existingProgress?.correctanswers) 
-        ? existingProgress.correctanswers 
-        : [],
-      points: typeof existingProgress?.points === 'number' 
-        ? existingProgress.points 
-        : 0
-    };
-
-    // Merge updates
-    const merged = mergeProgressUpdates(existing, updates);
-
-    // Prepare data
-    const progressData = {
-      user_id: userId,
-      email: email || null,
-      topic: topic,
-      completedquestions: merged.completed,
-      correctanswers: merged.correct,
-      points: merged.points,
-      area: area,
-      updated_at: new Date().toISOString(),
-    };
-
-    let { error: saveError } = await upsertUserProgress(supabase, progressData);
-
-    // If upsert fails, try insert then update
-    if (saveError) {
-      const { error: insertError } = await supabase
-        .from("user_progress")
-        .insert(progressData);
-
-      if (insertError) {
-        const { error: updateError } = await supabase
-          .from("user_progress")
-          .update({
-            completedquestions: merged.completed,
-            correctanswers: merged.correct,
-            points: merged.points,
-            email: email || null,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("user_id", userId)
-          .eq("topic", topic)
-          .eq("area", area);
-
-        if (updateError) {
-          throw updateError;
-        }
+    const entries = {};
+    for (const u of updates) {
+      const qids = [
+        ...(Array.isArray(u.completed) ? u.completed : []),
+        ...(Array.isArray(u.correct) ? u.correct : []),
+      ];
+      for (const qid of qids) {
+        const id = String(qid);
+        const wasCorrect = Array.isArray(u.correct) && u.correct.map(String).includes(id);
+        entries[id] = {
+          completed: true,
+          correct: wasCorrect,
+          points: wasCorrect ? (u.points || 100) : 0,
+          topic: String(topic).trim(),
+          area: String(area).trim().toLowerCase(),
+        };
       }
     }
 
+    const result = await mergeProgressEntriesToSupabase(supabase, userId, email, entries);
     return NextResponse.json({
       success: true,
-      message: 'Progress saved successfully'
+      message: 'Progress saved successfully',
+      saved: result.saved,
     });
-  } catch (error) {
-    if (process.env.NODE_ENV === 'development') {
-      console.error('Error saving progress:', error);
-    }
-    
+  } catch (e) {
     return NextResponse.json(
-      {
-        success: false,
-        error: error.message || 'Failed to save progress'
-      },
+      { success: false, error: e.message || 'Failed to save progress' },
       { status: 500 }
     );
   }

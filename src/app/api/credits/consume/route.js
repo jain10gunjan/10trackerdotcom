@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { requireSessionEmail } from '@/lib/credits/requireSession';
-import { consumeCredits } from '@/lib/credits/walletService';
-import { getPricingConfig } from '@/lib/credits/pricingService';
+import { requireSessionEmail } from '@/features/credits/lib/requireSession';
+import { consumeCredits } from '@/features/credits/lib/walletService';
+import { getPricingConfig } from '@/features/credits/lib/pricingService';
 
 export async function POST(request) {
   try {

@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { normalizeEmail } from '@/lib/normalizeEmail';
-import { ROADMAP_DAYS_PAGE_SIZE } from '@/lib/roadmaps/constants';
+import { ROADMAP_DAYS_PAGE_SIZE } from '@/features/roadmaps/lib/constants';
 import {
   fetchRoadmapDaysPage,
   normalizeSlug,
   ROADMAPS_SETUP_HINT,
-} from '@/lib/roadmaps/roadmapService';
+} from '@/features/roadmaps/lib/roadmapService';
 
 export async function GET(request, { params }) {
   try {

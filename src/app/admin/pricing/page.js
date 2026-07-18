@@ -3,8 +3,8 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircle } from "lucide-react";
-import { useAuth } from "@/app/context/AuthContext";
-import PricingAdmin from "@/components/admin/pricing/PricingAdmin";
+import { useAuth } from "@/context/AuthContext";
+import PricingAdmin from "@/features/admin/components/pricing/PricingAdmin";
 
 export default function AdminPricingPage() {
   const router = useRouter();

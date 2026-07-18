@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseServer } from '@/lib/supabaseServer';
-import { toLegacyGateTestShape } from '@/lib/mockTestQueries';
+import { toLegacyGateTestShape } from '@/features/mock-test/lib/mockTestQueries';
 
 export async function GET(request, { params }) {
   try {

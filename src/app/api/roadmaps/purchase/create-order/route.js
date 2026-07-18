@@ -1,8 +1,8 @@
 import Razorpay from 'razorpay';
 import { NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
-import { requireSessionEmail } from '@/lib/credits/requireSession';
-import { getBillingLegalInfo, validateTermsAcceptance } from '@/lib/billing/legal';
+import { requireSessionEmail } from '@/features/credits/lib/requireSession';
+import { getBillingLegalInfo, validateTermsAcceptance } from '@/features/billing/lib/legal';
 import { getSupabaseServer, isValidServiceRoleKey } from '@/lib/supabaseServer';
 import { isRlsPolicyError } from '@/lib/supabaseAdmin';
 import {
@@ -10,7 +10,7 @@ import {
   normalizeSlug,
   userHasPurchased,
   ROADMAPS_SETUP_HINT,
-} from '@/lib/roadmaps/roadmapService';
+} from '@/features/roadmaps/lib/roadmapService';
 
 const razorpay = new Razorpay({
   key_id: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,

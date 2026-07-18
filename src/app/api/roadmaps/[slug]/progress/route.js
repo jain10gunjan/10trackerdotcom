@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireSessionEmail } from '@/lib/credits/requireSession';
+import { requireSessionEmail } from '@/features/credits/lib/requireSession';
 import { getProgressUserId } from '@/lib/progressIdentity';
 import {
   getRoadmapBySlug,
@@ -9,7 +9,7 @@ import {
   assertCanEditTask,
   buildRoadmapDetail,
   fetchRoadmapDays,
-} from '@/lib/roadmaps/roadmapService';
+} from '@/features/roadmaps/lib/roadmapService';
 
 function findTaskDayNumber(days, taskId) {
   for (const day of days || []) {

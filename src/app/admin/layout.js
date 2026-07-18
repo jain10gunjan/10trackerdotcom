@@ -1,4 +1,4 @@
-import AdminShell from "@/components/admin/AdminShell";
+import AdminShell from "@/features/admin/components/AdminShell";
 
 export const metadata = {
   title: "Admin",

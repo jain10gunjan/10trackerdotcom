@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { fetchMockTestsForCategory, toLegacyGateTestShape } from '@/lib/mockTestQueries';
+import { fetchMockTestsForCategory, toLegacyGateTestShape } from '@/features/mock-test/lib/mockTestQueries';
 
 /** @deprecated Uses mock_tests — legacy path kept for compatibility */
 export async function GET() {

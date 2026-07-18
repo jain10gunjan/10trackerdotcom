@@ -1,2 +1,2 @@
 /** @deprecated Use GuestHomePage — kept for any legacy imports */
-export { default } from '@/components/guest/GuestHomePage';
+export { default } from '@/features/guest/components/GuestHomePage';

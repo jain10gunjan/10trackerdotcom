@@ -2,6 +2,10 @@
 import { NextResponse } from 'next/server';
 import { TwitterApi } from 'twitter-api-v2';
 import axios from 'axios';
+import {
+  forbiddenArticlesWriteResponse,
+  verifyAdminOrAutomationSecret,
+} from '@/features/articles/lib/verifyArticlesWriteAuth';
 
 /**
  * Twitter API v2 POST Tweet Endpoint
@@ -102,6 +106,10 @@ function formatTweet(title, link, hashtags) {
 // POST - Create a tweet
 export async function POST(request) {
   try {
+    const authResult = await verifyAdminOrAutomationSecret(request);
+    if (!authResult.ok) {
+      return forbiddenArticlesWriteResponse(authResult.error);
+    }
     const body = await request.json();
     const { title, link, hashtags, imageUrl } = body;
 
@@ -292,6 +300,10 @@ export async function POST(request) {
 // GET - Keep existing functionality (for backward compatibility)
 export async function GET(request) {
   try {
+    const authResult = await verifyAdminOrAutomationSecret(request);
+    if (!authResult.ok) {
+      return forbiddenArticlesWriteResponse(authResult.error);
+    }
     const url = "http://nitter.net/search?f=tweets&q=IndianTechGuide";
 
     const res = await axios.get(url, {

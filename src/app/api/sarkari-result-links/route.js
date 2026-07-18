@@ -2,6 +2,10 @@ import axios from 'axios';
 import * as cheerio from 'cheerio';
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import {
+  forbiddenArticlesWriteResponse,
+  verifyAdminOrAutomationSecret,
+} from '@/features/articles/lib/verifyArticlesWriteAuth';
 
 // Initialize Supabase client
 const supabase = createClient(
@@ -21,6 +25,10 @@ const categoryMap = {
 
 export async function GET(request) {
   try {
+    const authResult = await verifyAdminOrAutomationSecret(request);
+    if (!authResult.ok) {
+      return forbiddenArticlesWriteResponse(authResult.error);
+    }
     const { searchParams } = new URL(request.url);
     const mode = searchParams.get('mode') || 'scrape';
 

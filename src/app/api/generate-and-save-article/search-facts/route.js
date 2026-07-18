@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
 import { validateHeadline } from "../utils";
+import {
+  forbiddenArticlesWriteResponse,
+  verifyAdminOrAutomationSecret,
+} from '@/features/articles/lib/verifyArticlesWriteAuth';
 
 // Initialize OpenAI client
 const client = new OpenAI({
@@ -26,6 +30,10 @@ export async function POST(req) {
   const startTime = Date.now();
   
   try {
+    const authResult = await verifyAdminOrAutomationSecret(req);
+    if (!authResult.ok) {
+      return forbiddenArticlesWriteResponse(authResult.error);
+    }
     // Parse and validate request body
     let body;
     try {
@@ -211,7 +219,11 @@ Plain factual notes only (no storytelling)
 /**
  * GET endpoint for API documentation
  */
-export async function GET() {
+export async function GET(request) {
+  const authResult = await verifyAdminOrAutomationSecret(request);
+  if (!authResult.ok) {
+    return forbiddenArticlesWriteResponse(authResult.error);
+  }
   return NextResponse.json({
     message: "Search Facts API",
     description: "Performs web search and extracts verified factual information",

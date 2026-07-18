@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Instagram, Youtube, Video, Image as ImageIcon, X, Twitter } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { sanitizeEmbedHtml } from '@/features/articles/lib/sanitizeArticleHtml';
 
 const SocialMediaEmbed = ({ embed, onRemove, isEditable = false }) => {
   const [embedHtml, setEmbedHtml] = useState(null);
@@ -127,7 +128,7 @@ const SocialMediaEmbed = ({ embed, onRemove, isEditable = false }) => {
 
   useEffect(() => {
     if (embed.embed_code) {
-      setEmbedHtml(embed.embed_code);
+      setEmbedHtml(sanitizeEmbedHtml(embed.embed_code));
       // Process Instagram embeds after setting HTML
       if ((embed.type === 'instagram' || embed.type === 'reel') && window.instgrm) {
         setTimeout(() => {
@@ -232,7 +233,7 @@ const SocialMediaEmbed = ({ embed, onRemove, isEditable = false }) => {
           <div 
             ref={embedContainerRef}
             className="embed-container"
-            dangerouslySetInnerHTML={{ __html: embedHtml }}
+            dangerouslySetInnerHTML={{ __html: sanitizeEmbedHtml(embedHtml) }}
           />
         )}
         

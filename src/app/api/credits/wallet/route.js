@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { requireSessionEmail } from '@/lib/credits/requireSession';
-import { getWalletSummary } from '@/lib/credits/walletService';
+import { requireSessionEmail } from '@/features/credits/lib/requireSession';
+import { getWalletSummary } from '@/features/credits/lib/walletService';
 
 export async function GET() {
   try {

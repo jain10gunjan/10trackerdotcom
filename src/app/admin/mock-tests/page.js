@@ -3,10 +3,10 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/app/context/AuthContext";
-import MetaDataJobs from "@/components/Seo";
+import { useAuth } from "@/context/AuthContext";
+import MetaDataJobs from "@/components/ui/Seo";
 import { parseJsonResponse } from "@/lib/toastAsync";
-import { mockTestAdminBase } from "@/lib/mockTestAdminPaths";
+import { mockTestAdminBase } from "@/features/mock-test/lib/mockTestAdminPaths";
 import { formatExamSlug } from "@/lib/platformExams";
 import { AlertCircle, ChevronRight, ClipboardList, Loader2 } from "lucide-react";
 

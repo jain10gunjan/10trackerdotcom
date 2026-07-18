@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { getSupabaseServer } from '@/lib/supabaseServer';
-import { getCategoryVariants } from '@/lib/mockTestUtils';
+import { getCategoryVariants } from '@/features/mock-test/lib/mockTestUtils';
 
 /**
  * GET ?testId= | ?examCategory=gate-cse — aggregate stats from user_test_attempts.

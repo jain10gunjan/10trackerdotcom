@@ -1,4 +1,6 @@
 import { examBySlug } from '@/lib/platformExams';
+import { normalizeCategorySlug } from '@/features/exam-hub/lib/categoryKey';
+import { getCategoryVariants } from '@/features/mock-test/lib/mockTestUtils';
 
 const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
@@ -77,12 +79,23 @@ export function profileNeedsExamRefresh(profile, activeSlugs = []) {
   return false;
 }
 
+export function practiceAreaMatchesSlug(area, slug) {
+  if (!area || !slug) return false;
+  const normalizedArea = normalizeCategorySlug(area);
+  const normalizedSlug = normalizeCategorySlug(slug);
+  if (normalizedArea === normalizedSlug) return true;
+  const variants = getCategoryVariants(slug).map((v) =>
+    normalizeCategorySlug(v)
+  );
+  return variants.includes(normalizedArea);
+}
+
 export function sortPracticeByPrimary(practiceAreas, primarySlug) {
-  const primary = String(primarySlug || '').trim().toLowerCase();
+  const primary = normalizeCategorySlug(primarySlug);
   const list = [...(practiceAreas || [])];
   list.sort((a, b) => {
-    const aPri = String(a.area || '').toLowerCase() === primary;
-    const bPri = String(b.area || '').toLowerCase() === primary;
+    const aPri = practiceAreaMatchesSlug(a.area, primary);
+    const bPri = practiceAreaMatchesSlug(b.area, primary);
     if (aPri && !bPri) return -1;
     if (!aPri && bPri) return 1;
     return (b.totalCompleted || 0) - (a.totalCompleted || 0);

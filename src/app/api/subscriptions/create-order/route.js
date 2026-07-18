@@ -1,12 +1,12 @@
 import Razorpay from 'razorpay';
 import { NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
-import { requireSessionEmail } from '@/lib/credits/requireSession';
+import { requireSessionEmail } from '@/features/credits/lib/requireSession';
 import {
   getPlanById,
   planAmountPaiseFromConfig,
-} from '@/lib/credits/pricingService';
-import { getBillingLegalInfo, validateTermsAcceptance } from '@/lib/billing/legal';
+} from '@/features/credits/lib/pricingService';
+import { getBillingLegalInfo, validateTermsAcceptance } from '@/features/billing/lib/legal';
 import { getSupabaseServer, isValidServiceRoleKey } from '@/lib/supabaseServer';
 
 const razorpay = new Razorpay({

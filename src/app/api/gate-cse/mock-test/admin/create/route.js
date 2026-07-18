@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { verifyAdminAuth } from '@/middleware/adminAuth';
-import { getCategoryVariants } from '@/lib/mockTestUtils';
+import { getCategoryVariants } from '@/features/mock-test/lib/mockTestUtils';
 import { getSupabaseServer } from '@/lib/supabaseServer';
-import { fetchMockTestsForCategory } from '@/lib/mockTestQueries';
+import { fetchMockTestsForCategory } from '@/features/mock-test/lib/mockTestQueries';
 
 /** Creates rows in mock_tests (not gate_cse_tests) */
 export async function POST(request) {

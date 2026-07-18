@@ -1,13 +1,20 @@
 import { NextResponse } from 'next/server';
-import { requireSessionEmail } from '@/lib/credits/requireSession';
-import { consumeCredits, getWalletSummary } from '@/lib/credits/walletService';
-import { getPricingConfig } from '@/lib/credits/pricingService';
+import { requireSessionEmail } from '@/features/credits/lib/requireSession';
+import { consumeCredits, getWalletSummary } from '@/features/credits/lib/walletService';
+import { getPricingConfig } from '@/features/credits/lib/pricingService';
+import { checkApiRateLimit, rateLimitResponse } from '@/lib/apiRateLimit';
 
 export async function POST(request) {
   try {
     const { email, error, status } = await requireSessionEmail();
     if (error) {
       return NextResponse.json({ success: false, error }, { status });
+    }
+
+    const limit = checkApiRateLimit(email, 'credits-sync', { windowMs: 60_000, max: 60 });
+    if (!limit.ok) {
+      const r = rateLimitResponse(limit);
+      return NextResponse.json(r.body, { status: r.status, headers: r.headers });
     }
 
     const body = await request.json();

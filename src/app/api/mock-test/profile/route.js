@@ -15,10 +15,10 @@ import {
   profileToFormDefaults,
   validateProfilePayload,
 } from '@/lib/userProfile';
-import { validateTermsAcceptance, TERMS_VERSION } from '@/lib/billing/legal';
+import { validateTermsAcceptance, TERMS_VERSION } from '@/features/billing/lib/legal';
 import { getSupabaseServer, isValidServiceRoleKey } from '@/lib/supabaseServer';
 import { normalizeEmail } from '@/lib/normalizeEmail';
-import { grantSignupBonus } from '@/lib/credits/walletService';
+import { grantSignupBonus } from '@/features/credits/lib/walletService';
 
 function profileClient() {
   return getSupabaseServer(isValidServiceRoleKey());

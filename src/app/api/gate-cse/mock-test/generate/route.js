@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { verifyAdminAuth } from '@/middleware/adminAuth';
-import { getCategoryVariants } from '@/lib/mockTestUtils';
+import { getCategoryVariants } from '@/features/mock-test/lib/mockTestUtils';
 import { getSupabaseServer } from '@/lib/supabaseServer';
 
 /**

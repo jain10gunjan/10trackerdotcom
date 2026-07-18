@@ -1,6 +1,10 @@
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 import { NextResponse } from 'next/server';
+import {
+  forbiddenArticlesWriteResponse,
+  verifyAdminOrAutomationSecret,
+} from '@/features/articles/lib/verifyArticlesWriteAuth';
 
 function generateHTML(jobData, applyUrl) {
     if (!jobData) {
@@ -122,6 +126,10 @@ function generateHTML(jobData, applyUrl) {
 
 export async function POST(request) {
     try {
+        const authResult = await verifyAdminOrAutomationSecret(request);
+        if (!authResult.ok) {
+            return forbiddenArticlesWriteResponse(authResult.error);
+        }
         const { url } = await request.json();
         
         if (!url) {

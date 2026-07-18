@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { normalizeEmail } from '@/lib/normalizeEmail';
-import { getLeaderboardForExam } from '@/lib/dashboard/dashboardService';
+import { getLeaderboardForExam } from '@/features/dashboard/lib/dashboardService';
 
 export async function GET(request) {
   try {

@@ -1,13 +1,13 @@
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
+import {
+  forbiddenArticlesWriteResponse,
+  verifyAdminOrAutomationSecret,
+} from '@/features/articles/lib/verifyArticlesWriteAuth';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
-
-// GET - Fetch all article categories
+// GET - Fetch all article categories (public)
 export async function GET() {
   try {
+    const supabase = getSupabaseAdmin();
     const { data, error } = await supabase
       .from('article_categories')
       .select('*')
@@ -17,7 +17,7 @@ export async function GET() {
 
     return Response.json({
       success: true,
-      data: data || []
+      data: data || [],
     });
   } catch (error) {
     console.error('Error fetching categories:', error);
@@ -28,18 +28,27 @@ export async function GET() {
   }
 }
 
-// POST - Create a category
+// POST - Create a category (admin or automation secret)
 export async function POST(request) {
+  const authResult = await verifyAdminOrAutomationSecret(request);
+  if (!authResult.ok) {
+    return forbiddenArticlesWriteResponse(authResult.error);
+  }
+
   try {
     const body = await request.json();
     const name = (body?.name || '').trim();
-    const slug = (body?.slug || name.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-')).trim();
+    const slug = (
+      body?.slug ||
+      name.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-')
+    ).trim();
     const color = (body?.color || '#3B82F6').trim();
 
     if (!name || !slug) {
       return Response.json({ success: false, error: 'Name is required' }, { status: 400 });
     }
 
+    const supabase = getSupabaseAdmin();
     const { data, error } = await supabase
       .from('article_categories')
       .insert({ name, slug, color })
@@ -55,8 +64,13 @@ export async function POST(request) {
   }
 }
 
-// DELETE - Delete a category by slug
+// DELETE - Delete a category by slug (admin or automation secret)
 export async function DELETE(request) {
+  const authResult = await verifyAdminOrAutomationSecret(request);
+  if (!authResult.ok) {
+    return forbiddenArticlesWriteResponse(authResult.error);
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const slug = searchParams.get('slug');
@@ -64,10 +78,8 @@ export async function DELETE(request) {
       return Response.json({ success: false, error: 'slug is required' }, { status: 400 });
     }
 
-    const { error } = await supabase
-      .from('article_categories')
-      .delete()
-      .eq('slug', slug);
+    const supabase = getSupabaseAdmin();
+    const { error } = await supabase.from('article_categories').delete().eq('slug', slug);
 
     if (error) throw error;
 

@@ -1,5 +1,5 @@
-import { fetchExamSubjects } from '@/lib/examHub/fetchExamSubjects';
-import { normalizeCategorySlug } from '@/lib/examHub/categoryKey';
+import { fetchExamSubjects } from '@/features/exam-hub/lib/fetchExamSubjects';
+import { normalizeCategorySlug } from '@/features/exam-hub/lib/categoryKey';
 
 export async function GET(req) {
   try {

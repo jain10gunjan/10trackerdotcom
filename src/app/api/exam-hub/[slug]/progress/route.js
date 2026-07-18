@@ -1,47 +1,15 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { normalizeEmail } from '@/lib/normalizeEmail';
-import { getCategoryVariants } from '@/lib/mockTestUtils';
-import { getSupabaseServer } from '@/lib/supabaseServer';
-import { fetchExamSubjects } from '@/lib/examHub/fetchExamSubjects';
-import { normalizeCategorySlug } from '@/lib/examHub/categoryKey';
-import { getSubjectStats, slugifySubject } from '@/lib/examHub/examHubUtils';
-
-function matchesArea(area, slug) {
-  if (!area) return false;
-  const variants = getCategoryVariants(slug).map((v) => v.toLowerCase());
-  const a = String(area).trim().toLowerCase();
-  return variants.includes(a) || a === normalizeCategorySlug(slug);
-}
-
-function subjectForTopic(topic, catalogSubjects) {
-  if (!topic) return null;
-  const match = catalogSubjects.find((s) =>
-    s.subtopics?.some((t) => t.title === topic)
-  );
-  return match?.subject ?? null;
-}
-
-async function fetchProgressRows(supabase, email) {
-  const base = supabase
-    .from('user_progress')
-    .select('area, topic, completedquestions, correctanswers, updated_at')
-    .or(`user_id.eq.${email},email.eq.${email}`);
-
-  const { data, error } = await base;
-  if (!error) return data || [];
-
-  if (error.code === '42703' || error.code === 'PGRST204') {
-    const fallback = await supabase
-      .from('user_progress')
-      .select('area, topic, completedquestions, correctanswers')
-      .or(`user_id.eq.${email},email.eq.${email}`);
-    if (fallback.error) throw fallback.error;
-    return fallback.data || [];
-  }
-
-  throw error;
-}
+import { fetchExamSubjects } from '@/features/exam-hub/lib/fetchExamSubjects';
+import { normalizeCategorySlug } from '@/features/exam-hub/lib/categoryKey';
+import { getSubjectStats, slugifySubject } from '@/features/exam-hub/lib/examHubUtils';
+import {
+  fetchUserProgressRowsForDashboard,
+  resolveExamHubContinue,
+} from '@/features/exam-hub/lib/examHubProgress';
+import { parseProgressIdArray } from '@/lib/progressIdentity';
+import { practiceAreaMatchesSlug } from '@/lib/examProfile';
 
 export async function GET(_request, { params }) {
   try {
@@ -57,14 +25,13 @@ export async function GET(_request, { params }) {
       return NextResponse.json({ success: false, error: 'Invalid exam' }, { status: 400 });
     }
 
-    const supabase = getSupabaseServer(false);
-
+    const user = { email, authId: session.user?.id };
     const [progressRows, catalogSubjects] = await Promise.all([
-      fetchProgressRows(supabase, email),
+      fetchUserProgressRowsForDashboard(user),
       fetchExamSubjects(slug),
     ]);
 
-    const relevant = (progressRows || []).filter((row) => matchesArea(row.area, slug));
+    const relevant = (progressRows || []).filter((row) => practiceAreaMatchesSlug(row.area, slug));
 
     const topicTotals = {};
     for (const sub of catalogSubjects) {
@@ -87,15 +54,13 @@ export async function GET(_request, { params }) {
       };
     }
 
-    let continueCandidate = null;
-
     for (const row of relevant) {
-      const completed = Array.isArray(row.completedquestions)
-        ? row.completedquestions.length
-        : 0;
+      const completed = parseProgressIdArray(row.completedquestions).length;
       if (completed === 0) continue;
 
-      const subjectKey = subjectForTopic(row.topic, catalogSubjects);
+      const subjectKey = catalogSubjects.find((s) =>
+        s.subtopics?.some((t) => t.title === row.topic)
+      )?.subject;
       if (!subjectKey || !subjectMap[subjectKey]) continue;
 
       subjectMap[subjectKey].completedQuestions += completed;
@@ -103,18 +68,6 @@ export async function GET(_request, { params }) {
       const topicTotal = topicTotals[row.topic] || 0;
       if (topicTotal > 0 && completed >= topicTotal) {
         subjectMap[subjectKey].topicsCompleted += 1;
-      }
-
-      const updatedAt = row.updated_at ? new Date(row.updated_at).getTime() : 0;
-      if (!continueCandidate || updatedAt > continueCandidate.updatedAt) {
-        continueCandidate = {
-          subject: subjectKey,
-          subjectSlug: slugifySubject(subjectKey),
-          topic: row.topic,
-          topicSlug: String(row.topic || '').replace(/\s+/g, '-').toLowerCase(),
-          updatedAt,
-          href: `/${slug}/practice/${encodeURIComponent(row.topic)}`,
-        };
       }
     }
 
@@ -131,6 +84,8 @@ export async function GET(_request, { params }) {
     const overallPercent =
       totalQuestions > 0 ? Math.min(100, Math.round((completedQuestions / totalQuestions) * 100)) : 0;
 
+    const continueResolved = resolveExamHubContinue(progressRows, slug, catalogSubjects);
+
     return NextResponse.json({
       success: true,
       overallPercent,
@@ -143,21 +98,7 @@ export async function GET(_request, { params }) {
         .filter((s) => s.completedQuestions > 0)
         .sort((a, b) => b.percent - a.percent)
         .slice(0, 8),
-      continue: continueCandidate
-        ? {
-            subject: continueCandidate.subject,
-            subjectSlug: continueCandidate.subjectSlug,
-            topic: continueCandidate.topic,
-            href: continueCandidate.href,
-          }
-        : subjects.length
-          ? {
-              subject: catalogSubjects[0]?.subject,
-              subjectSlug: slugifySubject(catalogSubjects[0]?.subject),
-              topic: null,
-              href: `/${slug}/${slugifySubject(catalogSubjects[0]?.subject)}`,
-            }
-          : null,
+      continue: continueResolved,
     });
   } catch (err) {
     console.error('GET /api/exam-hub/[slug]/progress', err);

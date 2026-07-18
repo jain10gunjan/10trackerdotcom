@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { fetchRoadmapCatalogPage } from '@/lib/roadmaps/fetchRoadmapCatalog';
-import { ROADMAP_CATALOG_DISCLAIMER } from '@/lib/roadmaps/constants';
-import { ROADMAPS_SETUP_HINT } from '@/lib/roadmaps/roadmapService';
+import { fetchRoadmapCatalogPage } from '@/features/roadmaps/lib/fetchRoadmapCatalog';
+import { ROADMAP_CATALOG_DISCLAIMER } from '@/features/roadmaps/lib/constants';
+import { ROADMAPS_SETUP_HINT } from '@/features/roadmaps/lib/roadmapService';
 
 export async function GET(request) {
   try {

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { verifyAdminAuth } from '@/middleware/adminAuth';
 import { normalizeEmail } from '@/lib/normalizeEmail';
-import { adminAdjustCredits } from '@/lib/credits/walletService';
+import { adminAdjustCredits } from '@/features/credits/lib/walletService';
 import { formatAdminDbError } from '@/lib/supabaseAdmin';
 
 /** POST — grant credits (delta) or set absolute balance for a user */

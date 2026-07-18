@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { verifyAdminAuth } from '@/middleware/adminAuth';
-import { isAllowedExternalApiUrl } from '@/lib/mockTestUtils';
+import { isAllowedExternalApiUrl } from '@/features/mock-test/lib/mockTestUtils';
 
 export async function POST(request) {
   const { isAdmin, error: authError } = await verifyAdminAuth();

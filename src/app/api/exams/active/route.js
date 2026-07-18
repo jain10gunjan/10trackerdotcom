@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { fetchActiveExamCatalog } from '@/lib/exams/fetchActiveExamCatalog';
+import { fetchActiveExamCatalog } from '@/features/exams/lib/fetchActiveExamCatalog';
 
 export async function GET() {
   try {

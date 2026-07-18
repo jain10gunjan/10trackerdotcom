@@ -1,7 +1,7 @@
 /** Shared user profile validation and completion checks */
 
 import { isValidExamSlug, normalizeTargetExamsPayload, parseTargetExams } from '@/lib/examProfile';
-import { TERMS_VERSION } from '@/lib/billing/legal';
+import { TERMS_VERSION } from '@/features/billing/lib/legal';
 
 export const PROFILE_REQUIRED_FIELDS = ['first_name', 'last_name', 'country', 'phone_number'];
 

@@ -2,6 +2,10 @@ import axios from 'axios';
 import * as cheerio from 'cheerio';
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import {
+  forbiddenArticlesWriteResponse,
+  verifyAdminOrAutomationSecret,
+} from '@/features/articles/lib/verifyArticlesWriteAuth';
 
 // Mapping of logical categories to source URLs and DB category slugs
 const CATEGORY_CONFIG = {
@@ -283,6 +287,10 @@ async function processCategory(categoryKey) {
 
 export async function GET(request) {
   try {
+    const authResult = await verifyAdminOrAutomationSecret(request);
+    if (!authResult.ok) {
+      return forbiddenArticlesWriteResponse(authResult.error);
+    }
     // Ensure Supabase is configured
     if (
       !process.env.NEXT_PUBLIC_SUPABASE_URL ||

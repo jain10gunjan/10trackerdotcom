@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { verifyAdminAuth } from '@/middleware/adminAuth';
-import { getCategoryVariants } from '@/lib/mockTestUtils';
-import { fetchAdminMockTestsList } from '@/lib/mockTestQueries';
+import { getCategoryVariants } from '@/features/mock-test/lib/mockTestUtils';
+import { fetchAdminMockTestsList } from '@/features/mock-test/lib/mockTestQueries';
 import {
   getSupabaseAdmin,
   formatAdminDbError,

@@ -3,10 +3,10 @@
 import React, { useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
-import { useAuth } from "@/app/context/AuthContext";
-import MetaDataJobs from "@/components/Seo";
-import MockTestCategoryAdmin from "@/components/admin/mock-tests/MockTestCategoryAdmin";
-import { categoryLabelFromSlug } from "@/lib/mockTestAdminPaths";
+import { useAuth } from "@/context/AuthContext";
+import MetaDataJobs from "@/components/ui/Seo";
+import MockTestCategoryAdmin from "@/features/admin/components/mock-tests/MockTestCategoryAdmin";
+import { categoryLabelFromSlug } from "@/features/mock-test/lib/mockTestAdminPaths";
 import { AlertCircle, ArrowLeft } from "lucide-react";
 
 export default function AdminMockTestCategoryPage() {

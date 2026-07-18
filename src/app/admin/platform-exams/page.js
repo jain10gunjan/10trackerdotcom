@@ -3,8 +3,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/app/context/AuthContext';
-import MetaDataJobs from '@/components/Seo';
+import { useAuth } from '@/context/AuthContext';
+import MetaDataJobs from '@/components/ui/Seo';
 import { ArrowLeft, AlertCircle, GraduationCap } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { parseJsonResponse, toastPromise } from '@/lib/toastAsync';

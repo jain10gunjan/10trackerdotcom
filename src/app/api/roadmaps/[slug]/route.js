@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { normalizeEmail } from '@/lib/normalizeEmail';
-import { ROADMAP_PURCHASE_NOTICE, ROADMAP_DAYS_PAGE_SIZE } from '@/lib/roadmaps/constants';
+import { ROADMAP_PURCHASE_NOTICE, ROADMAP_DAYS_PAGE_SIZE } from '@/features/roadmaps/lib/constants';
 import {
   buildRoadmapViewerPayload,
   normalizeSlug,
   ROADMAPS_SETUP_HINT,
-} from '@/lib/roadmaps/roadmapService';
+} from '@/features/roadmaps/lib/roadmapService';
 
 function parseDayQuery(searchParams) {
   const dayOffset = Math.max(0, Number(searchParams.get('dayOffset')) || 0);

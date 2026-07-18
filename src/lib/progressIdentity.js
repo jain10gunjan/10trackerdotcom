@@ -13,7 +13,7 @@ export function getProgressUserId(user) {
 /** Supabase filter: match rows saved under any legacy id or the email column. */
 export function applyProgressUserFilter(query, user) {
   const email = user?.email?.trim().toLowerCase();
-  const authId = user?.authId?.trim();
+  const authId = user?.authId?.trim() || user?.id?.trim();
 
   const parts = [];
   if (email) {
@@ -25,10 +25,26 @@ export function applyProgressUserFilter(query, user) {
 
   if (!parts.length) {
     const fallback = getProgressUserId(user);
-    return fallback ? query.eq("user_id", fallback) : query;
+    return fallback ? query.or(`user_id.eq.${fallback},email.eq.${fallback}`) : query;
   }
 
-  return query.or(parts.join(","));
+  return query.or(parts.join(','));
+}
+
+/** Progress arrays may be jsonb, a JSON string, or missing on legacy rows. */
+export function parseProgressIdArray(value) {
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+    try {
+      const parsed = JSON.parse(trimmed);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
 }
 
 /** Merge multiple user_progress rows (same topic) from different legacy user_ids. */
