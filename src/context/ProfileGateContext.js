@@ -123,17 +123,20 @@ export function ProfileGateProvider({ children }) {
     []
   );
 
-  const refresh = useCallback(async () => {
-    if (!user) {
+  const refresh = useCallback(async (opts = {}) => {
+    const email = user?.email;
+    if (!email) {
       setProfile(null);
       setNeedsProfile(false);
       setNeedsProfileCompletion(false);
       setNeedsTermsReacceptance(false);
+      setSuggested(EMPTY_SUGGESTED);
       setLoadError(null);
       setLoading(false);
       return null;
     }
-    setLoading(true);
+    const soft = Boolean(opts.soft);
+    if (!soft) setLoading(true);
     setLoadError(null);
     try {
       const res = await fetch('/api/user/profile', {
@@ -150,13 +153,15 @@ export function ProfileGateProvider({ children }) {
       setNeedsProfileCompletion(true);
       return null;
     } finally {
-      setLoading(false);
+      if (!soft) setLoading(false);
     }
-  }, [user, sessionHints, setters]);
+  }, [user?.email, sessionHints, setters]);
 
   useEffect(() => {
     refresh();
-  }, [refresh]);
+    // Re-load only when signed-in identity changes (avoid refetch on image/name hint updates)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.email]);
 
   useEffect(() => {
     if (!user) {

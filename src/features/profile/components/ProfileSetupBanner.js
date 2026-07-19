@@ -17,10 +17,12 @@ export default function ProfileSetupBanner() {
   return (
     <div className="bg-neutral-900 text-white text-sm">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex flex-wrap items-center justify-between gap-2">
-        <span className="text-neutral-300">Finish profile setup to unlock practice and mock tests.</span>
+        <span className="text-neutral-300">
+          Finish profile setup to unlock practice and mock tests.
+        </span>
         <Link
           href={buildProfileSetupHref(redirect)}
-          className="font-medium underline underline-offset-2 hover:text-white shrink-0"
+          className="inline-flex items-center rounded-md bg-white/10 px-2.5 py-1 text-xs font-semibold text-white hover:bg-white/15 transition-colors shrink-0"
         >
           Continue setup
         </Link>

@@ -6,7 +6,6 @@ import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import MobileBottomMenu from '@/components/layout/MobileBottomMenu';
 import AuthModalWrapper from '@/features/auth/components/AuthModalWrapper';
-import ProfileModal from '@/features/profile/components/ProfileModal';
 import AnalyticsInitializer from '@/components/AnalyticsInitializer';
 import TermsReacceptanceModal from '@/features/profile/components/TermsReacceptanceModal';
 import TermsReacceptanceBanner from '@/features/profile/components/TermsReacceptanceBanner';
@@ -66,7 +65,6 @@ export default function AppChrome({ children }) {
         <AuthModalWrapper />
       </Suspense>
       {!shellHidden && <Navbar />}
-      {!shellHidden && <ProfileModal />}
       <div className={mainPadding}>{children}</div>
       {termsDockActive ? <div className="h-20 md:h-16 shrink-0" aria-hidden /> : null}
       {!shellHidden && <Footer />}

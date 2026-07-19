@@ -83,7 +83,7 @@ export default function DashboardAlerts({
         tone="amber"
         action={
           <Link
-            href="/profile"
+            href="/profile?redirect=/"
             className="inline-flex items-center gap-1 font-semibold underline shrink-0"
           >
             Edit profile <ArrowRight className="w-4 h-4" />

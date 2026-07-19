@@ -90,14 +90,7 @@ export async function GET() {
       return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
 
-    let signupGrant = null;
-    try {
-      signupGrant = await grantSignupBonus(userEmail);
-    } catch (bonusErr) {
-      console.warn('grantSignupBonus on profile load:', bonusErr?.message);
-    }
-
-    return jsonProfileSuccess(profile, session, { signupGrant });
+    return jsonProfileSuccess(profile, session);
   } catch (error) {
     console.error('Profile GET error:', error);
     return NextResponse.json(

@@ -44,7 +44,6 @@ export const AuthProvider = ({ children }) => {
   const { data: session, status } = useSession();
   const [showAuthModal, setShowAuthModalOpen] = useState(false);
   const [authModalOverride, setAuthModalOverride] = useState(null);
-  const [showProfileModal, setShowProfileModal] = useState(false);
 
   const sessionUser = session?.user;
   const user = useMemo(
@@ -105,8 +104,6 @@ export const AuthProvider = ({ children }) => {
     openAuthModal,
     closeAuthModal,
     setShowAuthModal,
-    showProfileModal,
-    setShowProfileModal,
   }), [
     user,
     loading,
@@ -116,7 +113,6 @@ export const AuthProvider = ({ children }) => {
     openAuthModal,
     closeAuthModal,
     setShowAuthModal,
-    showProfileModal,
     signInWithGoogle,
     signOut,
   ]);

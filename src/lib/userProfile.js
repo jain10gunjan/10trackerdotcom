@@ -78,6 +78,22 @@ export function validatePhoneNumber(phone) {
   return null;
 }
 
+/** Returns an error string, or null when empty/valid. */
+export function validateAvatarUrl(avatarUrl) {
+  const avatar = String(avatarUrl || '').trim();
+  if (!avatar) return null;
+  if (avatar.length > 2048) return 'Photo URL is too long';
+  try {
+    const url = new URL(avatar);
+    if (!['http:', 'https:'].includes(url.protocol)) {
+      return 'Photo URL must start with http:// or https://';
+    }
+  } catch {
+    return 'Enter a valid photo URL';
+  }
+  return null;
+}
+
 /** Client-side validation — mirrors server rules for immediate feedback */
 export function validateProfileFormFields(
   form,
@@ -106,17 +122,11 @@ export function validateProfileFormFields(
     }
   }
 
-  const avatar = String(form.avatar_url || '').trim();
-  if (avatar) {
-    try {
-      const url = new URL(avatar);
-      if (!['http:', 'https:'].includes(url.protocol)) {
-        errors.avatar_url = 'Photo URL must start with http:// or https://';
-      }
-    } catch {
-      errors.avatar_url = 'Enter a valid photo URL';
-    }
-  }
+  const avatarErr = validateAvatarUrl(form.avatar_url);
+  if (avatarErr) errors.avatar_url = avatarErr;
+
+  const bio = String(form.bio || '');
+  if (bio.length > 300) errors.bio = 'Bio must be 300 characters or less';
 
   if (requireTerms && !termsAccepted) {
     errors.terms = 'You must accept the Terms of Service and Privacy Policy';
@@ -130,16 +140,23 @@ export function validateProfilePayload(body) {
   const last_name = String(body.last_name || body.lastName || '').trim();
   const country = String(body.country || '').trim();
   const phone_number = String(body.phone_number || body.phoneNumber || '').trim();
-  const city = String(body.city || '').trim();
-  const state = String(body.state || '').trim();
+  const city = String(body.city || '').trim().slice(0, 80);
+  const state = String(body.state || '').trim().slice(0, 80);
   const bio = String(body.bio || '').trim();
-  const avatar_url = body.avatar_url || body.avatarUrl || null;
+  const rawAvatar = body.avatar_url ?? body.avatarUrl ?? null;
+  const avatar_url = rawAvatar != null ? String(rawAvatar).trim() || null : null;
 
   if (!first_name || first_name.length < 1) {
     return { error: 'First name is required' };
   }
+  if (first_name.length > 50) {
+    return { error: 'First name is too long' };
+  }
   if (!last_name || last_name.length < 1) {
     return { error: 'Last name is required' };
+  }
+  if (last_name.length > 50) {
+    return { error: 'Last name is too long' };
   }
   if (!country) {
     return { error: 'Country is required' };
@@ -147,6 +164,15 @@ export function validateProfilePayload(body) {
   const phoneErr = validatePhoneNumber(phone_number);
   if (phoneErr) {
     return { error: phoneErr };
+  }
+
+  const avatarErr = validateAvatarUrl(avatar_url);
+  if (avatarErr) {
+    return { error: avatarErr };
+  }
+
+  if (bio.length > 300) {
+    return { error: 'Bio must be 300 characters or less' };
   }
 
   const examFields = normalizeTargetExamsPayload(body);
@@ -170,7 +196,7 @@ export function validateProfilePayload(body) {
       bio: bio ? bio.slice(0, 300) : null,
       target_exam: examFields.target_exam,
       target_exams: examFields.target_exams,
-      avatar_url: avatar_url || null,
+      avatar_url,
       display_name,
       profile_completed: true,
     },

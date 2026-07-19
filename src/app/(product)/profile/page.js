@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, Check, LogOut } from 'lucide-react';
+import { ArrowLeft, Check, LogOut, Shield } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/context/AuthContext';
 import { useProfileGate } from '@/context/ProfileGateContext';
@@ -29,7 +29,7 @@ const ONBOARDING_STEPS = [
 
 function OnboardingProgress() {
   return (
-    <ol className="mt-4 flex items-center gap-2 sm:gap-3" aria-label="Setup progress">
+    <ol className="mt-5 flex items-center gap-2 sm:gap-3" aria-label="Setup progress">
       {ONBOARDING_STEPS.map((step, index) => {
         const done = index === 0;
         const current = index === 1;
@@ -60,17 +60,28 @@ function OnboardingProgress() {
   );
 }
 
-function SettingsTab({ active, children }) {
+function ProfileFormSkeleton() {
   return (
-    <span
-      className={`inline-block pb-3 text-sm font-medium border-b-2 -mb-px transition-colors ${
-        active
-          ? 'text-neutral-900 border-neutral-900'
-          : 'text-neutral-500 border-transparent'
-      }`}
-    >
-      {children}
-    </span>
+    <div className="px-6 sm:px-8 py-8 space-y-8 animate-pulse" aria-hidden>
+      <div className="flex gap-4 items-center">
+        <div className="w-20 h-20 rounded-2xl bg-neutral-100" />
+        <div className="flex-1 space-y-2">
+          <div className="h-3 w-28 bg-neutral-100 rounded" />
+          <div className="h-9 w-full max-w-sm bg-neutral-100 rounded-lg" />
+        </div>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="h-10 bg-neutral-100 rounded-lg" />
+        <div className="h-10 bg-neutral-100 rounded-lg" />
+        <div className="h-10 bg-neutral-100 rounded-lg sm:col-span-2" />
+        <div className="h-10 bg-neutral-100 rounded-lg" />
+        <div className="h-10 bg-neutral-100 rounded-lg" />
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <div className="h-11 bg-neutral-100 rounded-lg" />
+        <div className="h-11 bg-neutral-100 rounded-lg" />
+      </div>
+    </div>
   );
 }
 
@@ -82,7 +93,6 @@ export default function ProfilePage() {
     gateActive,
     needsTermsReacceptance,
     profile,
-    suggested,
     saving,
     saveProfile,
     loadError,
@@ -139,9 +149,7 @@ export default function ProfilePage() {
           window.location.assign(redirectUrl);
           return;
         }
-        const saved = await saveProfile(formData);
-        await refresh();
-        return saved;
+        return await saveProfile(formData);
       } catch (err) {
         if (isOnboarding) {
           setRedirecting(false);
@@ -150,7 +158,7 @@ export default function ProfilePage() {
         throw err;
       }
     },
-    [saveProfile, refresh, redirectUrl, isOnboarding]
+    [saveProfile, redirectUrl, isOnboarding]
   );
 
   const showForm = Boolean(user && !authLoading && !profileLoading);
@@ -168,7 +176,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-50 relative">
+    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-neutral-100 via-neutral-50 to-neutral-50 relative">
       {redirecting ? (
         <div
           className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-neutral-50/95 backdrop-blur-sm"
@@ -182,16 +190,16 @@ export default function ProfilePage() {
       ) : null}
 
       {isOnboarding ? (
-        <header className="sticky top-0 z-40 flex items-center justify-between px-4 sm:px-6 lg:px-8 py-3 border-b border-neutral-200 bg-white">
+        <header className="sticky top-0 z-40 flex items-center justify-between px-4 sm:px-6 lg:px-8 py-3 border-b border-neutral-200/80 bg-white/90 backdrop-blur-md">
           <Link href="/" className="inline-flex items-center">
             <Image src={logo} alt="10tracker.com" className="h-8 w-auto" priority />
           </Link>
           <button
             type="button"
             onClick={() => signOut()}
-            className="inline-flex items-center gap-2 text-sm text-neutral-600 hover:text-neutral-900"
+            className="inline-flex items-center gap-2 text-sm text-neutral-600 hover:text-neutral-900 transition-colors"
           >
-            <LogOut className="w-4 h-4" />
+            <LogOut className="w-4 h-4" aria-hidden />
             Sign out
           </button>
         </header>
@@ -205,43 +213,44 @@ export default function ProfilePage() {
         {!isOnboarding && (
           <Link
             href={redirectUrl}
-            className="inline-flex items-center gap-2 text-neutral-600 hover:text-neutral-900 text-sm font-medium mb-6"
+            className="inline-flex items-center gap-2 text-neutral-600 hover:text-neutral-900 text-sm font-medium mb-6 transition-colors"
           >
-            <ArrowLeft className="w-4 h-4" />
+            <ArrowLeft className="w-4 h-4" aria-hidden />
             Back
           </Link>
         )}
 
         <header className="mb-6">
           <h1 className="text-2xl sm:text-3xl font-semibold text-neutral-900 tracking-tight">
-            {isOnboarding ? 'Complete your profile' : 'Settings'}
+            {isOnboarding ? 'Complete your profile' : 'Profile settings'}
           </h1>
-          {!isOnboarding && (
-            <nav className="mt-5 border-b border-neutral-200">
-              <SettingsTab active>Profile</SettingsTab>
-            </nav>
-          )}
-          {isOnboarding && (
+          {isOnboarding ? (
             <>
-              <p className="text-sm text-neutral-600 mt-2 leading-relaxed">
+              <p className="text-sm text-neutral-600 mt-2 leading-relaxed max-w-xl">
                 A few details to unlock mock tests, leaderboards, and your dashboard.
               </p>
               <OnboardingProgress />
             </>
+          ) : (
+            <p className="text-sm text-neutral-600 mt-2 leading-relaxed max-w-xl">
+              Update how you appear on the dashboard and leaderboards.
+            </p>
           )}
         </header>
 
-        <div className="bg-white border border-neutral-200 rounded-xl shadow-sm">
-          {(authLoading || profileLoading) && (
-            <div className="py-16 text-center">
-              <div className="inline-block h-8 w-8 animate-spin rounded-full border-2 border-neutral-300 border-t-neutral-900" />
-              <p className="text-sm text-neutral-500 mt-3">Loading profile…</p>
-            </div>
-          )}
+        <div className="bg-white border border-neutral-200/80 rounded-2xl shadow-sm overflow-hidden">
+          {(authLoading || profileLoading) && <ProfileFormSkeleton />}
 
           {loadError && !profileLoading && (
-            <div className="m-6 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-              {loadError}
+            <div className="m-6 flex flex-col sm:flex-row sm:items-center gap-3 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-3">
+              <p className="flex-1">{loadError}</p>
+              <button
+                type="button"
+                onClick={() => refresh()}
+                className="shrink-0 rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-medium text-amber-900 hover:bg-amber-50 transition-colors"
+              >
+                Try again
+              </button>
             </div>
           )}
 
@@ -253,15 +262,45 @@ export default function ProfilePage() {
                 saving={saving || redirecting}
                 onSave={handleSave}
                 submitLabel={
-                  isOnboarding ? 'Accept & continue' : isTermsUpdate ? 'Accept & save' : 'Save changes'
+                  isOnboarding
+                    ? 'Accept & continue'
+                    : isTermsUpdate
+                      ? 'Accept & save'
+                      : 'Save changes'
                 }
                 requireTerms={requireTerms}
                 returnPath={redirectUrl}
                 termsBanner={termsBanner}
+                googleImage={user?.image || ''}
+                elevateSaveBar={!isOnboarding}
               />
             </div>
           )}
         </div>
+
+        {!isOnboarding && showForm ? (
+          <section className="mt-6 bg-white border border-neutral-200/80 rounded-2xl shadow-sm px-6 sm:px-8 py-6">
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-xl bg-neutral-100 flex items-center justify-center shrink-0">
+                <Shield className="w-4 h-4 text-neutral-600" aria-hidden />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h2 className="text-sm font-semibold text-neutral-900">Account</h2>
+                <p className="text-xs text-neutral-500 mt-0.5 leading-relaxed">
+                  Signed in as {user?.email}. Sign out on this device anytime.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => signOut()}
+                  className="mt-4 inline-flex items-center gap-2 rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm font-medium text-neutral-800 hover:bg-neutral-100 transition-colors"
+                >
+                  <LogOut className="w-3.5 h-3.5" aria-hidden />
+                  Sign out
+                </button>
+              </div>
+            </div>
+          </section>
+        ) : null}
 
         {isOnboarding && <OnboardingBrowseLinks returnPath={redirectUrl} />}
       </div>

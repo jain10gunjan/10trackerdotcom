@@ -111,7 +111,7 @@ export default function DashboardProfileSidebar({
 
         <div className="px-4 py-3">
           <Link
-            href="/profile"
+            href="/profile?redirect=/"
             className="flex w-full items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm font-medium text-neutral-800 hover:bg-neutral-100 transition-colors"
           >
             <Pencil className="w-3.5 h-3.5" />

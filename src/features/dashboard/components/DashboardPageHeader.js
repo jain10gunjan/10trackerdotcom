@@ -74,7 +74,7 @@ export default function DashboardPageHeader({
     <header>
       <div className="flex items-start gap-3 sm:gap-4">
         <Link
-          href="/profile"
+          href="/profile?redirect=/"
           className="lg:hidden shrink-0 w-11 h-11 rounded-xl overflow-hidden bg-neutral-100 border border-neutral-200 flex items-center justify-center hover:border-neutral-300 transition-colors"
         >
           {avatarUrl ? (

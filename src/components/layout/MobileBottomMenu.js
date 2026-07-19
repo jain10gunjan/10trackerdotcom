@@ -233,7 +233,7 @@ const MobileBottomMenu = () => {
                 {user ? (
                   <div className="mb-4 space-y-0.5 border-t border-neutral-100 pt-3">
                     <Link
-                      href="/profile"
+                      href="/profile?redirect=/"
                       onClick={() => setSheetOpen(false)}
                       className={sheetLinkClass(pathname === '/profile')}
                     >

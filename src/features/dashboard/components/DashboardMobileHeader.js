@@ -47,7 +47,7 @@ export default function DashboardMobileHeader({
 
   return (
     <Link
-      href="/profile"
+      href="/profile?redirect=/"
       className="lg:hidden group flex items-center gap-3 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm hover:shadow-md hover:border-neutral-300 transition-all"
     >
       <div className="w-12 h-12 rounded-xl overflow-hidden bg-neutral-100 border border-neutral-200 flex items-center justify-center shrink-0">

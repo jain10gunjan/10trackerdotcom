@@ -256,7 +256,7 @@ const Navbar = () => {
                           Plans & credits
                         </Link>
                         <Link
-                          href="/profile"
+                          href="/profile?redirect=/"
                           role="menuitem"
                           className="flex items-center gap-2.5 px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-50"
                           onClick={() => setUserMenuOpen(false)}
@@ -314,7 +314,7 @@ const Navbar = () => {
               <>
                 <WalletBar compact />
                 <Link
-                  href="/profile"
+                  href="/profile?redirect=/"
                   className="flex h-9 w-9 items-center justify-center rounded-full bg-neutral-900 text-xs font-semibold text-white"
                   aria-label="Profile"
                 >
