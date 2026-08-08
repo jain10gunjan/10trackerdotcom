@@ -34,7 +34,6 @@ const QuestionCard = dynamic(() => import("@/features/practice/components/Questi
 import ExamSubpageHeader from "@/features/exam-hub/components/ExamSubpageHeader";
 
 // Constants
-const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || "jain10gunjan@gmail.com";
 const QUESTIONS_PER_PAGE = 5;
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 const MAX_CACHE_SIZE = 50; // Maximum cache entries
@@ -123,7 +122,7 @@ const Pagetracker = memo(() => {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
-  const { user, setShowAuthModal } = useAuth();
+  const { user, isAdmin, setShowAuthModal } = useAuth();
   const { chargeForQuestion, canAttemptPractice } = usePracticeCreditGate();
   const { setShowPaywall } = useCredits();
 
@@ -869,7 +868,7 @@ const Pagetracker = memo(() => {
                           onAnswer={handleAnswer}
                           isCompleted={effectiveProgress.completed.map(String).includes(String(question._id))}
                           isCorrect={effectiveProgress.correct.map(String).includes(String(question._id))}
-                          isAdmin={user?.email === ADMIN_EMAIL || user?.primaryEmailAddress?.emailAddress === ADMIN_EMAIL}
+                          isAdmin={isAdmin}
                           creditsLocked={Boolean(user) && !canAttemptPractice}
                           onRequireCredits={() => setShowPaywall(true)}
                         />

@@ -49,7 +49,6 @@ const supabase = createClient(
 );
 
 // Constants
-const ADMIN_EMAIL = "jain10gunjan@gmail.com";
 const API_ENDPOINT = "/api/allsubtopics?category=GATE-CSE";
 const TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEsInVzZXJuYW1lIjoiZXhhbXBsZVVzZXIiLCJpYXQiOjE3MzYyMzM2NDZ9.YMTSQxYuzjd3nD3GlZXO6zjjt1kqfUmXw7qdy-C2RD8";
 
@@ -291,7 +290,7 @@ const EditQuestionModal = memo(({ isOpen, onClose, question, onSave }) => {
 EditQuestionModal.displayName = 'EditQuestionModal';
 
 // Single Question Display - Highly Optimized
-const QuestionDisplay = memo(({ question, index, total, userAnswer, isSubmitted, onAnswer, user, onQuestionUpdate }) => {
+const QuestionDisplay = memo(({ question, index, total, userAnswer, isSubmitted, onAnswer, isAdmin, onQuestionUpdate }) => {
   const [selectedOption, setSelectedOption] = useState(userAnswer || null);
   const [textAnswer, setTextAnswer] = useState(
     typeof userAnswer === "string" && userAnswer && !/^[A-D]$/i.test(userAnswer.trim())
@@ -365,8 +364,6 @@ const QuestionDisplay = memo(({ question, index, total, userAnswer, isSubmitted,
     
     return null;
   }, [isSubmitted, selectedOption, question.correct_option]);
-
-  const isAdmin = user?.email === ADMIN_EMAIL;
 
   return (
     <>
@@ -625,7 +622,7 @@ StatCard.displayName = 'StatCard';
 // Main Component - Ultra Optimized
 const PremiumTestInterface = () => {
   const { category, pagetopic } = useParams();
-  const { user, setShowAuthModal } = useAuth();
+  const { user, isAdmin, setShowAuthModal } = useAuth();
 
   // Core state - minimal and efficient
   const [data, setData] = useState([]);
@@ -1104,7 +1101,7 @@ const PremiumTestInterface = () => {
                         userAnswer={userAnswers.get(currentQuestion._id)}
                         isSubmitted={submittedQuestions.has(currentQuestion._id)}
                         onAnswer={handleAnswer}
-                        user={user}
+                        isAdmin={isAdmin}
                         onQuestionUpdate={handleQuestionUpdate}
                       />
                     </motion.div>

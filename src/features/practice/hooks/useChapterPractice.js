@@ -56,8 +56,6 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
 
-const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAILS;
-
 /**
  * @param {{ initialData?: object }} [options]
  */
@@ -67,7 +65,7 @@ export function useChapterPractice(options = {}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
-  const { user, setShowAuthModal } = useAuth();
+  const { user, isAdmin, setShowAuthModal } = useAuth();
   const { chargeForQuestion, canAttemptPractice } = usePracticeCreditGate();
   const { setShowPaywall } = useCredits();
 
@@ -83,11 +81,6 @@ export function useChapterPractice(options = {}) {
 
   useEffect(() => { userRef.current = user; }, [user]);
   useEffect(() => { categoryRef.current = category; }, [category]);
-
-  const isAdmin = useMemo(
-    () => user?.primaryEmailAddress?.emailAddress === ADMIN_EMAIL,
-    [user]
-  );
 
   const normalizedChapter = useMemo(
     () => (chaptername ? chaptername.replace(/-/g, ' ') : ''),

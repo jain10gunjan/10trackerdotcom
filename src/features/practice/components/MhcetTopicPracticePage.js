@@ -23,8 +23,6 @@ const supabase = createClient(
   }
 );
 
-const ADMIN_EMAIL = "jain10gunjan@gmail.com";
-
 const Pagetracker = () => {
   const config = {
     "fast-preview": {
@@ -43,7 +41,7 @@ const Pagetracker = () => {
     messageStyle: "none",
   };
   const { pagetopic } = useParams();
-  const { user, openAuthModal } = useAuth();
+  const { user, isAdmin, openAuthModal } = useAuth();
   const [data, setData] = useState([]);
   const [userData, setUserData] = useState({});
   const [questions, setQuestions] = useState([]);
@@ -238,7 +236,7 @@ const Pagetracker = () => {
   };
 
   const saveEditedQuestion = async (questionId, updatedData) => {
-    if (user?.email !== ADMIN_EMAIL) return;
+    if (!isAdmin) return;
 
     try {
       const { error } = await supabase
@@ -261,7 +259,7 @@ const Pagetracker = () => {
   };
 
   const startEditingQuestion = (questionId) => {
-    if (user?.email === ADMIN_EMAIL) {
+    if (isAdmin) {
       setEditingQuestionId(questionId);
     }
   };
@@ -373,14 +371,10 @@ const Pagetracker = () => {
                           question.id
                         )}
                         onReport={reportQuestion}
-                        onEdit={
-                          user?.email === ADMIN_EMAIL
-                            ? saveEditedQuestion
-                            : null
-                        }
+                        onEdit={isAdmin ? saveEditedQuestion : null}
                         isEditing={editingQuestionId === question.id}
                         onStartEditing={() => startEditingQuestion(question.id)}
-                        isAdmin={user?.email === ADMIN_EMAIL}
+                        isAdmin={isAdmin}
                       />
                     ))
                   ) : (

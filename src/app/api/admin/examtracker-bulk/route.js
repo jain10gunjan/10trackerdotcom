@@ -2,18 +2,10 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { auth } from "@/auth";
 import { normalizeRow } from "@/lib/examtrackerNormalize";
-
-function parseAdminEmails() {
-  return (process.env.NEXT_PUBLIC_ADMIN_EMAILS || "")
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
-}
+import { isAdminEmail } from "@/features/mock-test/lib/mockTestUtils";
 
 function isAdminUser(user) {
-  const adminEmails = parseAdminEmails();
-  if (!user?.email || adminEmails.length === 0) return false;
-  return adminEmails.includes(user.email.toLowerCase());
+  return isAdminEmail(user?.email);
 }
 
 /**

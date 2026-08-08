@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback, useMemo, Suspense } from "reac
 import { MathJax, MathJaxContext } from "better-react-mathjax";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
+import { useAuth } from "@/context/AuthContext";
 import toast from "react-hot-toast";
 import QuestionCard from "@/features/practice/components/QuestionCard";
 import Navbar from "@/components/layout/Navbar";
@@ -13,8 +14,6 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || "",
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
 );
-
-const ADMIN_EMAIL = "jain10gunjan@gmail.com";
 
 // Loading Spinner
 const LoadingSpinner = () => (
@@ -76,7 +75,7 @@ const RelatedQuestionItem = ({ question, index } ) => (
 const SingleQuestionPage = () => {
   const { category, qid } = useParams();
   const router = useRouter();
-  const [user, setUser] = useState(null);
+  const { isAdmin } = useAuth();
   const [mainQuestion, setMainQuestion] = useState(null);
   const [relatedQuestions, setRelatedQuestions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -196,7 +195,7 @@ const SingleQuestionPage = () => {
                             onAnswer={(isCorrect) =>
                               console.log("Answered:", isCorrect)
                             }
-                            isAdmin={user?.email === ADMIN_EMAIL}
+                            isAdmin={isAdmin}
                           />
                         </Suspense>
                       </div>

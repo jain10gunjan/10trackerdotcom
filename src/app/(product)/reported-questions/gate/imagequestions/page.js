@@ -1,8 +1,7 @@
 // pages/admin/reported-questions.jsx
 "use client";
 import React, { useState, useEffect } from "react";
-import { getAuth } from "firebase/auth";
-import { app } from "@/lib/firebase";
+import { useAuth } from "@/context/AuthContext";
 import { createClient } from "@supabase/supabase-js";
 import toast from "react-hot-toast";
 import { MathJax, MathJaxContext } from "better-react-mathjax";
@@ -15,23 +14,16 @@ const supabase = createClient(
   }
 );
 
-const ADMIN_EMAIL = "jain10gunjan@gmail.com";
-const auth = getAuth(app);
-
 const ReportedQuestions = () => {
   const [reportedQuestions, setReportedQuestions] = useState([]);
-  const [user, setUser] = useState(null);
+  const { user, isAdmin, loading } = useAuth();
   const [editingQuestion, setEditingQuestion] = useState(null);
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((currentUser) => {
-      setUser(currentUser);
-      if (currentUser?.email === ADMIN_EMAIL) {
-        fetchReportedQuestions();
-      }
-    });
-    return () => unsubscribe();
-  }, []);
+    if (!loading && isAdmin) {
+      fetchReportedQuestions();
+    }
+  }, [isAdmin, loading]);
 
   const fetchReportedQuestions = async () => {
     try {
@@ -125,7 +117,17 @@ const ReportedQuestions = () => {
     }
   };
 
-  if (!user || user.email !== ADMIN_EMAIL) {
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <div className="p-8 bg-white rounded-xl shadow-lg text-gray-600 font-semibold text-lg">
+          Loading...
+        </div>
+      </div>
+    );
+  }
+
+  if (!user || !isAdmin) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
         <div className="p-8 bg-white rounded-xl shadow-lg text-red-600 font-semibold text-lg">
