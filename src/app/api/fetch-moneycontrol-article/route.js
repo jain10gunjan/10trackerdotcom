@@ -1,161 +1,142 @@
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 import { NextResponse } from 'next/server';
+import {
+  verifyAdminOrAutomationSecret,
+  forbiddenArticlesWriteResponse,
+} from '@/features/articles/lib/verifyArticlesWriteAuth';
+import { assertAllowedFetchUrl } from '@/lib/safeFetchUrl';
 
-const sitemapUrl = "https://www.moneycontrol.com/news/news-sitemap.xml";
+const MONEYCONTROL_ALLOWED_HOSTS = ['moneycontrol.com', 'www.moneycontrol.com'];
 
-function getHeaders({ type = "xml" } = {}) {
-  if (type === "html") {
+const sitemapUrl = 'https://www.moneycontrol.com/news/news-sitemap.xml';
+
+function getHeaders({ type = 'xml' } = {}) {
+  if (type === 'html') {
     return {
-      "User-Agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      'User-Agent':
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       Accept:
-        "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-      "Accept-Language": "en-US,en;q=0.9",
-      "Accept-Encoding": "gzip, deflate, br",
-      Referer: "https://www.moneycontrol.com/",
-      Origin: "https://www.moneycontrol.com",
-      Connection: "keep-alive",
-      "Upgrade-Insecure-Requests": "1",
-      "Sec-Fetch-Dest": "document",
-      "Sec-Fetch-Mode": "navigate",
-      "Sec-Fetch-Site": "same-origin",
-      "Sec-Fetch-User": "?1",
-      "Cache-Control": "max-age=0",
+        'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+      'Accept-Language': 'en-US,en;q=0.9',
+      Referer: 'https://www.moneycontrol.com/',
+      Origin: 'https://www.moneycontrol.com',
     };
   }
 
   return {
-    "User-Agent":
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    Accept: "application/xml, text/xml, */*",
-    "Accept-Language": "en-US,en;q=0.9",
-    "Accept-Encoding": "gzip, deflate, br",
-    Referer: "https://www.moneycontrol.com/",
-    Origin: "https://www.moneycontrol.com",
-    Connection: "keep-alive",
-    "Sec-Fetch-Dest": "empty",
-    "Sec-Fetch-Mode": "cors",
-    "Sec-Fetch-Site": "same-origin",
+    'User-Agent':
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    Accept: 'application/xml, text/xml, */*',
+    'Accept-Language': 'en-US,en;q=0.9',
+    Referer: 'https://www.moneycontrol.com/',
+    Origin: 'https://www.moneycontrol.com',
   };
 }
 
 function mapMoneycontrolCategory(articleUrl) {
-  // User mapping rules:
-  // - world-news => world
-  // - news/world => world
-  // - news/india => india
-  // - news/business/economy => economy
-  // - news/technology => technology
-
   if (/\/news\/world-news\//i.test(articleUrl) || /\/news\/world\//i.test(articleUrl)) {
-    return "world-news";
+    return 'world-news';
   }
   if (/\/news\/india\//i.test(articleUrl)) {
-    return "news";
+    return 'news';
   }
   if (/\/news\/business\/economy\//i.test(articleUrl)) {
-    return "news";
+    return 'news';
   }
   if (/\/news\/technology\//i.test(articleUrl)) {
-    return "technology";
+    return 'technology';
   }
   return null;
 }
 
 function isAllowedUrl(articleUrl) {
+  const hostCheck = assertAllowedFetchUrl(articleUrl, MONEYCONTROL_ALLOWED_HOSTS);
+  if (!hostCheck.ok) return false;
   return Boolean(mapMoneycontrolCategory(articleUrl));
 }
 
-// Fetch and parse the Moneycontrol sitemap
 async function fetchSitemap() {
-  try {
-    const { data } = await axios.get(sitemapUrl, {
-      headers: getHeaders({ type: "xml" }),
-    });
+  const { data } = await axios.get(sitemapUrl, {
+    headers: getHeaders({ type: 'xml' }),
+    timeout: 20000,
+  });
 
-    // Parse XML using cheerio
-    const $ = cheerio.load(data, { xmlMode: true });
-    const urls = [];
+  const $ = cheerio.load(data, { xmlMode: true });
+  const urls = [];
 
-    $('url').each((i, elem) => {
-      const loc = $(elem).find('loc').text();
-      if (loc) {
-        urls.push(loc);
-      }
-    });
+  $('url').each((i, elem) => {
+    const loc = $(elem).find('loc').text();
+    if (loc) urls.push(loc);
+  });
 
-    return urls;
-  } catch (error) {
-    console.error("Error fetching sitemap or parsing XML:", error);
-    throw error;
-  }
+  return urls;
 }
 
 function isDisallowedTitle(title) {
   if (!title) return false;
   const t = title.toLowerCase();
-  return t.includes("moneycontrol pro") || t.includes("moneycontrol");
+  return t.includes('moneycontrol pro') || t.includes('moneycontrol');
 }
 
 async function fetchArticleContent(articleUrl) {
-  try {
-    const { data } = await axios.get(articleUrl, {
-      headers: getHeaders({ type: "html" }),
-    });
-    const $ = cheerio.load(data);
-
-    // Extract title
-    const title = $(".article_title, .artTitle").text().trim();
-
-    // Get image URL if available
-    const imageUrl = $(".article_image_wrapper .article_image img").attr("data-src") || 
-                     $(".article_image_wrapper .article_image img").attr("src") || 
-                     null;
-
-    const category = mapMoneycontrolCategory(articleUrl);
-
-    return {
-      title,
-      link: articleUrl,
-      imageUrl,
-      category: category || null,
-    };
-  } catch (error) {
-    console.error("Error fetching or parsing the article:", error);
-    throw error;
+  if (!isAllowedUrl(articleUrl)) {
+    throw new Error('URL host or category is not allowed');
   }
+
+  const { data } = await axios.get(articleUrl, {
+    headers: getHeaders({ type: 'html' }),
+    timeout: 20000,
+  });
+  const $ = cheerio.load(data);
+
+  const title = $('.article_title, .artTitle').text().trim();
+  const imageUrl =
+    $('.article_image_wrapper .article_image img').attr('data-src') ||
+    $('.article_image_wrapper .article_image img').attr('src') ||
+    null;
+  const category = mapMoneycontrolCategory(articleUrl);
+
+  return {
+    title,
+    link: articleUrl,
+    imageUrl,
+    category: category || null,
+  };
 }
 
 export async function GET(request) {
+  const auth = await verifyAdminOrAutomationSecret(request);
+  if (!auth.ok) {
+    return forbiddenArticlesWriteResponse(auth.error);
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const url = searchParams.get('url');
-    const categoryParam = searchParams.get('category'); // optional: world|india|economy|technology
+    const categoryParam = searchParams.get('category');
 
-    // If a specific URL is provided, fetch that article
     if (url) {
+      if (!isAllowedUrl(url)) {
+        return NextResponse.json(
+          { success: false, error: 'URL host or category is not allowed' },
+          { status: 400 }
+        );
+      }
       const articleData = await fetchArticleContent(url);
-      return NextResponse.json({
-        success: true,
-        data: articleData,
-      });
+      return NextResponse.json({ success: true, data: articleData });
     }
 
-    // By default, fetch ONLY the latest matching item from sitemap (only allowed categories)
     const urls = await fetchSitemap();
     const cat = categoryParam ? String(categoryParam).toLowerCase() : null;
 
-    if (urls && urls.length > 0) {
+    if (urls?.length) {
       for (const u of urls) {
         if (!isAllowedUrl(u)) continue;
         if (cat && mapMoneycontrolCategory(u) !== cat) continue;
 
         const articleData = await fetchArticleContent(u);
-        if (isDisallowedTitle(articleData.title)) {
-          // Skip titles containing Moneycontrol / Moneycontrol Pro
-          continue;
-        }
+        if (isDisallowedTitle(articleData.title)) continue;
 
         return NextResponse.json({
           success: true,
@@ -166,46 +147,49 @@ export async function GET(request) {
         });
       }
     }
-    
+
     return NextResponse.json(
-      { success: false, error: "No latest data found" },
+      { success: false, error: 'No latest data found' },
       { status: 404 }
     );
   } catch (error) {
-    console.error("Error in API route:", error);
+    console.error('Error in moneycontrol API route:', error?.message || error);
     return NextResponse.json(
-      {
-        success: false,
-        error: error.message || "Failed to fetch data",
-      },
+      { success: false, error: 'Failed to fetch data' },
       { status: 500 }
     );
   }
 }
 
 export async function POST(request) {
+  const auth = await verifyAdminOrAutomationSecret(request);
+  if (!auth.ok) {
+    return forbiddenArticlesWriteResponse(auth.error);
+  }
+
   try {
-    const { url } = await request.json();
+    const { url } = await request.json().catch(() => ({}));
 
     if (!url) {
       return NextResponse.json(
-        { success: false, error: "URL is required" },
+        { success: false, error: 'URL is required' },
+        { status: 400 }
+      );
+    }
+
+    if (!isAllowedUrl(url)) {
+      return NextResponse.json(
+        { success: false, error: 'URL host or category is not allowed' },
         { status: 400 }
       );
     }
 
     const articleData = await fetchArticleContent(url);
-    return NextResponse.json({
-      success: true,
-      data: articleData,
-    });
+    return NextResponse.json({ success: true, data: articleData });
   } catch (error) {
-    console.error("Error in API route:", error);
+    console.error('Error in moneycontrol API route:', error?.message || error);
     return NextResponse.json(
-      {
-        success: false,
-        error: error.message || "Failed to fetch article",
-      },
+      { success: false, error: 'Failed to fetch article' },
       { status: 500 }
     );
   }

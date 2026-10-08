@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { signIn } from "next-auth/react";
+import { getSafeRedirect } from "@/lib/safeRedirect";
 
 export default function GoogleOAuthButton({ redirect = "/" }) {
   const [isLoading, setIsLoading] = useState(false);
@@ -11,7 +12,8 @@ export default function GoogleOAuthButton({ redirect = "/" }) {
     setError(null);
     setIsLoading(true);
     try {
-      await signIn("google", { callbackUrl: redirect });
+      const callbackUrl = getSafeRedirect(redirect) || "/";
+      await signIn("google", { callbackUrl });
     } catch (err) {
       console.error("Google sign-in failed:", err);
       setError("Sign-in failed. Please try again.");

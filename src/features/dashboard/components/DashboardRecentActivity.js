@@ -41,7 +41,7 @@ function practiceItemsFromAggregate(practiceAreas = []) {
         title: formatTopicLabel(topic.topic),
         subtitle: formatExamSlug(exam.area),
         at: null,
-        href: `/${exam.area}/practice/${topic.topic}`,
+        href: topic.href || `/${exam.area}`,
       });
     }
   }

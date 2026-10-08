@@ -11,7 +11,11 @@ export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
     const idsParam = searchParams.get('ids') || '';
-    const ids = idsParam.split(',').map((s) => s.trim()).filter(Boolean);
+    const ids = idsParam
+      .split(',')
+      .map((s) => s.trim())
+      .filter((id) => /^[a-zA-Z0-9_-]{1,64}$/.test(id))
+      .slice(0, 20);
 
     const ip = request.headers.get('x-forwarded-for') || 'anon';
     const limit = checkApiRateLimit(ip, 'chapter-bodies', { windowMs: 60_000, max: 60 });
@@ -29,7 +33,7 @@ export async function GET(request) {
   } catch (error) {
     console.error('Chapter bodies API error:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch question bodies', details: error.message, questions: [] },
+      { error: 'Failed to fetch question bodies', questions: [] },
       { status: 500 }
     );
   }

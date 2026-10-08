@@ -98,11 +98,11 @@ const Navbar = () => {
   return (
     <>
       <nav className="fixed top-0 left-0 right-0 z-50 h-[4.25rem] overflow-visible border-b border-neutral-200/90 bg-white/95 backdrop-blur-md supports-[backdrop-filter]:bg-white/90">
-        <div className="mx-auto flex h-full max-w-7xl items-center gap-3 px-4 sm:px-6 lg:gap-5 lg:px-8">
+        <div className="mx-auto grid h-full max-w-7xl grid-cols-[1fr_auto_1fr] items-center gap-3 px-4 sm:px-6 lg:px-8">
           {/* Logo */}
           <Link
             href="/"
-            className="flex shrink-0 items-center rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 focus-visible:ring-offset-2"
+            className="flex shrink-0 items-center justify-self-start rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 focus-visible:ring-offset-2"
           >
             <Image
               src={logo}
@@ -116,8 +116,8 @@ const Navbar = () => {
             <span className="sr-only">10tracker.com</span>
           </Link>
 
-          {/* Desktop nav — left-aligned pill bar */}
-          <div className="hidden min-w-0 flex-1 items-center overflow-visible lg:flex">
+          {/* Desktop nav — centered pill bar */}
+          <div className="hidden min-w-0 items-center justify-center overflow-visible lg:flex">
             <div className="inline-flex max-w-full items-center gap-0.5 overflow-visible rounded-xl border border-neutral-200/80 bg-neutral-50/90 p-1">
               {PRIMARY_NAV.map((item) => {
                 const active = isNavActive(pathname, item.path);
@@ -192,7 +192,7 @@ const Navbar = () => {
           </div>
 
           {/* Desktop actions */}
-          <div className="ml-auto hidden shrink-0 items-center gap-2 lg:flex lg:gap-3 lg:pl-3 lg:ml-1 lg:border-l lg:border-neutral-200">
+          <div className="hidden shrink-0 items-center justify-self-end gap-2 lg:flex lg:gap-3 lg:border-l lg:border-neutral-200 lg:pl-3">
             {user ? (
               <>
                 <WalletBar compact />
@@ -309,7 +309,7 @@ const Navbar = () => {
           </div>
 
           {/* Mobile / tablet — nav lives in bottom bar; keep wallet / auth only */}
-          <div className="ml-auto flex items-center gap-2 lg:hidden">
+          <div className="col-start-3 flex items-center justify-self-end gap-2 lg:hidden">
             {user ? (
               <>
                 <WalletBar compact />

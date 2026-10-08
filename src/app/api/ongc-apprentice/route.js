@@ -1,23 +1,29 @@
 import axios from "axios";
 import { parse } from "node-html-parser";
+import { assertAllowedFetchUrl } from "@/lib/safeFetchUrl";
+
+const ONGC_ALLOWED_HOSTS = [
+  "sarkariresult.com.im",
+  "www.sarkariresult.com.im",
+  "sarkariresult.com",
+  "www.sarkariresult.com",
+];
 
 // Helper function to create a response
 const createResponse = (data, status = 200, headers = {}) => {
   return new Response(JSON.stringify(data, null, 2), {
     status,
     headers: {
-      "Access-Control-Allow-Origin": "*",
       "Content-Type": "application/json",
       ...headers,
     },
   });
 };
 
-// Handle CORS preflight requests
+// Handle CORS preflight requests (same-origin only — no wildcard)
 const handlePreflight = () => {
   return new Response(null, {
     headers: {
-      "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Methods": "GET, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type",
     },
@@ -740,17 +746,14 @@ export async function GET(request) {
     url.searchParams.get("url") ||
     "https://sarkariresult.com.im/ongc-apprentice-recruitment/";
 
-  // Validate the URL
-  if (!targetUrl || !/^https?:\/\/.+\..+/.test(targetUrl)) {
-    return createResponse(
-      { error: "Invalid or missing URL parameter" },
-      400
-    );
+  const allowed = assertAllowedFetchUrl(targetUrl, ONGC_ALLOWED_HOSTS);
+  if (!allowed.ok) {
+    return createResponse({ error: allowed.error }, 400);
   }
 
   try {
     // Fetch the HTML of the target URL
-    const response = await axios.get(targetUrl, {
+    const response = await axios.get(allowed.url.toString(), {
       headers: {
         "User-Agent":
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -770,16 +773,15 @@ export async function GET(request) {
     // Return the extracted data as JSON
     return createResponse({
       success: true,
-      url: targetUrl,
+      url: allowed.url.toString(),
       data: extractedData,
     });
   } catch (error) {
-    console.error("Error fetching or parsing data:", error.message);
+    console.error("Error fetching or parsing data:", error?.message || error);
     return createResponse(
       {
         success: false,
         error: "Failed to fetch or parse data",
-        message: error.message,
       },
       500
     );

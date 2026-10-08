@@ -1,10 +1,6 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
+import { verifyAdminAuth } from '@/middleware/adminAuth';
+import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 
 function normalizeCategory(param) {
   if (!param || typeof param !== 'string') return 'GATE-CSE';
@@ -12,9 +8,27 @@ function normalizeCategory(param) {
 }
 
 export async function POST(request) {
+  const { isAdmin, error: authError, userEmail } = await verifyAdminAuth();
+  if (!isAdmin) {
+    return NextResponse.json(
+      { error: authError || 'Admin access required' },
+      { status: 403 }
+    );
+  }
+
   try {
     const body = await request.json();
-    const { category, title, description, date_for, scopeSubject, scopeTopic, scopeChapter, questionIds, createdBy } = body;
+    const {
+      category,
+      title,
+      description,
+      date_for,
+      scopeSubject,
+      scopeTopic,
+      scopeChapter,
+      questionIds,
+      createdBy,
+    } = body;
 
     if (!category || !title || !Array.isArray(questionIds) || questionIds.length === 0) {
       return NextResponse.json(
@@ -23,6 +37,7 @@ export async function POST(request) {
       );
     }
 
+    const supabase = getSupabaseAdmin();
     const normalizedCategory = normalizeCategory(category);
 
     const { data: setRows, error: setError } = await supabase
@@ -35,7 +50,7 @@ export async function POST(request) {
         scope_subject: scopeSubject || null,
         scope_topic: scopeTopic || null,
         scope_chapter: scopeChapter || null,
-        created_by: createdBy || null,
+        created_by: createdBy || userEmail || null,
         is_active: true,
       })
       .select()
@@ -70,16 +85,9 @@ export async function POST(request) {
       );
     }
 
-    return NextResponse.json(
-      { success: true, setId },
-      { status: 201 }
-    );
+    return NextResponse.json({ success: true, setId }, { status: 201 });
   } catch (error) {
     console.error('Daily practice create error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
-

@@ -13,11 +13,13 @@ export async function GET(request) {
 
     const { searchParams } = new URL(request.url);
     const heatmapRange = searchParams.get('heatmapRange') === '90d' ? '90d' : '12mo';
+    const focusExam = String(searchParams.get('exam') || '').trim().toLowerCase();
 
     const payload = await getDashboardForUser({
       userEmail,
       userId: session.user?.id,
       heatmapRange,
+      focusExam,
     });
 
     return NextResponse.json({ success: true, ...payload });

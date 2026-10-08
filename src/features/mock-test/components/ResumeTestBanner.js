@@ -13,13 +13,13 @@ export default function ResumeTestBanner({ attempt, test, examcategory }) {
   const elapsed = attempt.time_spent ?? attempt.duration_taken;
 
   return (
-    <div className="mb-5 sm:mb-6 rounded-3xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 p-4 sm:p-5">
+    <div className="mb-6 rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 via-white to-white p-4 sm:p-5 shadow-sm">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[11px] font-bold uppercase tracking-wide text-amber-800 mb-1">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-amber-800 mb-1">
             Resume in progress
           </p>
-          <h3 className="font-semibold text-neutral-900 truncate">{test.name}</h3>
+          <h3 className="font-bold text-neutral-900 truncate">{test.name}</h3>
           <p className="text-sm text-neutral-600 mt-1 flex flex-wrap items-center gap-3">
             <span>
               {answered} / {total} answered
@@ -34,7 +34,7 @@ export default function ResumeTestBanner({ attempt, test, examcategory }) {
         </div>
         <Link
           href={href}
-          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-2xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 shrink-0"
+          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-800 shrink-0 transition-colors"
         >
           <Play className="w-4 h-4" />
           Continue test

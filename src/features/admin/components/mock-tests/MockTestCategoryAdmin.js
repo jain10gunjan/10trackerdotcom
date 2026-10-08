@@ -25,6 +25,7 @@ import {
   categoryLabelFromSlug,
 } from "@/features/mock-test/lib/mockTestAdminPaths";
 import MockTestEditModal from "./MockTestEditModal";
+import MockOfTheDayAdminPanel from "./MockOfTheDayAdminPanel";
 
 export default function MockTestCategoryAdmin({ examcategory }) {
   const base = mockTestAdminBase(examcategory);
@@ -279,6 +280,12 @@ export default function MockTestCategoryAdmin({ examcategory }) {
           </Link>
         ))}
       </div>
+
+      <MockOfTheDayAdminPanel
+        examcategory={examcategory}
+        tests={tests}
+        onPoolChange={fetchTests}
+      />
 
       <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
         <div className="border-b border-neutral-100 px-4 py-3 sm:px-5">

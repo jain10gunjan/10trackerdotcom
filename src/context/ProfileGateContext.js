@@ -81,9 +81,7 @@ function applyGateFromResponse(data, setters, sessionHints) {
     return true;
   }
   setLoadError(data.error || 'Could not load profile');
-  setNeedsProfile(true);
-  setNeedsProfileCompletion(true);
-  setNeedsTermsReacceptance(false);
+  // Keep prior gate flags — API errors must not force a profile redirect loop.
   return false;
 }
 
@@ -149,8 +147,8 @@ export function ProfileGateProvider({ children }) {
     } catch (e) {
       console.error('Profile load failed', e);
       setLoadError('Network error loading profile');
-      setNeedsProfile(true);
-      setNeedsProfileCompletion(true);
+      // Do not force profile completion on network/API failure —
+      // that traps users in a /profile redirect loop while offline.
       return null;
     } finally {
       if (!soft) setLoading(false);

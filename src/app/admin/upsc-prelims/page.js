@@ -1,20 +1,16 @@
 "use client";
-import React, { useState } from "react";
-import { createClient } from "@supabase/supabase-js";
-import toast from "react-hot-toast";
 
-// Supabase configuration
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
+import React, { useState } from "react";
+import toast from "react-hot-toast";
+import { useAuth } from "@/context/AuthContext";
 
 const QuestionEntryPage = () => {
-  const [inputMode, setInputMode] = useState("form"); // "form" or "json"
+  const { isAdmin, loading: authLoading } = useAuth();
+  const [inputMode, setInputMode] = useState("form");
   const [jsonInput, setJsonInput] = useState("");
   const [questions, setQuestions] = useState([]);
+  const [submitting, setSubmitting] = useState(false);
 
-  // Form states
   const [formData, setFormData] = useState({
     topic: "",
     question: "",
@@ -27,22 +23,32 @@ const QuestionEntryPage = () => {
     solution: "",
   });
 
-  // Handle form input changes
   const handleFormChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Submit single question from form
+  const postQuestions = async (payload) => {
+    const res = await fetch("/api/admin/upsc-prelims", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.error || "Failed to add question(s)");
+    }
+    return data;
+  };
+
   const handleFormSubmit = async (e) => {
     e.preventDefault();
+    setSubmitting(true);
     try {
-      const { error } = await supabase.from("upscprelims").insert([formData]);
-
-      if (error) throw error;
-
+      const data = await postQuestions(formData);
       toast.success("Question added successfully!");
-      setQuestions([...questions, formData]);
+      setQuestions((prev) => [...prev, ...(data.questions || [formData])]);
       setFormData({
         topic: "",
         question: "",
@@ -56,47 +62,65 @@ const QuestionEntryPage = () => {
       });
     } catch (error) {
       console.error("Error adding question:", error);
-      toast.error("Failed to add question");
+      toast.error(error.message || "Failed to add question");
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  // Submit JSON questions
   const handleJsonSubmit = async () => {
+    setSubmitting(true);
     try {
       const parsedQuestions = JSON.parse(jsonInput);
       if (!Array.isArray(parsedQuestions)) {
         throw new Error("JSON must be an array of questions");
       }
 
-      const { error } = await supabase
-        .from("upscprelims")
-        .insert(parsedQuestions);
-
-      if (error) throw error;
-
-      toast.success(`${parsedQuestions.length} questions added successfully!`);
-      setQuestions([...questions, ...parsedQuestions]);
+      const data = await postQuestions(parsedQuestions);
+      toast.success(`${data.count || parsedQuestions.length} questions added successfully!`);
+      setQuestions((prev) => [...prev, ...(data.questions || parsedQuestions)]);
       setJsonInput("");
     } catch (error) {
       console.error("Error adding JSON questions:", error);
       toast.error("Failed to add questions: " + error.message);
+    } finally {
+      setSubmitting(false);
     }
   };
 
+  if (authLoading) {
+    return (
+      <div className="flex min-h-[40vh] items-center justify-center text-sm text-neutral-600">
+        Checking admin access…
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="rounded-xl border border-neutral-200 bg-white p-8 text-center">
+        <p className="text-lg font-semibold text-neutral-900">Admin access required</p>
+        <p className="mt-2 text-sm text-neutral-600">
+          You do not have permission to manage UPSC prelims questions.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-100">
-      <nav className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-4 shadow-lg">
+      <nav className="bg-gradient-to-r from-blue-600 to-indigo-700 p-4 text-white shadow-lg">
         <div className="container mx-auto">
           <h1 className="text-2xl font-bold">Question Entry System</h1>
         </div>
       </nav>
 
-      <div className="container mx-auto p-6 mt-6">
-        <div className="bg-white rounded-xl shadow-2xl p-8">
-          {/* Toggle Switch */}
-          <div className="flex items-center justify-center mb-8">
+      <div className="container mx-auto mt-6 p-6">
+        <div className="rounded-xl bg-white p-8 shadow-2xl">
+          <div className="mb-8 flex items-center justify-center">
             <button
-              className={`px-6 py-2 rounded-l-full ${
+              type="button"
+              className={`rounded-l-full px-6 py-2 ${
                 inputMode === "form"
                   ? "bg-blue-600 text-white"
                   : "bg-gray-200 text-gray-700"
@@ -106,7 +130,8 @@ const QuestionEntryPage = () => {
               Form Input
             </button>
             <button
-              className={`px-6 py-2 rounded-r-full ${
+              type="button"
+              className={`rounded-r-full px-6 py-2 ${
                 inputMode === "json"
                   ? "bg-blue-600 text-white"
                   : "bg-gray-200 text-gray-700"
@@ -117,12 +142,11 @@ const QuestionEntryPage = () => {
             </button>
           </div>
 
-          {/* Input Section */}
           {inputMode === "form" ? (
             <form onSubmit={handleFormSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="mb-1 block text-sm font-medium text-gray-700">
                     Topic
                   </label>
                   <input
@@ -131,19 +155,19 @@ const QuestionEntryPage = () => {
                     value={formData.topic}
                     onChange={handleFormChange}
                     required
-                    className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    className="w-full rounded-lg border p-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Enter topic"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="mb-1 block text-sm font-medium text-gray-700">
                     Difficulty
                   </label>
                   <select
                     name="difficulty"
                     value={formData.difficulty}
                     onChange={handleFormChange}
-                    className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    className="w-full rounded-lg border p-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="Easy">Easy</option>
                     <option value="Medium">Medium</option>
@@ -153,7 +177,7 @@ const QuestionEntryPage = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="mb-1 block text-sm font-medium text-gray-700">
                   Question
                 </label>
                 <textarea
@@ -161,16 +185,16 @@ const QuestionEntryPage = () => {
                   value={formData.question}
                   onChange={handleFormChange}
                   required
-                  className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  className="w-full rounded-lg border p-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   rows="3"
                   placeholder="Enter question text"
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 {["A", "B", "C", "D"].map((option) => (
                   <div key={option}>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="mb-1 block text-sm font-medium text-gray-700">
                       Option {option}
                     </label>
                     <input
@@ -179,7 +203,7 @@ const QuestionEntryPage = () => {
                       value={formData[`options_${option}`]}
                       onChange={handleFormChange}
                       required
-                      className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      className="w-full rounded-lg border p-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder={`Enter option ${option}`}
                     />
                   </div>
@@ -187,7 +211,7 @@ const QuestionEntryPage = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="mb-1 block text-sm font-medium text-gray-700">
                   Correct Option
                 </label>
                 <select
@@ -195,7 +219,7 @@ const QuestionEntryPage = () => {
                   value={formData.correct_option}
                   onChange={handleFormChange}
                   required
-                  className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  className="w-full rounded-lg border p-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Select correct option</option>
                   <option value="A">A</option>
@@ -206,14 +230,14 @@ const QuestionEntryPage = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="mb-1 block text-sm font-medium text-gray-700">
                   Solution
                 </label>
                 <textarea
                   name="solution"
                   value={formData.solution}
                   onChange={handleFormChange}
-                  className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  className="w-full rounded-lg border p-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   rows="3"
                   placeholder="Enter solution/explanation"
                 />
@@ -221,21 +245,22 @@ const QuestionEntryPage = () => {
 
               <button
                 type="submit"
-                className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition"
+                disabled={submitting}
+                className="w-full rounded-lg bg-blue-600 py-3 text-white transition hover:bg-blue-700 disabled:opacity-60"
               >
-                Add Question
+                {submitting ? "Adding…" : "Add Question"}
               </button>
             </form>
           ) : (
             <div className="space-y-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="mb-1 block text-sm font-medium text-gray-700">
                   JSON Input (Array of Questions)
                 </label>
                 <textarea
                   value={jsonInput}
                   onChange={(e) => setJsonInput(e.target.value)}
-                  className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono"
+                  className="w-full rounded-lg border p-3 font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
                   rows="10"
                   placeholder={`[
   {
@@ -253,18 +278,19 @@ const QuestionEntryPage = () => {
                 />
               </div>
               <button
+                type="button"
                 onClick={handleJsonSubmit}
-                className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition"
+                disabled={submitting}
+                className="w-full rounded-lg bg-blue-600 py-3 text-white transition hover:bg-blue-700 disabled:opacity-60"
               >
-                Add JSON Questions
+                {submitting ? "Adding…" : "Add JSON Questions"}
               </button>
             </div>
           )}
 
-          {/* Questions Table */}
           {questions.length > 0 && (
             <div className="mt-8">
-              <h2 className="text-xl font-bold mb-4">Added Questions</h2>
+              <h2 className="mb-4 text-xl font-bold">Added Questions</h2>
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse">
                   <thead>
@@ -280,7 +306,7 @@ const QuestionEntryPage = () => {
                       <tr key={index} className="border-b hover:bg-gray-50">
                         <td className="p-3">{q.topic}</td>
                         <td className="p-3">
-                          {q.question.substring(0, 50)}...
+                          {(q.question || "").substring(0, 50)}...
                         </td>
                         <td className="p-3">{q.correct_option}</td>
                         <td className="p-3">{q.difficulty}</td>
@@ -293,7 +319,7 @@ const QuestionEntryPage = () => {
           )}
         </div>
       </div>
-</div>
+    </div>
   );
 };
 

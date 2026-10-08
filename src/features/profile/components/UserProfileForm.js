@@ -1,8 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
-import Image from 'next/image';
-import { AlertCircle, Check, Loader2, RotateCcw, User } from 'lucide-react';
+import { AlertCircle, Check, ChevronDown, Loader2, RotateCcw, User } from 'lucide-react';
 import LegalTermsCheckbox from '@/features/legal/components/LegalTermsCheckbox';
 import { parseJsonResponse } from '@/lib/toastAsync';
 import { isValidExamSlug } from '@/lib/examProfile';
@@ -38,7 +37,7 @@ const EMPTY_FORM = {
 };
 
 const INPUT_BASE =
-  'w-full px-3 py-2.5 border border-neutral-200 rounded-lg text-sm text-neutral-900 placeholder:text-neutral-400 transition-colors focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-400 bg-white';
+  'w-full px-3 py-2 border border-neutral-200 rounded-lg text-sm text-neutral-900 placeholder:text-neutral-400 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 bg-white';
 
 const ERROR_FIELD_ORDER = [
   'first_name',
@@ -55,7 +54,7 @@ const ERROR_FIELD_ORDER = [
 function FieldError({ id, message }) {
   if (!message) return null;
   return (
-    <p id={id} className="mt-1.5 text-xs text-red-600" role="alert">
+    <p id={id} className="mt-1 text-xs text-red-600" role="alert">
       {message}
     </p>
   );
@@ -63,7 +62,7 @@ function FieldError({ id, message }) {
 
 function FormLabel({ htmlFor, children, required }) {
   return (
-    <label htmlFor={htmlFor} className="block text-xs font-medium text-neutral-500 mb-1.5">
+    <label htmlFor={htmlFor} className="block text-xs font-medium text-neutral-600 mb-1">
       {children}
       {required ? (
         <span className="text-red-500 ml-0.5" aria-hidden>
@@ -74,25 +73,27 @@ function FormLabel({ htmlFor, children, required }) {
   );
 }
 
-function FormSection({ title, description, children, last = false, first = false }) {
-  const topPad = first ? 'pt-6' : 'pt-8';
+function SectionHeading({ number, title, description }) {
   return (
-    <section className={last ? topPad : `${topPad} pb-8 border-b border-neutral-100`}>
-      {(title || description) && (
-        <div className="mb-5">
-          {title ? <h3 className="text-sm font-semibold text-neutral-900">{title}</h3> : null}
-          {description ? (
-            <p className="text-xs text-neutral-500 mt-0.5 leading-relaxed">{description}</p>
-          ) : null}
-        </div>
-      )}
-      {children}
-    </section>
+    <div className="flex items-start gap-2.5 mb-3">
+      {number ? (
+        <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-emerald-50 text-[10px] font-bold tabular-nums text-emerald-800 border border-emerald-100">
+          {number}
+        </span>
+      ) : null}
+      <div className="min-w-0">
+        <h3 className="text-sm font-bold text-neutral-900 leading-none">{title}</h3>
+        {description ? (
+          <p className="mt-1 text-xs text-neutral-500 leading-snug">{description}</p>
+        ) : null}
+      </div>
+    </div>
   );
 }
 
 function ProfileAvatar({ form, googleImage, onAvatarChange, avatarError, onBlur }) {
   const [imgFailed, setImgFailed] = useState(false);
+  const [showUrl, setShowUrl] = useState(false);
   const displayName = [form.first_name, form.last_name].filter(Boolean).join(' ') || 'User';
   const initials = displayName
     .split(/\s+/)
@@ -110,60 +111,73 @@ function ProfileAvatar({ form, googleImage, onAvatarChange, avatarError, onBlur 
   }, [src]);
 
   return (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-      <div className="relative w-20 h-20 rounded-2xl overflow-hidden bg-neutral-100 border border-neutral-200 shrink-0 flex items-center justify-center shadow-sm">
+    <div className="flex items-center gap-3">
+      <div className="relative w-12 h-12 rounded-full overflow-hidden bg-emerald-50 border border-emerald-100 shrink-0 flex items-center justify-center">
         {showImage ? (
-          <Image
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
             src={src}
             alt={displayName}
-            fill
-            className="object-cover"
-            unoptimized
+            className="absolute inset-0 h-full w-full object-cover"
+            referrerPolicy="no-referrer"
             onError={() => setImgFailed(true)}
           />
         ) : (
-          <span className="text-xl font-semibold text-neutral-500 tracking-tight">
+          <span className="text-sm font-bold text-emerald-700 tracking-tight">
             {initials || '?'}
           </span>
         )}
       </div>
-      <div className="flex-1 min-w-0 space-y-2.5">
-        <div>
-          <p className="text-sm font-medium text-neutral-900">Profile picture</p>
-          <p className="text-xs text-neutral-500 mt-0.5 leading-relaxed">
-            Shown on your dashboard and leaderboards. Uses your Google photo by default.
-          </p>
-        </div>
-        <div>
-          <FormLabel htmlFor="avatar_url">Photo URL</FormLabel>
-          <input
-            id="avatar_url"
-            type="url"
-            value={form.avatar_url}
-            onChange={(e) => onAvatarChange(e.target.value)}
-            onBlur={onBlur}
-            placeholder="https://…"
-            inputMode="url"
-            autoComplete="photo"
-            aria-invalid={Boolean(avatarError)}
-            aria-describedby={avatarError ? 'avatar_url-error' : undefined}
-            className={`${INPUT_BASE} ${avatarError ? 'border-red-300 bg-red-50/40' : ''}`}
-          />
-          <FieldError id="avatar_url-error" message={avatarError} />
-        </div>
-        {canResetToGoogle ? (
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-neutral-900 truncate">{displayName}</p>
+        <div className="mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5">
           <button
             type="button"
-            onClick={() => onAvatarChange(googleImage)}
-            className="inline-flex items-center gap-1.5 text-xs font-medium text-neutral-600 hover:text-neutral-900 transition-colors"
+            onClick={() => setShowUrl((v) => !v)}
+            className="inline-flex items-center gap-0.5 text-xs font-medium text-neutral-600 hover:text-neutral-900 transition-colors"
+            aria-expanded={showUrl}
           >
-            <RotateCcw className="w-3 h-3" aria-hidden />
-            Use Google photo
+            Change photo
+            <ChevronDown
+              className={`w-3 h-3 transition-transform ${showUrl ? 'rotate-180' : ''}`}
+              aria-hidden
+            />
           </button>
-        ) : null}
-        {imgFailed && src ? (
-          <p className="text-xs text-amber-700">Could not load that image — check the URL.</p>
-        ) : null}
+          {canResetToGoogle ? (
+            <button
+              type="button"
+              onClick={() => onAvatarChange(googleImage)}
+              className="inline-flex items-center gap-1 text-xs font-medium text-emerald-800 hover:text-emerald-950 transition-colors"
+            >
+              <RotateCcw className="w-3 h-3" aria-hidden />
+              Use Google photo
+            </button>
+          ) : null}
+          {imgFailed && src ? (
+            <span className="text-xs text-amber-700">Photo unavailable — initials shown</span>
+          ) : null}
+        </div>
+        {showUrl ? (
+          <div className="mt-2">
+            <FormLabel htmlFor="avatar_url">Photo URL</FormLabel>
+            <input
+              id="avatar_url"
+              type="url"
+              value={form.avatar_url}
+              onChange={(e) => onAvatarChange(e.target.value)}
+              onBlur={onBlur}
+              placeholder="https://…"
+              inputMode="url"
+              autoComplete="photo"
+              aria-invalid={Boolean(avatarError)}
+              aria-describedby={avatarError ? 'avatar_url-error' : undefined}
+              className={`${INPUT_BASE} ${avatarError ? 'border-red-300 bg-red-50/40' : ''}`}
+            />
+            <FieldError id="avatar_url-error" message={avatarError} />
+          </div>
+        ) : (
+          <input type="hidden" id="avatar_url" value={form.avatar_url || ''} readOnly />
+        )}
       </div>
     </div>
   );
@@ -179,7 +193,7 @@ function scrollToFirstError(errors) {
         ? document.getElementById('exam-preferences')
         : document.getElementById(key);
   el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  if (el && typeof el.focus === 'function' && key !== 'target_exams') {
+  if (el && typeof el.focus === 'function' && key !== 'target_exams' && key !== 'avatar_url') {
     try {
       el.focus({ preventScroll: true });
     } catch {
@@ -268,6 +282,34 @@ export default function UserProfileForm({
     };
   }, []);
 
+  // Drop stale/inactive exam slugs that aren't shown in the checkbox list,
+  // so they can't reappear on the homepage switcher after the next save.
+  useEffect(() => {
+    if (examsLoading || examsError || !activeExams.length) return;
+    const activeSlugs = new Set(activeExams.map((e) => String(e.slug).toLowerCase()));
+    setForm((prev) => {
+      const current = Array.isArray(prev.target_exams) ? prev.target_exams : [];
+      const pruned = current.filter((s) => activeSlugs.has(String(s).toLowerCase()));
+      let target_exam = String(prev.target_exam || '').toLowerCase();
+      const primaryOk = Boolean(target_exam && pruned.includes(target_exam));
+      if (pruned.length === current.length && (primaryOk || (!target_exam && !pruned.length))) {
+        return prev;
+      }
+      if (!primaryOk) {
+        target_exam = pruned[0] || '';
+      }
+      try {
+        const baseline = JSON.parse(baselineRef.current || '{}');
+        baseline.target_exams = pruned;
+        baseline.target_exam = target_exam;
+        baselineRef.current = JSON.stringify(baseline);
+      } catch {
+        /* ignore */
+      }
+      return { ...prev, target_exams: pruned, target_exam };
+    });
+  }, [activeExams, examsLoading, examsError]);
+
   useEffect(() => {
     if (!suggested?.first_name && firstNameRef.current) {
       const t = requestAnimationFrame(() => firstNameRef.current?.focus());
@@ -320,25 +362,28 @@ export default function UserProfileForm({
     [submitError]
   );
 
-  const toggleExam = useCallback((slug) => {
-    const s = String(slug).toLowerCase();
-    setForm((prev) => {
-      const setSlugs = new Set(prev.target_exams || []);
-      if (setSlugs.has(s)) setSlugs.delete(s);
-      else setSlugs.add(s);
-      const target_exams = [...setSlugs];
-      let target_exam = prev.target_exam;
-      if (!target_exams.includes(target_exam)) target_exam = target_exams[0] || '';
-      return { ...prev, target_exams, target_exam };
-    });
-    setFieldErrors((prev) => {
-      const next = { ...prev };
-      delete next.target_exams;
-      delete next.target_exam;
-      return next;
-    });
-    if (submitError) setSubmitError('');
-  }, [submitError]);
+  const toggleExam = useCallback(
+    (slug) => {
+      const s = String(slug).toLowerCase();
+      setForm((prev) => {
+        const setSlugs = new Set(prev.target_exams || []);
+        if (setSlugs.has(s)) setSlugs.delete(s);
+        else setSlugs.add(s);
+        const target_exams = [...setSlugs];
+        let target_exam = prev.target_exam;
+        if (!target_exams.includes(target_exam)) target_exam = target_exams[0] || '';
+        return { ...prev, target_exams, target_exam };
+      });
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        delete next.target_exams;
+        delete next.target_exam;
+        return next;
+      });
+      if (submitError) setSubmitError('');
+    },
+    [submitError]
+  );
 
   const setPrimary = useCallback((slug) => {
     const s = String(slug).toLowerCase();
@@ -361,11 +406,17 @@ export default function UserProfileForm({
       const errors = validateProfileFormFields(form, { requireTerms, termsAccepted });
       if (markAllTouched) {
         const allTouched = { terms: requireTerms };
-        ['first_name', 'last_name', 'country', 'phone_number', 'target_exams', 'target_exam', 'avatar_url'].forEach(
-          (k) => {
-            allTouched[k] = true;
-          }
-        );
+        [
+          'first_name',
+          'last_name',
+          'country',
+          'phone_number',
+          'target_exams',
+          'target_exam',
+          'avatar_url',
+        ].forEach((k) => {
+          allTouched[k] = true;
+        });
         setTouched((prev) => ({ ...prev, ...allTouched }));
       }
       setFieldErrors(errors);
@@ -435,9 +486,9 @@ export default function UserProfileForm({
   const bioLen = form.bio?.length || 0;
 
   return (
-    <form id={formId} onSubmit={handleSubmit} noValidate>
+    <form id={formId} onSubmit={handleSubmit} noValidate className="space-y-3">
       {showLegacyBanner && (
-        <div className="mb-6 flex gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900">
+        <div className="flex gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900">
           <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" aria-hidden />
           <p>
             Your saved exam &quot;{form.legacy_target_exam}&quot; needs updating. Select exams
@@ -448,308 +499,330 @@ export default function UserProfileForm({
 
       {termsBanner}
 
-      <FormSection title="Picture" first>
-        <ProfileAvatar
-          form={form}
-          googleImage={googleImage}
-          onAvatarChange={setAvatarUrl}
-          avatarError={visibleError('avatar_url')}
-          onBlur={handleBlur('avatar_url')}
-        />
-      </FormSection>
-
-      <FormSection
-        title="Personal information"
-        description="Shown on your dashboard and mock-test leaderboards (name only — never email or phone)."
-      >
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-4">
-          <div>
-            <FormLabel htmlFor="first_name" required>
-              First name
-            </FormLabel>
-            <input
-              ref={firstNameRef}
-              id="first_name"
-              type="text"
-              value={form.first_name}
-              onChange={set('first_name')}
-              onBlur={handleBlur('first_name')}
-              placeholder="First name"
-              maxLength={50}
-              autoComplete="given-name"
-              aria-invalid={Boolean(visibleError('first_name'))}
-              aria-describedby={visibleError('first_name') ? 'first_name-error' : undefined}
-              className={inputClass('first_name')}
+      <div className="rounded-xl border border-neutral-200/90 bg-white shadow-sm overflow-hidden">
+        {/* Personal */}
+        <div className="px-4 sm:px-5 py-4 border-b border-neutral-100">
+          <SectionHeading
+            number="01"
+            title="Personal information"
+            description="Name appears on leaderboards. Email and phone stay private."
+          />
+          <div className="space-y-3">
+            <ProfileAvatar
+              form={form}
+              googleImage={googleImage}
+              onAvatarChange={setAvatarUrl}
+              avatarError={visibleError('avatar_url')}
+              onBlur={handleBlur('avatar_url')}
             />
-            <FieldError id="first_name-error" message={visibleError('first_name')} />
-          </div>
-          <div>
-            <FormLabel htmlFor="last_name" required>
-              Last name
-            </FormLabel>
-            <input
-              id="last_name"
-              type="text"
-              value={form.last_name}
-              onChange={set('last_name')}
-              onBlur={handleBlur('last_name')}
-              placeholder="Last name"
-              maxLength={50}
-              autoComplete="family-name"
-              aria-invalid={Boolean(visibleError('last_name'))}
-              aria-describedby={visibleError('last_name') ? 'last_name-error' : undefined}
-              className={inputClass('last_name')}
-            />
-            <FieldError id="last_name-error" message={visibleError('last_name')} />
-          </div>
-          <div className="sm:col-span-2">
-            <FormLabel htmlFor="email">Email address</FormLabel>
-            <input
-              id="email"
-              type="email"
-              value={form.email}
-              disabled
-              readOnly
-              className={`${INPUT_BASE} bg-neutral-50 text-neutral-500 cursor-not-allowed`}
-            />
-            <p className="mt-1.5 text-[11px] text-neutral-400">Managed by your Google account.</p>
-          </div>
-          <div>
-            <FormLabel htmlFor="phone_number" required>
-              Phone number
-            </FormLabel>
-            <input
-              id="phone_number"
-              type="tel"
-              value={form.phone_number}
-              onChange={set('phone_number')}
-              onBlur={handleBlur('phone_number')}
-              placeholder="+91 98765 43210"
-              autoComplete="tel"
-              inputMode="tel"
-              aria-invalid={Boolean(visibleError('phone_number'))}
-              aria-describedby={visibleError('phone_number') ? 'phone_number-error' : undefined}
-              className={inputClass('phone_number')}
-            />
-            <FieldError id="phone_number-error" message={visibleError('phone_number')} />
-          </div>
-          <div>
-            <FormLabel htmlFor="country" required>
-              Country
-            </FormLabel>
-            <select
-              id="country"
-              value={form.country}
-              onChange={set('country')}
-              onBlur={handleBlur('country')}
-              aria-invalid={Boolean(visibleError('country'))}
-              aria-describedby={visibleError('country') ? 'country-error' : undefined}
-              className={inputClass('country')}
-            >
-              <option value="">Select country</option>
-              {COUNTRIES.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-            <FieldError id="country-error" message={visibleError('country')} />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-2.5">
+              <div>
+                <FormLabel htmlFor="first_name" required>
+                  First name
+                </FormLabel>
+                <input
+                  ref={firstNameRef}
+                  id="first_name"
+                  type="text"
+                  value={form.first_name}
+                  onChange={set('first_name')}
+                  onBlur={handleBlur('first_name')}
+                  placeholder="First name"
+                  maxLength={50}
+                  autoComplete="given-name"
+                  aria-invalid={Boolean(visibleError('first_name'))}
+                  aria-describedby={visibleError('first_name') ? 'first_name-error' : undefined}
+                  className={inputClass('first_name')}
+                />
+                <FieldError id="first_name-error" message={visibleError('first_name')} />
+              </div>
+              <div>
+                <FormLabel htmlFor="last_name" required>
+                  Last name
+                </FormLabel>
+                <input
+                  id="last_name"
+                  type="text"
+                  value={form.last_name}
+                  onChange={set('last_name')}
+                  onBlur={handleBlur('last_name')}
+                  placeholder="Last name"
+                  maxLength={50}
+                  autoComplete="family-name"
+                  aria-invalid={Boolean(visibleError('last_name'))}
+                  aria-describedby={visibleError('last_name') ? 'last_name-error' : undefined}
+                  className={inputClass('last_name')}
+                />
+                <FieldError id="last_name-error" message={visibleError('last_name')} />
+              </div>
+              <div className="sm:col-span-2">
+                <FormLabel htmlFor="email">Email address</FormLabel>
+                <input
+                  id="email"
+                  type="email"
+                  value={form.email}
+                  disabled
+                  readOnly
+                  className={`${INPUT_BASE} bg-neutral-50 text-neutral-500 cursor-not-allowed`}
+                />
+              </div>
+              <div>
+                <FormLabel htmlFor="phone_number" required>
+                  Phone number
+                </FormLabel>
+                <input
+                  id="phone_number"
+                  type="tel"
+                  value={form.phone_number}
+                  onChange={set('phone_number')}
+                  onBlur={handleBlur('phone_number')}
+                  placeholder="+91 98765 43210"
+                  autoComplete="tel"
+                  inputMode="tel"
+                  aria-invalid={Boolean(visibleError('phone_number'))}
+                  aria-describedby={visibleError('phone_number') ? 'phone_number-error' : undefined}
+                  className={inputClass('phone_number')}
+                />
+                <FieldError id="phone_number-error" message={visibleError('phone_number')} />
+              </div>
+              <div>
+                <FormLabel htmlFor="country" required>
+                  Country
+                </FormLabel>
+                <select
+                  id="country"
+                  value={form.country}
+                  onChange={set('country')}
+                  onBlur={handleBlur('country')}
+                  aria-invalid={Boolean(visibleError('country'))}
+                  aria-describedby={visibleError('country') ? 'country-error' : undefined}
+                  className={inputClass('country')}
+                >
+                  <option value="">Select country</option>
+                  {COUNTRIES.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+                <FieldError id="country-error" message={visibleError('country')} />
+              </div>
+            </div>
           </div>
         </div>
-      </FormSection>
 
-      <FormSection
-        title="Exam preferences"
-        description="Select exams you prepare for. Your primary exam drives your home dashboard."
-      >
-        <div id="exam-preferences">
-          {examsLoading ? (
-            <div className="flex items-center gap-2 text-sm text-neutral-500 py-1">
-              <Loader2 className="w-4 h-4 animate-spin" aria-hidden />
-              Loading exams…
-            </div>
-          ) : examsError || activeExams.length === 0 ? (
-            <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-              {examsError
-                ? 'Could not load exams. Refresh the page and try again.'
-                : 'No active exams right now.'}
-            </p>
-          ) : (
-            <div
-              className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4"
-              role="group"
-              aria-label="Target exams"
-            >
-              {activeExams.map((exam) => {
-                const checked = form.target_exams?.includes(exam.slug);
-                return (
-                  <label
-                    key={exam.slug}
-                    className={`flex items-center gap-3 rounded-lg border px-3 py-2.5 cursor-pointer transition-colors ${
-                      checked
-                        ? 'border-neutral-900 bg-neutral-50 ring-1 ring-neutral-900/5'
-                        : 'border-neutral-200 hover:border-neutral-300'
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={!!checked}
-                      onChange={() => toggleExam(exam.slug)}
-                      className="h-4 w-4 rounded border-neutral-300 text-neutral-900 focus:ring-neutral-900"
-                    />
-                    <span className="text-sm font-medium text-neutral-900">{exam.name}</span>
-                    {checked ? (
-                      <Check className="w-3.5 h-3.5 text-neutral-700 ml-auto shrink-0" aria-hidden />
-                    ) : null}
-                  </label>
-                );
-              })}
+        {/* Exams */}
+        <div className="px-4 sm:px-5 py-4 border-b border-neutral-100">
+          <SectionHeading
+            number="02"
+            title="Exam preferences"
+            description="Primary exam drives your home dashboard."
+          />
+          <div id="exam-preferences">
+            {examsLoading ? (
+              <div className="flex items-center gap-2 text-sm text-neutral-500">
+                <Loader2 className="w-4 h-4 animate-spin" aria-hidden />
+                Loading exams…
+              </div>
+            ) : examsError || activeExams.length === 0 ? (
+              <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                {examsError
+                  ? 'Could not load exams. Refresh the page and try again.'
+                  : 'No active exams right now.'}
+              </p>
+            ) : (
+              <div
+                className="grid grid-cols-1 sm:grid-cols-2 gap-2"
+                role="group"
+                aria-label="Target exams"
+              >
+                {activeExams.map((exam) => {
+                  const checked = form.target_exams?.includes(exam.slug);
+                  return (
+                    <label
+                      key={exam.slug}
+                      className={`flex items-center gap-2.5 rounded-lg border px-3 py-2 cursor-pointer transition-all ${
+                        checked
+                          ? 'border-emerald-300 bg-emerald-50/80'
+                          : 'border-neutral-200 bg-white hover:border-neutral-300'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={!!checked}
+                        onChange={() => toggleExam(exam.slug)}
+                        className="h-4 w-4 rounded border-neutral-300 text-emerald-700 focus:ring-emerald-600"
+                      />
+                      <span className="text-sm font-semibold text-neutral-900">{exam.name}</span>
+                      {checked ? (
+                        <Check
+                          className="w-3.5 h-3.5 text-emerald-700 ml-auto shrink-0"
+                          aria-hidden
+                        />
+                      ) : null}
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+            <FieldError message={visibleError('target_exams')} />
+          </div>
+
+          {form.target_exams?.length > 0 && (
+            <div className="max-w-sm mt-3">
+              <FormLabel htmlFor="target_exam" required>
+                Primary exam
+              </FormLabel>
+              <select
+                id="target_exam"
+                value={form.target_exam}
+                onChange={(e) => setPrimary(e.target.value)}
+                onBlur={handleBlur('target_exam')}
+                aria-invalid={Boolean(visibleError('target_exam'))}
+                aria-describedby={visibleError('target_exam') ? 'target_exam-error' : undefined}
+                className={inputClass('target_exam')}
+              >
+                <option value="">Select primary exam</option>
+                {form.target_exams.map((slug) => {
+                  const meta = activeExams.find((e) => e.slug === slug);
+                  return (
+                    <option key={slug} value={slug}>
+                      {meta?.name || slug}
+                    </option>
+                  );
+                })}
+              </select>
+              <FieldError id="target_exam-error" message={visibleError('target_exam')} />
             </div>
           )}
-          <FieldError message={visibleError('target_exams')} />
         </div>
 
-        {form.target_exams?.length > 0 && (
-          <div className="max-w-sm mt-1">
-            <FormLabel htmlFor="target_exam" required>
-              Primary exam
-            </FormLabel>
-            <select
-              id="target_exam"
-              value={form.target_exam}
-              onChange={(e) => setPrimary(e.target.value)}
-              onBlur={handleBlur('target_exam')}
-              aria-invalid={Boolean(visibleError('target_exam'))}
-              aria-describedby={visibleError('target_exam') ? 'target_exam-error' : undefined}
-              className={inputClass('target_exam')}
-            >
-              <option value="">Select primary exam</option>
-              {form.target_exams.map((slug) => {
-                const meta = activeExams.find((e) => e.slug === slug);
-                return (
-                  <option key={slug} value={slug}>
-                    {meta?.name || slug}
-                  </option>
-                );
-              })}
-            </select>
-            <FieldError id="target_exam-error" message={visibleError('target_exam')} />
+        {/* Optional */}
+        <div className="px-4 sm:px-5 py-4 border-b border-neutral-100">
+          <SectionHeading
+            number="03"
+            title="Additional details"
+            description="Optional — city, region, and a short bio."
+          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-2.5">
+            <div>
+              <FormLabel htmlFor="city">City</FormLabel>
+              <input
+                id="city"
+                type="text"
+                value={form.city}
+                onChange={set('city')}
+                placeholder="City"
+                maxLength={80}
+                autoComplete="address-level2"
+                className={inputClass('city')}
+              />
+            </div>
+            <div>
+              <FormLabel htmlFor="state">State / Region</FormLabel>
+              <input
+                id="state"
+                type="text"
+                value={form.state}
+                onChange={set('state')}
+                placeholder="State"
+                maxLength={80}
+                autoComplete="address-level1"
+                className={inputClass('state')}
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <label htmlFor="bio" className="text-xs font-medium text-neutral-600">
+                  Short bio
+                </label>
+                <span
+                  className={`text-[11px] tabular-nums ${
+                    bioLen > 280 ? 'text-amber-600' : 'text-neutral-400'
+                  }`}
+                >
+                  {bioLen}/300
+                </span>
+              </div>
+              <textarea
+                id="bio"
+                value={form.bio}
+                onChange={set('bio')}
+                onBlur={handleBlur('bio')}
+                placeholder="College, year, goals…"
+                rows={2}
+                maxLength={300}
+                aria-invalid={Boolean(visibleError('bio'))}
+                className={`${inputClass('bio')} resize-y min-h-[3.25rem]`}
+              />
+              <FieldError message={visibleError('bio')} />
+            </div>
+          </div>
+        </div>
+
+        {requireTerms && (
+          <div className="px-4 sm:px-5 py-4 border-b border-neutral-100">
+            <SectionHeading
+              number="04"
+              title="Terms & policies"
+              description="Please review and accept to continue."
+            />
+            <LegalTermsCheckbox
+              id="profile-terms-checkbox"
+              checked={termsAccepted}
+              onChange={(checked) => {
+                setTermsAccepted(checked);
+                setTouched((prev) => ({ ...prev, terms: true }));
+                if (checked) {
+                  setFieldErrors((prev) => {
+                    const next = { ...prev };
+                    delete next.terms;
+                    return next;
+                  });
+                  if (submitError) setSubmitError('');
+                }
+              }}
+              termsVersion={TERMS_VERSION}
+              openInNewTab={false}
+              returnPath={returnPath}
+              className="bg-neutral-50 border-neutral-200 rounded-lg"
+            />
+            <FieldError message={touched.terms || submitError ? fieldErrors.terms : ''} />
           </div>
         )}
-      </FormSection>
 
-      <FormSection title="Additional details" description="Optional — helps personalize your dashboard.">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-4">
-          <div>
-            <FormLabel htmlFor="city">City</FormLabel>
-            <input
-              id="city"
-              type="text"
-              value={form.city}
-              onChange={set('city')}
-              placeholder="City"
-              maxLength={80}
-              autoComplete="address-level2"
-              className={inputClass('city')}
-            />
+        {showPrivacyNote && !requireTerms && (
+          <div className="px-4 sm:px-5 py-2.5 border-b border-neutral-100 flex items-start gap-2 text-xs text-neutral-500 bg-neutral-50/50">
+            <User className="w-3.5 h-3.5 mt-0.5 shrink-0 text-emerald-600" aria-hidden />
+            Leaderboards show your name only — never email or phone.
           </div>
-          <div>
-            <FormLabel htmlFor="state">State / Region</FormLabel>
-            <input
-              id="state"
-              type="text"
-              value={form.state}
-              onChange={set('state')}
-              placeholder="State"
-              maxLength={80}
-              autoComplete="address-level1"
-              className={inputClass('state')}
-            />
+        )}
+
+        {submitError && (
+          <div className="px-4 sm:px-5 py-2.5 border-b border-neutral-100">
+            <p className="text-sm text-red-600" role="alert">
+              {submitError}
+            </p>
           </div>
-          <div className="sm:col-span-2">
-            <div className="flex items-center justify-between gap-2 mb-1.5">
-              <label htmlFor="bio" className="text-xs font-medium text-neutral-500">
-                Short bio
-              </label>
-              <span
-                className={`text-[11px] tabular-nums ${
-                  bioLen > 280 ? 'text-amber-600' : 'text-neutral-400'
-                }`}
-              >
-                {bioLen}/300
-              </span>
-            </div>
-            <textarea
-              id="bio"
-              value={form.bio}
-              onChange={set('bio')}
-              onBlur={handleBlur('bio')}
-              placeholder="College, year, goals…"
-              rows={3}
-              maxLength={300}
-              aria-invalid={Boolean(visibleError('bio'))}
-              className={`${inputClass('bio')} resize-y min-h-[4.5rem]`}
-            />
-            <FieldError message={visibleError('bio')} />
-          </div>
-        </div>
-      </FormSection>
+        )}
 
-      {requireTerms && (
-        <FormSection title="Terms & policies" last={!showPrivacyNote}>
-          <LegalTermsCheckbox
-            id="profile-terms-checkbox"
-            checked={termsAccepted}
-            onChange={(checked) => {
-              setTermsAccepted(checked);
-              setTouched((prev) => ({ ...prev, terms: true }));
-              if (checked) {
-                setFieldErrors((prev) => {
-                  const next = { ...prev };
-                  delete next.terms;
-                  return next;
-                });
-                if (submitError) setSubmitError('');
-              }
-            }}
-            termsVersion={TERMS_VERSION}
-            openInNewTab={false}
-            returnPath={returnPath}
-            className="bg-neutral-50 border-neutral-200"
-          />
-          <FieldError message={touched.terms || submitError ? fieldErrors.terms : ''} />
-        </FormSection>
-      )}
-
-      {showPrivacyNote && !requireTerms && (
-        <div className="pt-8 flex items-start gap-2 text-xs text-neutral-500">
-          <User className="w-3.5 h-3.5 mt-0.5 shrink-0" aria-hidden />
-          Leaderboards show your first and last name only.
-        </div>
-      )}
-
-      {submitError && (
-        <p
-          className="mt-4 text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2"
-          role="alert"
+        {/* Save footer — part of the same card, no floating empty gap */}
+        <div
+          className={`sticky z-20 flex items-center justify-between gap-3 px-4 sm:px-5 py-3 bg-white/95 backdrop-blur border-t border-neutral-100 ${
+            elevateSaveBar ? 'bottom-16 md:bottom-3' : 'bottom-3'
+          }`}
         >
-          {submitError}
-        </p>
-      )}
-
-      <div
-        className={`mt-6 sticky ${
-          elevateSaveBar ? 'bottom-16 md:bottom-0' : 'bottom-0'
-        } -mx-6 sm:-mx-8 px-6 sm:px-8 py-4 bg-gradient-to-t from-white via-white to-white/90 border-t border-neutral-100 sm:static sm:mx-0 sm:px-0 sm:py-0 sm:bg-transparent sm:border-0 sm:from-transparent`}
-      >
-        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3">
-          <p className="text-xs text-neutral-400 text-center sm:text-left min-h-[1rem]">
-            {isDirty && !saving ? 'You have unsaved changes' : '\u00A0'}
+          <p className="text-xs text-neutral-500 min-h-[1rem]">
+            {isDirty && !saving ? 'Unsaved changes' : '\u00A0'}
           </p>
           <button
             type="submit"
             disabled={saving}
-            className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+            className={`inline-flex items-center justify-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0 ${
+              isDirty
+                ? 'bg-emerald-700 text-white hover:bg-emerald-800'
+                : 'bg-neutral-900 text-white hover:bg-neutral-800'
+            }`}
           >
             {saving ? (
               <>

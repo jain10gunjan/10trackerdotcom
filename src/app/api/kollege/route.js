@@ -1,23 +1,39 @@
 // app/api/kollege/route.js
 import { NextResponse } from 'next/server';
 import * as cheerio from 'cheerio';
+import {
+  verifyAdminOrAutomationSecret,
+  forbiddenArticlesWriteResponse,
+} from '@/features/articles/lib/verifyArticlesWriteAuth';
+import { assertAllowedFetchUrl } from '@/lib/safeFetchUrl';
+
+const KOLLEGE_ALLOWED_HOSTS = ['news.kollegeapply.com', 'kollegeapply.com'];
 
 export async function GET(request) {
+  const auth = await verifyAdminOrAutomationSecret(request);
+  if (!auth.ok) {
+    return forbiddenArticlesWriteResponse(auth.error);
+  }
+
   const url = request.nextUrl.searchParams.get('url');
 
   if (!url) {
     return NextResponse.json(
-      { error: 'Missing "url" query parameter. Example: /api/extract-news?url=https://news.kollegeapply.com/...' },
+      { error: 'Missing "url" query parameter. Example: /api/kollege?url=https://news.kollegeapply.com/...' },
       { status: 400 }
     );
   }
 
+  const allowed = assertAllowedFetchUrl(url, KOLLEGE_ALLOWED_HOSTS);
+  if (!allowed.ok) {
+    return NextResponse.json({ error: allowed.error }, { status: 400 });
+  }
+
   try {
-    const response = await fetch(url, {
+    const response = await fetch(allowed.url.toString(), {
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; KollegeApplyNewsScraper/1.0)',
       },
-      // Next.js automatically caches if you want; remove cache: 'no-store' if you prefer fresh data every time
     });
 
     if (!response.ok) {
@@ -139,9 +155,9 @@ export async function GET(request) {
 
     return NextResponse.json(newsData);
   } catch (error) {
-    console.error('Scraping error:', error);
+    console.error('Scraping error:', error?.message || error);
     return NextResponse.json(
-      { error: 'Failed to extract news data', message: error?.message || String(error) },
+      { error: 'Failed to extract news data' },
       { status: 500 }
     );
   }

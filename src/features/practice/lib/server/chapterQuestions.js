@@ -1,9 +1,13 @@
 import { createClient } from '@supabase/supabase-js';
 import {
   getChapterCandidates,
+  getSubjectCandidates,
   normalizeChapterName,
   chapterNamesMatch,
+  sanitizePracticeParam,
+  normalizeCategoryKey,
   QUESTIONS_PER_PAGE,
+  DIFFICULTIES,
 } from '@/features/practice/lib/chapterPracticeUtils';
 import { canonicalizeQuestionRow } from '@/features/practice/lib/canonicalizeQuestionContent';
 import { rewriteGateImagesInQuestion } from '@/features/practice/lib/server/gateImageMirror';
@@ -37,86 +41,100 @@ export function slugifyChapter(chapter) {
     .replace(/[^a-z0-9-]+/g, '');
 }
 
-let chapterSlugSupported = null; // null unknown, true/false
+/**
+ * Validate + normalize practice query inputs.
+ * Works for every exam category on /[category]/[subject]/[chapter]/practice.
+ */
+export function parseChapterPracticeScope({ category, subject, chapter } = {}) {
+  const categoryKey = normalizeCategoryKey(category);
+  const chapterRaw = sanitizePracticeParam(chapter);
+  const subjectRaw = sanitizePracticeParam(subject);
 
-async function resolveMatchedChapter(supabase, categoryUpper, chapter) {
-  const slug = slugifyChapter(chapter);
-  const candidates = getChapterCandidates(chapter);
-  const normalizedInput = normalizeChapterName(chapter);
-
-  // Prefer chapter_slug when column exists (after you run scripts/add_examtracker_chapter_slug.sql)
-  if (chapterSlugSupported !== false && slug) {
-    try {
-      const { data, error } = await supabase
-        .from('examtracker')
-        .select('chapter, chapter_slug')
-        .eq('category', categoryUpper)
-        .eq('chapter_slug', slug)
-        .limit(1);
-      if (error) {
-        if (isMissingChapterSlugError(error)) {
-          chapterSlugSupported = false;
-        } else {
-          throw error;
-        }
-      } else if (data?.[0]?.chapter) {
-        chapterSlugSupported = true;
-        return data[0].chapter;
-      } else {
-        chapterSlugSupported = true;
-      }
-    } catch (e) {
-      if (isMissingChapterSlugError(e)) chapterSlugSupported = false;
-      else throw e;
-    }
+  if (!categoryKey || !chapterRaw) {
+    return { ok: false, error: 'Invalid category or chapter' };
   }
 
-  for (const candidate of candidates) {
-    const { count, error } = await supabase
+  return {
+    ok: true,
+    categoryKey,
+    chapterRaw,
+    subjectRaw: subjectRaw || null,
+    chapterSlug: slugifyChapter(chapterRaw),
+    chapterCandidates: getChapterCandidates(chapterRaw),
+    subjectCandidates: getSubjectCandidates(subjectRaw),
+  };
+}
+
+function applySubjectFilter(query, subjectCandidates = []) {
+  if (!subjectCandidates?.length) return query;
+  return query.in('subject', subjectCandidates);
+}
+
+function applyChapterFilter(query, matchedChapter, chapterCandidates = []) {
+  const candidates = matchedChapter
+    ? getChapterCandidates(matchedChapter)
+    : chapterCandidates;
+  const unique = [...new Set(candidates.filter(Boolean))];
+  if (!unique.length) return query.eq('chapter', matchedChapter || '');
+  if (unique.length === 1) return query.eq('chapter', unique[0]);
+  return query.in('chapter', unique);
+}
+
+/**
+ * Resolve the canonical `chapter` column value.
+ * IMPORTANT: do not filter by chapter_slug — that column is often topic-polluted.
+ */
+async function resolveMatchedChapter(supabase, scope) {
+  const { categoryKey, chapterCandidates, subjectCandidates, chapterRaw } = scope;
+  const normalizedInput = normalizeChapterName(chapterRaw);
+
+  for (const candidate of chapterCandidates) {
+    let q = supabase
       .from('examtracker')
       .select('_id', { count: 'exact', head: true })
-      .eq('category', categoryUpper)
+      .eq('category', categoryKey)
       .eq('chapter', candidate);
+    q = applySubjectFilter(q, subjectCandidates);
+    const { count, error } = await q;
     if (error) throw error;
     if ((count ?? 0) > 0) return candidate;
   }
 
-  const { data: chaptersData, error: chaptersError } = await supabase
+  // Fallback: scan distinct chapters for this category (+ subject) and fuzzy-match.
+  let listQuery = supabase
     .from('examtracker')
     .select('chapter')
-    .eq('category', categoryUpper)
+    .eq('category', categoryKey)
+    .not('chapter', 'is', null)
     .limit(5000);
+  listQuery = applySubjectFilter(listQuery, subjectCandidates);
+
+  const { data: chaptersData, error: chaptersError } = await listQuery;
   if (chaptersError) throw chaptersError;
 
-  const resolved = (chaptersData ?? [])
-    .map((r) => r?.chapter)
-    .filter(Boolean)
-    .find((ch) => chapterNamesMatch(ch, normalizedInput));
+  const resolved = [...new Set((chaptersData ?? []).map((r) => r?.chapter).filter(Boolean))].find(
+    (ch) => chapterNamesMatch(ch, normalizedInput)
+  );
 
   return resolved ?? null;
 }
 
-async function headCount(supabase, categoryUpper, chapterValue, difficulty, slug) {
+async function headCount(supabase, scope, matchedChapter, difficulty) {
   let q = supabase
     .from('examtracker')
     .select('_id', { count: 'exact', head: true })
-    .eq('category', categoryUpper);
+    .eq('category', scope.categoryKey);
 
-  if (chapterSlugSupported && slug) {
-    q = q.eq('chapter_slug', slug);
-  } else {
-    q = q.eq('chapter', chapterValue);
+  q = applyChapterFilter(q, matchedChapter, scope.chapterCandidates);
+  q = applySubjectFilter(q, scope.subjectCandidates);
+
+  if (difficulty && DIFFICULTIES.includes(difficulty)) {
+    q = q.eq('difficulty', difficulty);
   }
-  if (difficulty) q = q.eq('difficulty', difficulty);
-  const res = await q;
-  if (res.error) {
-    if (chapterSlugSupported && isMissingChapterSlugError(res.error)) {
-      chapterSlugSupported = false;
-      return headCount(supabase, categoryUpper, chapterValue, difficulty, null);
-    }
-    throw res.error;
-  }
-  return res.count || 0;
+
+  const { count, error } = await q;
+  if (error) throw error;
+  return count || 0;
 }
 
 async function enrichQuestions(questions, { mirrorImages = false } = {}) {
@@ -129,108 +147,147 @@ async function enrichQuestions(questions, { mirrorImages = false } = {}) {
   return rows;
 }
 
-export async function fetchChapterCountsServer(category, chapter) {
+function emptyCounts(scope) {
+  return {
+    matchedChapter: null,
+    matchedSlug: scope?.chapterSlug || null,
+    matchedSubject: scope?.subjectRaw || null,
+    counts: { easy: 0, medium: 0, hard: 0 },
+    total: 0,
+    easy: 0,
+    medium: 0,
+    hard: 0,
+  };
+}
+
+export async function fetchChapterCountsServer(category, chapter, subject) {
+  const scope = parseChapterPracticeScope({ category, subject, chapter });
+  if (!scope.ok) {
+    logPracticeMetric('chapter_invalid_scope', { category, chapter, subject });
+    return emptyCounts(null);
+  }
+
   const supabase = getSupabase();
-  const categoryUpper = String(category).toUpperCase();
-  const matchedChapter = await resolveMatchedChapter(supabase, categoryUpper, chapter);
-  const slug = slugifyChapter(chapter);
+  const matchedChapter = await resolveMatchedChapter(supabase, scope);
 
   if (!matchedChapter) {
-    logPracticeMetric('chapter_empty', { category, chapter });
-    return {
-      matchedChapter: null,
-      matchedSlug: slug,
-      counts: { easy: 0, medium: 0, hard: 0 },
-      total: 0,
-      easy: 0,
-      medium: 0,
-      hard: 0,
-      chapterSlugSupported: chapterSlugSupported === true,
-    };
+    logPracticeMetric('chapter_empty', {
+      category: scope.categoryKey,
+      chapter: scope.chapterRaw,
+      subject: scope.subjectRaw,
+    });
+    return emptyCounts(scope);
   }
 
   const [easy, medium, hard, total] = await Promise.all([
-    headCount(supabase, categoryUpper, matchedChapter, 'easy', slug),
-    headCount(supabase, categoryUpper, matchedChapter, 'medium', slug),
-    headCount(supabase, categoryUpper, matchedChapter, 'hard', slug),
-    headCount(supabase, categoryUpper, matchedChapter, null, slug),
+    headCount(supabase, scope, matchedChapter, 'easy'),
+    headCount(supabase, scope, matchedChapter, 'medium'),
+    headCount(supabase, scope, matchedChapter, 'hard'),
+    headCount(supabase, scope, matchedChapter, null),
   ]);
 
   return {
     matchedChapter,
-    matchedSlug: slug,
+    matchedSlug: scope.chapterSlug,
+    matchedSubject: scope.subjectRaw,
     counts: { easy, medium, hard },
     total,
     easy,
     medium,
     hard,
-    chapterSlugSupported: chapterSlugSupported === true,
   };
 }
 
-function buildChapterFilter(query, categoryUpper, matchedChapter, slug) {
-  let q = query.eq('category', categoryUpper);
-  if (chapterSlugSupported && slug) {
-    q = q.eq('chapter_slug', slug);
-  } else {
-    const candidates = getChapterCandidates(matchedChapter || slug);
-    q = q.in('chapter', candidates);
+async function runChapterSelect({
+  scope,
+  matchedChapter,
+  difficulty,
+  page,
+  limit,
+  selectCols,
+}) {
+  const supabase = getSupabase();
+  const offset = (page - 1) * limit;
+
+  let query = supabase
+    .from('examtracker')
+    .select(selectCols, { count: 'exact' })
+    .eq('category', scope.categoryKey)
+    .order('_id', { ascending: true })
+    .range(offset, offset + limit - 1);
+
+  query = applyChapterFilter(query, matchedChapter || scope.chapterRaw, scope.chapterCandidates);
+  query = applySubjectFilter(query, scope.subjectCandidates);
+
+  if (difficulty && DIFFICULTIES.includes(difficulty)) {
+    query = query.eq('difficulty', difficulty);
   }
-  return q;
+
+  return query;
 }
 
 export async function fetchChapterQuestionsServer({
   category,
   chapter,
+  subject,
   difficulty,
   page = 1,
   limit = QUESTIONS_PER_PAGE,
   mirrorImages = false,
 }) {
-  const supabase = getSupabase();
-  const categoryUpper = String(category).toUpperCase();
-  const safePage = Math.max(1, page);
-  const safeLimit = Math.min(50, Math.max(1, limit));
-  const offset = (safePage - 1) * safeLimit;
-  const slug = slugifyChapter(chapter);
-  const matchedChapter = await resolveMatchedChapter(supabase, categoryUpper, chapter);
-
-  const selectCols = chapterSlugSupported === false ? QUESTION_SELECT_LEGACY : QUESTION_SELECT;
-
-  let query = supabase
-    .from('examtracker')
-    .select(selectCols, { count: 'exact' })
-    .order('_id', { ascending: true })
-    .range(offset, offset + safeLimit - 1);
-
-  query = buildChapterFilter(query, categoryUpper, matchedChapter || chapter, slug);
-
-  if (difficulty && ['easy', 'medium', 'hard'].includes(difficulty)) {
-    query = query.eq('difficulty', difficulty);
+  const scope = parseChapterPracticeScope({ category, subject, chapter });
+  if (!scope.ok) {
+    return {
+      questions: [],
+      hasMore: false,
+      totalCount: 0,
+      currentPage: 1,
+      totalPages: 0,
+      matchedChapter: null,
+      matchedSlug: null,
+      matchedSubject: null,
+      error: scope.error,
+    };
   }
 
-  let { data, count, error } = await query;
+  const supabase = getSupabase();
+  const safePage = Math.max(1, Number(page) || 1);
+  const safeLimit = Math.min(50, Math.max(1, Number(limit) || QUESTIONS_PER_PAGE));
+  const matchedChapter = await resolveMatchedChapter(supabase, scope);
+
+  let { data, count, error } = await runChapterSelect({
+    scope,
+    matchedChapter,
+    difficulty,
+    page: safePage,
+    limit: safeLimit,
+    selectCols: QUESTION_SELECT,
+  });
+
   if (error && isMissingChapterSlugError(error)) {
-    chapterSlugSupported = false;
-    query = supabase
-      .from('examtracker')
-      .select(QUESTION_SELECT_LEGACY, { count: 'exact' })
-      .eq('category', categoryUpper)
-      .in('chapter', getChapterCandidates(matchedChapter || chapter))
-      .order('_id', { ascending: true })
-      .range(offset, offset + safeLimit - 1);
-    if (difficulty && ['easy', 'medium', 'hard'].includes(difficulty)) {
-      query = query.eq('difficulty', difficulty);
-    }
-    ({ data, count, error } = await query);
+    ({ data, count, error } = await runChapterSelect({
+      scope,
+      matchedChapter,
+      difficulty,
+      page: safePage,
+      limit: safeLimit,
+      selectCols: QUESTION_SELECT_LEGACY,
+    }));
   }
   if (error) throw error;
 
   const questions = await enrichQuestions(data ?? [], { mirrorImages });
   if (!questions.length) {
-    logPracticeMetric('chapter_page_empty', { category, chapter, difficulty, page: safePage });
+    logPracticeMetric('chapter_page_empty', {
+      category: scope.categoryKey,
+      chapter: scope.chapterRaw,
+      subject: scope.subjectRaw,
+      difficulty,
+      page: safePage,
+    });
   }
 
+  const offset = (safePage - 1) * safeLimit;
   return {
     questions,
     hasMore: offset + questions.length < (count ?? 0),
@@ -238,41 +295,50 @@ export async function fetchChapterQuestionsServer({
     currentPage: safePage,
     totalPages: Math.ceil((count ?? 0) / safeLimit),
     matchedChapter: questions[0]?.chapter ?? matchedChapter,
-    matchedSlug: slug,
-    chapterSlugSupported: chapterSlugSupported === true,
+    matchedSlug: scope.chapterSlug,
+    matchedSubject: scope.subjectRaw,
   };
 }
 
-export async function fetchChapterQuestionIdsServer({ category, chapter, difficulty }) {
-  const supabase = getSupabase();
-  const categoryUpper = String(category).toUpperCase();
-  const slug = slugifyChapter(chapter);
-  const matchedChapter = await resolveMatchedChapter(supabase, categoryUpper, chapter);
-
-  let query = supabase
-    .from('examtracker')
-    .select(chapterSlugSupported === false ? '_id, chapter' : '_id, chapter, chapter_slug')
-    .order('_id', { ascending: true });
-
-  query = buildChapterFilter(query, categoryUpper, matchedChapter || chapter, slug);
-
-  if (difficulty && ['easy', 'medium', 'hard'].includes(difficulty)) {
-    query = query.eq('difficulty', difficulty);
+export async function fetchChapterQuestionIdsServer({
+  category,
+  chapter,
+  subject,
+  difficulty,
+}) {
+  const scope = parseChapterPracticeScope({ category, subject, chapter });
+  if (!scope.ok) {
+    return {
+      ids: [],
+      matchedChapter: null,
+      matchedSlug: null,
+      matchedSubject: null,
+      error: scope.error,
+    };
   }
 
-  let { data, error } = await query;
-  if (error && isMissingChapterSlugError(error)) {
-    chapterSlugSupported = false;
-    query = supabase
+  const supabase = getSupabase();
+  const matchedChapter = await resolveMatchedChapter(supabase, scope);
+
+  const runIds = async (selectCols) => {
+    let query = supabase
       .from('examtracker')
-      .select('_id, chapter')
-      .eq('category', categoryUpper)
-      .in('chapter', getChapterCandidates(matchedChapter || chapter))
+      .select(selectCols)
+      .eq('category', scope.categoryKey)
       .order('_id', { ascending: true });
-    if (difficulty && ['easy', 'medium', 'hard'].includes(difficulty)) {
+
+    query = applyChapterFilter(query, matchedChapter || scope.chapterRaw, scope.chapterCandidates);
+    query = applySubjectFilter(query, scope.subjectCandidates);
+
+    if (difficulty && DIFFICULTIES.includes(difficulty)) {
       query = query.eq('difficulty', difficulty);
     }
-    ({ data, error } = await query);
+    return query;
+  };
+
+  let { data, error } = await runIds('_id, chapter, chapter_slug');
+  if (error && isMissingChapterSlugError(error)) {
+    ({ data, error } = await runIds('_id, chapter'));
   }
   if (error) throw error;
 
@@ -280,8 +346,8 @@ export async function fetchChapterQuestionIdsServer({ category, chapter, difficu
   return {
     ids: rows.map((r) => String(r._id)).filter(Boolean),
     matchedChapter: rows[0]?.chapter ?? matchedChapter,
-    matchedSlug: slug,
-    chapterSlugSupported: chapterSlugSupported === true,
+    matchedSlug: scope.chapterSlug,
+    matchedSubject: scope.subjectRaw,
   };
 }
 
@@ -290,11 +356,16 @@ export async function fetchChapterQuestionBodiesServer(ids) {
   const unique = [...new Set((ids ?? []).map(String).filter(Boolean))].slice(0, 20);
   if (!unique.length) return { questions: [] };
 
-  const selectCols = chapterSlugSupported === false ? QUESTION_SELECT_LEGACY : QUESTION_SELECT;
-  let { data, error } = await supabase.from('examtracker').select(selectCols).in('_id', unique);
+  // Only allow opaque ids (uuid / numeric / alphanumeric) — no injection via ids list.
+  const safeIds = unique.filter((id) => /^[a-zA-Z0-9_-]{1,64}$/.test(id)).slice(0, 20);
+  if (!safeIds.length) return { questions: [] };
+
+  let { data, error } = await supabase.from('examtracker').select(QUESTION_SELECT).in('_id', safeIds);
   if (error && isMissingChapterSlugError(error)) {
-    chapterSlugSupported = false;
-    ({ data, error } = await supabase.from('examtracker').select(QUESTION_SELECT_LEGACY).in('_id', unique));
+    ({ data, error } = await supabase
+      .from('examtracker')
+      .select(QUESTION_SELECT_LEGACY)
+      .in('_id', safeIds));
   }
   if (error) throw error;
 
@@ -306,21 +377,30 @@ export async function fetchChapterQuestionBodiesServer(ids) {
 export async function fetchChapterPracticeInitialData({
   category,
   chapter,
+  subject,
   difficulty = 'easy',
   page = 1,
   limit = QUESTIONS_PER_PAGE,
 }) {
+  const safeDifficulty = DIFFICULTIES.includes(difficulty) ? difficulty : 'easy';
+
   const [counts, pageData, idsData] = await Promise.all([
-    fetchChapterCountsServer(category, chapter),
+    fetchChapterCountsServer(category, chapter, subject),
     fetchChapterQuestionsServer({
       category,
       chapter,
-      difficulty,
+      subject,
+      difficulty: safeDifficulty,
       page,
       limit,
       mirrorImages: true,
     }),
-    fetchChapterQuestionIdsServer({ category, chapter, difficulty }),
+    fetchChapterQuestionIdsServer({
+      category,
+      chapter,
+      subject,
+      difficulty: safeDifficulty,
+    }),
   ]);
 
   return {
@@ -332,14 +412,10 @@ export async function fetchChapterPracticeInitialData({
     totalQ: counts.total ?? 0,
     matchedChapter: pageData.matchedChapter ?? counts.matchedChapter ?? idsData.matchedChapter,
     matchedSlug: pageData.matchedSlug ?? counts.matchedSlug ?? idsData.matchedSlug,
-    chapterSlugSupported:
-      pageData.chapterSlugSupported ||
-      counts.chapterSlugSupported ||
-      idsData.chapterSlugSupported ||
-      false,
+    matchedSubject: pageData.matchedSubject ?? counts.matchedSubject ?? idsData.matchedSubject,
     questions: pageData.questions,
     hasMore: pageData.hasMore,
     difficultyIds: idsData.ids,
-    difficulty,
+    difficulty: safeDifficulty,
   };
 }

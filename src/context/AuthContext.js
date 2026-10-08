@@ -4,6 +4,8 @@
 import React, { createContext, useContext, useMemo, useState, useCallback } from 'react';
 import { useSession, signIn, signOut as nextAuthSignOut } from 'next-auth/react';
 import { getProgressUserId } from '@/lib/progressIdentity';
+import { isAdminEmail } from '@/features/mock-test/lib/mockTestUtils';
+import { getSafeRedirect } from '@/lib/safeRedirect';
 
 const AuthContext = createContext({
   user: null,
@@ -35,6 +37,8 @@ function normalizeUser(sessionUser) {
     image: sessionUser.image,
     fullName: name,
     displayName: name,
+    emailVerified: sessionUser.emailVerified === true,
+    hostedDomain: sessionUser.hostedDomain || null,
     primaryEmailAddress: { emailAddress: email },
     emailAddresses: email ? [{ emailAddress: email }] : [],
   };
@@ -48,13 +52,21 @@ export const AuthProvider = ({ children }) => {
   const sessionUser = session?.user;
   const user = useMemo(
     () => normalizeUser(sessionUser),
-    [sessionUser?.id, sessionUser?.email, sessionUser?.name, sessionUser?.image]
+    [
+      sessionUser?.id,
+      sessionUser?.email,
+      sessionUser?.name,
+      sessionUser?.image,
+      sessionUser?.emailVerified,
+      sessionUser?.hostedDomain,
+    ]
   );
   const loading = status === 'loading';
 
   const signInWithGoogle = useCallback(async (options = {}) => {
     const { redirectUrl } = options;
-    await signIn('google', { callbackUrl: redirectUrl || '/' });
+    const callbackUrl = getSafeRedirect(redirectUrl) || '/';
+    await signIn('google', { callbackUrl });
   }, []);
 
   const signOut = useCallback(async () => {
@@ -79,18 +91,7 @@ export const AuthProvider = ({ children }) => {
     [openAuthModal, closeAuthModal]
   );
 
-  const adminEmails = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || '')
-    .split(',')
-    .map(e => e.trim().toLowerCase())
-    .filter(Boolean);
-
-  const isAdmin = !!(user && adminEmails.length > 0 && (
-    (user.email && adminEmails.includes(user.email.toLowerCase())) ||
-    (Array.isArray(user.emailAddresses) &&
-      user.emailAddresses.some(e =>
-        e.emailAddress && adminEmails.includes(e.emailAddress.toLowerCase())
-      ))
-  ));
+  const isAdmin = !!(user && isAdminEmail(user.email));
 
   const value = useMemo(() => ({
     user,

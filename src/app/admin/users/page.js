@@ -70,7 +70,7 @@ export default function AdminUsersPage() {
 
   return (
     <div>
-      <MetaDataJobs seoTitle="User progress dashboard" seoDescription="Admin merged users" />
+      <MetaDataJobs seoTitle="Users & subscriptions" seoDescription="Admin users billing dashboard" />
       <AdminUsersDashboard
         users={users}
         summary={summary}

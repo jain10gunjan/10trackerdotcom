@@ -1,7 +1,7 @@
 import { getCategoryVariants } from '@/features/mock-test/lib/mockTestUtils';
 import { getSupabaseServer, isValidServiceRoleKey } from '@/lib/supabaseServer';
 import { normalizeCategorySlug } from '@/features/exam-hub/lib/categoryKey';
-import { getSubjectStats, slugifySubject } from '@/features/exam-hub/lib/examHubUtils';
+import { getSubjectStats, slugifySubject, resolveChapterPracticeHref } from '@/features/exam-hub/lib/examHubUtils';
 import { fetchExamSubjects } from '@/features/exam-hub/lib/fetchExamSubjects';
 import { applyProgressUserFilter, parseProgressIdArray } from '@/lib/progressIdentity';
 import { practiceAreaMatchesSlug } from '@/lib/examProfile';
@@ -118,7 +118,7 @@ export function resolveExamHubContinue(progressRows, slug, catalogSubjects = [])
         subject: subjectKey,
         subjectSlug: slugifySubject(subjectKey),
         topic: row.topic,
-        href: `/${normalizedSlug}/practice/${encodeURIComponent(row.topic)}`,
+        href: resolveChapterPracticeHref(normalizedSlug, row.topic, catalogSubjects),
         updatedAt,
       };
     }

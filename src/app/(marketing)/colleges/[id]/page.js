@@ -101,7 +101,7 @@ const CollegeDetailPage = () => {
 
   const handleJoinContest = async (contestId) => {
     if (!currentUser) {
-      router.push("/login");
+      router.push("/sign-in");
       return;
     }
 
@@ -155,7 +155,7 @@ const CollegeDetailPage = () => {
 
   const handleJoinCollege = async () => {
     if (!currentUser) {
-      router.push("/login");
+      router.push("/sign-in");
       return;
     }
 
@@ -220,7 +220,7 @@ const CollegeDetailPage = () => {
   const handleSignOut = async () => {
     try {
       await signOut(auth);
-      router.push("/login");
+      router.push("/sign-in");
     } catch (error) {
       setError("Failed to sign out.");
     }

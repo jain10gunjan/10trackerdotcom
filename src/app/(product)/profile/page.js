@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, Check, LogOut, Shield } from 'lucide-react';
+import { ArrowLeft, Check, LogOut } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/context/AuthContext';
 import { useProfileGate } from '@/context/ProfileGateContext';
@@ -29,18 +29,17 @@ const ONBOARDING_STEPS = [
 
 function OnboardingProgress() {
   return (
-    <ol className="mt-5 flex items-center gap-2 sm:gap-3" aria-label="Setup progress">
+    <ol className="mt-2 flex items-center gap-1.5" aria-label="Setup progress">
       {ONBOARDING_STEPS.map((step, index) => {
         const done = index === 0;
         const current = index === 1;
-        const upcoming = index === 2;
         return (
-          <li key={step.id} className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <li key={step.id} className="flex items-center gap-1.5 min-w-0">
             {index > 0 ? (
-              <span className="hidden sm:block h-px w-6 bg-neutral-200 shrink-0" aria-hidden />
+              <span className="h-px w-3 bg-neutral-200 shrink-0" aria-hidden />
             ) : null}
             <span
-              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium shrink-0 ${
+              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold shrink-0 ${
                 done
                   ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
                   : current
@@ -50,7 +49,6 @@ function OnboardingProgress() {
             >
               {done ? <Check className="w-3 h-3" aria-hidden /> : null}
               <span className="truncate">{step.label}</span>
-              {upcoming ? <span className="sr-only">(next)</span> : null}
               {current ? <span className="sr-only">(current)</span> : null}
             </span>
           </li>
@@ -62,25 +60,20 @@ function OnboardingProgress() {
 
 function ProfileFormSkeleton() {
   return (
-    <div className="px-6 sm:px-8 py-8 space-y-8 animate-pulse" aria-hidden>
-      <div className="flex gap-4 items-center">
-        <div className="w-20 h-20 rounded-2xl bg-neutral-100" />
+    <div className="rounded-xl border border-neutral-200 bg-white p-4 space-y-4 animate-pulse" aria-hidden>
+      <div className="h-4 w-40 bg-neutral-200 rounded" />
+      <div className="flex gap-3">
+        <div className="h-12 w-12 rounded-full bg-neutral-100" />
         <div className="flex-1 space-y-2">
-          <div className="h-3 w-28 bg-neutral-100 rounded" />
-          <div className="h-9 w-full max-w-sm bg-neutral-100 rounded-lg" />
+          <div className="h-4 w-28 bg-neutral-100 rounded" />
+          <div className="h-3 w-20 bg-neutral-100 rounded" />
         </div>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="h-10 bg-neutral-100 rounded-lg" />
-        <div className="h-10 bg-neutral-100 rounded-lg" />
-        <div className="h-10 bg-neutral-100 rounded-lg sm:col-span-2" />
-        <div className="h-10 bg-neutral-100 rounded-lg" />
-        <div className="h-10 bg-neutral-100 rounded-lg" />
+      <div className="grid grid-cols-2 gap-2.5">
+        <div className="h-9 bg-neutral-100 rounded-lg" />
+        <div className="h-9 bg-neutral-100 rounded-lg" />
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        <div className="h-11 bg-neutral-100 rounded-lg" />
-        <div className="h-11 bg-neutral-100 rounded-lg" />
-      </div>
+      <div className="h-9 bg-neutral-100 rounded-lg" />
     </div>
   );
 }
@@ -164,8 +157,16 @@ export default function ProfilePage() {
   const showForm = Boolean(user && !authLoading && !profileLoading);
   const requireTerms = isOnboarding || isTermsUpdate;
 
+  const displayName =
+    [formDefaults.first_name, formDefaults.last_name].filter(Boolean).join(' ') ||
+    user?.name ||
+    user?.email?.split('@')[0] ||
+    'Student';
+
+  const firstName = displayName.split(/\s+/)[0];
+
   const termsBanner = isTermsUpdate ? (
-    <div className="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+    <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900">
       Our policies were updated ({TERMS_VERSION}). Please review and accept below to continue
       using the platform.
     </div>
@@ -176,130 +177,121 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-neutral-100 via-neutral-50 to-neutral-50 relative">
+    <div className="min-h-screen bg-neutral-50 relative">
       {redirecting ? (
         <div
           className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-neutral-50/95 backdrop-blur-sm"
           role="status"
           aria-live="polite"
         >
-          <div className="h-10 w-10 animate-spin rounded-full border-2 border-neutral-300 border-t-neutral-900" />
-          <p className="mt-4 text-sm font-medium text-neutral-900">Setting up your dashboard…</p>
-          <p className="mt-1 text-xs text-neutral-500">This only takes a moment</p>
+          <div className="h-9 w-9 animate-spin rounded-full border-2 border-neutral-300 border-t-emerald-700" />
+          <p className="mt-3 text-sm font-semibold text-neutral-900">Setting up your dashboard…</p>
         </div>
       ) : null}
 
       {isOnboarding ? (
-        <header className="sticky top-0 z-40 flex items-center justify-between px-4 sm:px-6 lg:px-8 py-3 border-b border-neutral-200/80 bg-white/90 backdrop-blur-md">
+        <header className="sticky top-0 z-40 flex items-center justify-between px-4 sm:px-6 py-2.5 border-b border-neutral-200 bg-white/95 backdrop-blur-md">
           <Link href="/" className="inline-flex items-center">
-            <Image src={logo} alt="10tracker.com" className="h-8 w-auto" priority />
+            <Image src={logo} alt="10tracker.com" className="h-7 w-auto" priority />
           </Link>
           <button
             type="button"
             onClick={() => signOut()}
-            className="inline-flex items-center gap-2 text-sm text-neutral-600 hover:text-neutral-900 transition-colors"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-neutral-600 hover:text-neutral-900 transition-colors"
           >
-            <LogOut className="w-4 h-4" aria-hidden />
+            <LogOut className="w-3.5 h-3.5" aria-hidden />
             Sign out
           </button>
         </header>
       ) : null}
 
       <div
-        className={`max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 ${
-          isOnboarding ? 'py-8 sm:py-10' : 'pb-12'
+        className={`max-w-2xl mx-auto px-4 sm:px-5 ${
+          isOnboarding ? 'py-5 sm:py-6' : 'pt-3 pb-10'
         }`}
       >
         {!isOnboarding && (
           <Link
             href={redirectUrl}
-            className="inline-flex items-center gap-2 text-neutral-600 hover:text-neutral-900 text-sm font-medium mb-6 transition-colors"
+            className="inline-flex items-center gap-1.5 text-neutral-500 hover:text-neutral-900 text-sm font-medium mb-2 transition-colors"
           >
-            <ArrowLeft className="w-4 h-4" aria-hidden />
-            Back
+            <ArrowLeft className="w-3.5 h-3.5" aria-hidden />
+            Back to home
           </Link>
         )}
 
-        <header className="mb-6">
-          <h1 className="text-2xl sm:text-3xl font-semibold text-neutral-900 tracking-tight">
-            {isOnboarding ? 'Complete your profile' : 'Profile settings'}
-          </h1>
+        <div className="mb-2.5">
+          <div className="flex items-baseline justify-between gap-3">
+            <h1 className="text-xl font-bold tracking-tight text-neutral-900">
+              {isOnboarding ? 'Complete your profile' : 'Profile settings'}
+            </h1>
+            {!isOnboarding ? (
+              <p className="text-xs text-neutral-500 shrink-0 hidden sm:block">Hi {firstName}</p>
+            ) : null}
+          </div>
           {isOnboarding ? (
             <>
-              <p className="text-sm text-neutral-600 mt-2 leading-relaxed max-w-xl">
-                A few details to unlock mock tests, leaderboards, and your dashboard.
+              <p className="text-sm text-neutral-600 mt-1">
+                A few details to unlock mocks, leaderboards, and your home.
               </p>
               <OnboardingProgress />
             </>
           ) : (
-            <p className="text-sm text-neutral-600 mt-2 leading-relaxed max-w-xl">
-              Update how you appear on the dashboard and leaderboards.
-            </p>
-          )}
-        </header>
-
-        <div className="bg-white border border-neutral-200/80 rounded-2xl shadow-sm overflow-hidden">
-          {(authLoading || profileLoading) && <ProfileFormSkeleton />}
-
-          {loadError && !profileLoading && (
-            <div className="m-6 flex flex-col sm:flex-row sm:items-center gap-3 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-3">
-              <p className="flex-1">{loadError}</p>
-              <button
-                type="button"
-                onClick={() => refresh()}
-                className="shrink-0 rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-medium text-amber-900 hover:bg-amber-50 transition-colors"
-              >
-                Try again
-              </button>
-            </div>
-          )}
-
-          {showForm && (
-            <div className="px-6 sm:px-8 pb-8">
-              <UserProfileForm
-                key={formKey}
-                suggested={formDefaults}
-                saving={saving || redirecting}
-                onSave={handleSave}
-                submitLabel={
-                  isOnboarding
-                    ? 'Accept & continue'
-                    : isTermsUpdate
-                      ? 'Accept & save'
-                      : 'Save changes'
-                }
-                requireTerms={requireTerms}
-                returnPath={redirectUrl}
-                termsBanner={termsBanner}
-                googleImage={user?.image || ''}
-                elevateSaveBar={!isOnboarding}
-              />
-            </div>
+            <p className="text-sm text-neutral-600 mt-0.5 sm:hidden">Hi {firstName}</p>
           )}
         </div>
 
+        {(authLoading || profileLoading) && <ProfileFormSkeleton />}
+
+        {loadError && !profileLoading && (
+          <div className="mb-3 flex flex-col sm:flex-row sm:items-center gap-2 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
+            <p className="flex-1">{loadError}</p>
+            <button
+              type="button"
+              onClick={() => refresh()}
+              className="shrink-0 rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-semibold text-amber-900 hover:bg-amber-50 transition-colors"
+            >
+              Try again
+            </button>
+          </div>
+        )}
+
+        {showForm && (
+          <UserProfileForm
+            key={formKey}
+            suggested={formDefaults}
+            saving={saving || redirecting}
+            onSave={handleSave}
+            submitLabel={
+              isOnboarding
+                ? 'Accept & continue'
+                : isTermsUpdate
+                  ? 'Accept & save'
+                  : 'Save changes'
+            }
+            requireTerms={requireTerms}
+            returnPath={redirectUrl}
+            termsBanner={termsBanner}
+            googleImage={user?.image || ''}
+            elevateSaveBar={!isOnboarding}
+          />
+        )}
+
         {!isOnboarding && showForm ? (
-          <section className="mt-6 bg-white border border-neutral-200/80 rounded-2xl shadow-sm px-6 sm:px-8 py-6">
-            <div className="flex items-start gap-3">
-              <div className="w-9 h-9 rounded-xl bg-neutral-100 flex items-center justify-center shrink-0">
-                <Shield className="w-4 h-4 text-neutral-600" aria-hidden />
-              </div>
-              <div className="min-w-0 flex-1">
-                <h2 className="text-sm font-semibold text-neutral-900">Account</h2>
-                <p className="text-xs text-neutral-500 mt-0.5 leading-relaxed">
-                  Signed in as {user?.email}. Sign out on this device anytime.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => signOut()}
-                  className="mt-4 inline-flex items-center gap-2 rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm font-medium text-neutral-800 hover:bg-neutral-100 transition-colors"
-                >
-                  <LogOut className="w-3.5 h-3.5" aria-hidden />
-                  Sign out
-                </button>
-              </div>
+          <div className="mt-3 rounded-xl border border-neutral-200/90 bg-white shadow-sm px-4 sm:px-5 py-3 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-neutral-900">Sign out</p>
+              <p className="text-xs text-neutral-500 truncate mt-0.5">{user?.email}</p>
             </div>
-          </section>
+            <button
+              type="button"
+              onClick={() => signOut()}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 px-3 py-1.5 text-xs font-semibold text-neutral-800 hover:bg-neutral-50 transition-colors shrink-0"
+            >
+              <LogOut className="w-3.5 h-3.5" aria-hidden />
+              Sign out
+            </button>
+          </div>
         ) : null}
 
         {isOnboarding && <OnboardingBrowseLinks returnPath={redirectUrl} />}

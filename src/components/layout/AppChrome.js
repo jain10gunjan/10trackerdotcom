@@ -14,6 +14,7 @@ import {
   isImmersiveMobileNavPath,
   isOnboardingBrowsePath,
   isHomeDashboardPath,
+  isVendorAttemptPath,
 } from '@/lib/profileGatePaths';
 
 function TermsReacceptanceBannerSlot() {
@@ -32,7 +33,8 @@ export default function AppChrome({ children }) {
   const onAuthPage = pathname === '/sign-in' || pathname === '/sign-up';
   const onHome = isHomeDashboardPath(pathname);
   const onBrowsePage = isOnboardingBrowsePath(pathname);
-  const shellHidden = Boolean(gateActive && !onBrowsePage && !onHome);
+  const onVendorAttempt = isVendorAttemptPath(pathname);
+  const shellHidden = Boolean(gateActive && !onBrowsePage && !onHome) || onVendorAttempt;
   const termsDockActive = Boolean(termsReacceptRequired && onBrowsePage && !shellHidden);
   const showMobileBottomMenu =
     !isImmersiveMobileNavPath(pathname) &&

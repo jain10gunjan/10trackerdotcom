@@ -17,9 +17,9 @@ export default function ExamsFilterBar({
   const hasFilters = activeCategory !== 'All' || Boolean(searchTerm.trim());
 
   return (
-    <div className="sticky top-20 z-20 bg-white/95 backdrop-blur border-b border-neutral-200 shadow-sm">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-        <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+    <div className="sticky top-20 z-20 border-b border-neutral-200/80 bg-white/90 backdrop-blur-md">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+        <div className="flex flex-col sm:flex-row gap-2.5 sm:items-center">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" />
             <input
@@ -27,7 +27,7 @@ export default function ExamsFilterBar({
               value={searchTerm}
               onChange={(e) => onSearchChange(e.target.value)}
               placeholder="Search exams…"
-              className="w-full pl-9 pr-9 py-2.5 rounded-xl border border-neutral-200 bg-neutral-50 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400"
+              className="w-full pl-9 pr-9 py-2 rounded-xl border border-neutral-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400"
             />
             {searchTerm ? (
               <button
@@ -45,7 +45,7 @@ export default function ExamsFilterBar({
             <button
               type="button"
               onClick={onToggleMobileFilters}
-              className="sm:hidden inline-flex items-center gap-2 px-3 py-2.5 rounded-xl border border-neutral-200 text-sm font-medium text-neutral-700"
+              className="sm:hidden inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-neutral-200 text-sm font-medium text-neutral-700 bg-white"
             >
               <Filter className="w-4 h-4" />
               Sort
@@ -53,7 +53,7 @@ export default function ExamsFilterBar({
             <select
               value={sortBy}
               onChange={(e) => onSortChange(e.target.value)}
-              className="hidden sm:block px-3 py-2.5 rounded-xl border border-neutral-200 bg-neutral-50 text-sm font-medium text-neutral-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+              className="hidden sm:block px-3 py-2 rounded-xl border border-neutral-200 bg-white text-sm font-medium text-neutral-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
               aria-label="Sort exams"
             >
               <option value="popular">Most popular</option>
@@ -63,17 +63,19 @@ export default function ExamsFilterBar({
           </div>
         </div>
 
-        <div className="mt-3 overflow-x-auto pb-1">
-          <div className="flex items-center gap-2 min-w-max">
+        <div className="mt-2.5 overflow-x-auto pb-0.5">
+          <div className="flex items-center gap-1.5 min-w-max" role="tablist" aria-label="Exam categories">
             {categories.map((c) => (
               <button
                 key={c}
                 type="button"
+                role="tab"
+                aria-selected={activeCategory === c}
                 onClick={() => onCategoryChange(c)}
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+                className={`px-2.5 py-1 rounded-full text-xs font-semibold border transition-colors ${
                   activeCategory === c
                     ? 'bg-neutral-900 text-white border-neutral-900'
-                    : 'bg-white text-neutral-700 border-neutral-200 hover:bg-neutral-50'
+                    : 'bg-white text-neutral-600 border-neutral-200 hover:bg-neutral-50 hover:text-neutral-900'
                 }`}
               >
                 {c}
@@ -83,7 +85,7 @@ export default function ExamsFilterBar({
         </div>
 
         {showMobileFilters ? (
-          <div className="mt-3 sm:hidden rounded-xl border border-neutral-200 bg-neutral-50 p-3">
+          <div className="mt-2.5 sm:hidden rounded-xl border border-neutral-200 bg-neutral-50 p-3">
             <label className="text-xs font-semibold text-neutral-600">Sort by</label>
             <select
               value={sortBy}
@@ -100,9 +102,9 @@ export default function ExamsFilterBar({
           </div>
         ) : null}
 
-        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-neutral-500">
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-neutral-500">
           <span>
-            <strong className="text-neutral-800 tabular-nums">{resultCount}</strong> active exam
+            <strong className="text-neutral-800 tabular-nums">{resultCount}</strong> exam
             {resultCount === 1 ? '' : 's'}
           </span>
           {hasFilters ? (
@@ -113,7 +115,7 @@ export default function ExamsFilterBar({
                 onCategoryChange('All');
                 onSortChange('popular');
               }}
-              className="font-semibold text-emerald-700 hover:text-emerald-900 underline underline-offset-2"
+              className="font-semibold text-emerald-700 hover:text-emerald-900"
             >
               Reset filters
             </button>

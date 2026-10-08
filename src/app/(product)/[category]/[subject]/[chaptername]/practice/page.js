@@ -5,6 +5,7 @@ import { fetchChapterPracticeInitialData } from '@/features/practice/lib/server/
 import {
   QUESTIONS_PER_PAGE,
   DIFFICULTIES,
+  sanitizePracticeParam,
 } from '@/features/practice/lib/chapterPracticeUtils';
 
 function ChapterPracticeClient({ initialData }) {
@@ -18,9 +19,10 @@ function ChapterPracticeClient({ initialData }) {
 export default async function ChapterPracticePage({ params, searchParams }) {
   const resolvedParams = await params;
   const resolvedSearch = await searchParams;
-  const category = resolvedParams?.category;
-  const chaptername = resolvedParams?.chaptername;
-  const chapter = chaptername ? String(chaptername).replace(/-/g, ' ') : '';
+  const category = sanitizePracticeParam(resolvedParams?.category);
+  const subject = sanitizePracticeParam(resolvedParams?.subject);
+  // Keep URL slug as-is (e.g. atoms-and-nuclei) — resolver matches chapter column variants.
+  const chapter = sanitizePracticeParam(resolvedParams?.chaptername);
   const difficultyRaw = String(resolvedSearch?.difficulty ?? 'easy').toLowerCase();
   const difficulty = DIFFICULTIES.includes(difficultyRaw) ? difficultyRaw : 'easy';
 
@@ -29,6 +31,7 @@ export default async function ChapterPracticePage({ params, searchParams }) {
     try {
       initialData = await fetchChapterPracticeInitialData({
         category,
+        subject,
         chapter,
         difficulty,
         page: 1,

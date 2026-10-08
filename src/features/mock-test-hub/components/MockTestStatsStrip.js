@@ -14,19 +14,23 @@ export default function MockTestStatsStrip({
   const weakest = examTrackerStats.weakestSubject;
 
   return (
-    <div className="mb-5 sm:mb-6 space-y-4">
+    <div className="space-y-4">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: 'Completed', value: userStats.completedTests, icon: CheckCircle },
-          { label: 'Best score', value: userStats.completedTests > 0 ? `${userStats.bestScore}%` : '—', icon: Trophy },
+          {
+            label: 'Best score',
+            value: userStats.completedTests > 0 ? `${userStats.bestScore}%` : '—',
+            icon: Trophy,
+          },
           { label: 'Accuracy', value: `${examTrackerStats.averageAccuracy}%`, icon: TrendingUp },
           { label: 'Study time', value: `${userStats.totalStudyTime}h`, icon: Clock },
         ].map(({ label, value, icon: Icon }) => (
           <div
             key={label}
-            className="rounded-2xl border border-neutral-200 bg-white p-3 sm:p-4 shadow-sm"
+            className="rounded-2xl border border-neutral-200/80 bg-white/90 px-3.5 py-3 sm:px-4 sm:py-3.5 shadow-sm backdrop-blur"
           >
-            <div className="flex items-center gap-2 text-neutral-500 text-xs font-medium mb-1">
+            <div className="flex items-center gap-1.5 text-neutral-500 text-[11px] font-medium mb-1">
               <Icon className="w-3.5 h-3.5 text-emerald-600" />
               {label}
             </div>
@@ -36,9 +40,9 @@ export default function MockTestStatsStrip({
       </div>
 
       {(strongest || weakest) && (
-        <div className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4 flex items-start gap-3">
+        <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-4 flex items-start gap-3">
           <Brain className="w-5 h-5 text-emerald-700 shrink-0 mt-0.5" />
-          <p className="text-sm text-emerald-900">
+          <p className="text-sm text-emerald-900 leading-relaxed">
             {strongest ? (
               <>
                 Strongest: <strong>{strongest}</strong>
@@ -55,15 +59,21 @@ export default function MockTestStatsStrip({
       )}
 
       {recent.length > 0 ? (
-        <div className="rounded-3xl border border-neutral-200 bg-white shadow-sm overflow-hidden">
+        <div className="rounded-2xl border border-neutral-200 bg-white shadow-sm overflow-hidden">
           <div className="px-4 sm:px-5 py-3 border-b border-neutral-100 flex items-center justify-between">
-            <h3 className="text-sm font-bold text-neutral-900">Recent attempts</h3>
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-700">
+                Recent
+              </p>
+              <h3 className="text-sm font-bold text-neutral-900">Your attempts</h3>
+            </div>
             <button
               type="button"
               onClick={onOpenProgress}
-              className="text-xs font-semibold text-emerald-700 hover:text-emerald-800"
+              className="text-xs font-semibold text-neutral-700 hover:text-neutral-900 inline-flex items-center gap-1"
             >
               View all
+              <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>
           <ul className="divide-y divide-neutral-100">

@@ -19,25 +19,33 @@ import {
   ChevronRight,
   Sparkles,
 } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
-const NAV = [
+const NAV_ALL = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/mcq-creation", label: "MCQ creation", icon: Sparkles },
   { href: "/admin/mcq-extractor", label: "MCQ extractor", icon: FileText },
   { href: "/admin/gktoday", label: "GKToday", icon: Sparkles },
+  { href: "/admin/vendors", label: "Vendors", icon: GraduationCap },
   { href: "/admin/mock-tests", label: "Mock tests", icon: ClipboardList },
+  { href: "/admin/platform-exams", label: "Platform exams", icon: GraduationCap },
   { href: "/admin/pricing", label: "Pricing & credits", icon: IndianRupee },
   { href: "/admin/bulk-questions", label: "Bulk questions (JSON)", icon: Database },
   { href: "/admin/articles", label: "Articles", icon: Newspaper },
   { href: "/admin/postable-entries", label: "Postable entries", icon: ListOrdered },
   { href: "/admin/users", label: "Users", icon: Users },
-  { href: "/admin/roadmaps", label: "Roadmaps", icon: Map },
+  // Launch later — keep entry; flip SHOW_ADMIN_OG_TRACKERS when ready.
+  { href: "/admin/og-trackers", label: "OG Trackers", icon: Map, launchLater: true },
   { href: "/admin/upsc-prelims", label: "UPSC Prelims", icon: GraduationCap },
 ];
+
+const SHOW_ADMIN_OG_TRACKERS = false;
+const NAV = NAV_ALL.filter((item) => SHOW_ADMIN_OG_TRACKERS || !item.launchLater);
 
 export default function AdminShell({ children }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const { isAdmin, loading: authLoading, isAuthenticated } = useAuth();
 
   const title = useMemo(() => {
     const item = NAV.find((n) =>
@@ -72,6 +80,39 @@ export default function AdminShell({ children }) {
       })}
     </nav>
   );
+
+  if (authLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-neutral-50 pt-20 text-sm text-neutral-600">
+        Checking admin access…
+      </div>
+    );
+  }
+
+  if (!isAuthenticated || !isAdmin) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-neutral-50 px-4 pt-20">
+        <div className="max-w-md rounded-xl border border-neutral-200 bg-white p-8 text-center shadow-sm">
+          <p className="text-lg font-semibold text-neutral-900">Admin access required</p>
+          <p className="mt-2 text-sm text-neutral-600">
+            {isAuthenticated
+              ? "Your account is not authorized for the admin panel."
+              : "Sign in with an admin account to continue."}
+          </p>
+          <Link
+            href={
+              isAuthenticated
+                ? "/"
+                : `/sign-in?redirect=${encodeURIComponent(pathname || "/admin")}`
+            }
+            className="mt-6 inline-flex rounded-xl bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800"
+          >
+            {isAuthenticated ? "Back to site" : "Sign in"}
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-neutral-50 pt-20">

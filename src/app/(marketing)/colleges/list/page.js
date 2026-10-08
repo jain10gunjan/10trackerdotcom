@@ -31,7 +31,7 @@ const Navbar = ({ user, onSignOut }) => (
             </button>
           </>
         ) : (
-          <Link href="/login" className="text-blue-500 hover:underline">
+          <Link href="/sign-in" className="text-blue-500 hover:underline">
             Sign In
           </Link>
         )}
@@ -79,7 +79,7 @@ const CollegeListPage = () => {
   const handleSignOut = async () => {
     try {
       await signOut(auth);
-      router.push("/login");
+      router.push("/sign-in");
     } catch (error) {
       console.error("Sign out error:", error.message);
       setError("Failed to sign out.");

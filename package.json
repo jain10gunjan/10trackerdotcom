@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test:vendor-domain": "node --test src/features/vendor-tests/lib/vendorDomain.test.mjs"
   },
   "dependencies": {
     "@fontsource/inter": "^5.2.8",

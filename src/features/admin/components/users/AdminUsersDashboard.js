@@ -10,8 +10,18 @@ import {
   UserCheck,
   UserX,
   Sparkles,
+  CreditCard,
+  ShoppingBag,
+  Wallet,
+  CircleDollarSign,
 } from "lucide-react";
 import AdminUsersTable from "./AdminUsersTable";
+import AdminUserDetailDrawer, { formatMoneyPaise } from "./AdminUserDetailDrawer";
+import {
+  formatCategoryLabel,
+  getUserCategories,
+  userMatchesCategory,
+} from "./userCategories";
 
 const TIER_META = {
   regular: { label: "Regular", className: "bg-emerald-50 text-emerald-800 border-emerald-100" },
@@ -21,6 +31,8 @@ const TIER_META = {
   dormant: { label: "Dormant", className: "bg-neutral-100 text-neutral-600 border-neutral-200" },
   never: { label: "No activity", className: "bg-neutral-50 text-neutral-500 border-neutral-200" },
 };
+
+const PURCHASE_RANK = { purchased: 2, tried: 1, none: 0 };
 
 function formatRelativeTime(iso) {
   if (!iso) return "—";
@@ -35,7 +47,10 @@ function formatRelativeTime(iso) {
   return d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 }
 
-function filterAndSortUsers(users, { search, areaFilter, authFilter, tierFilter, sortBy }) {
+function filterAndSortUsers(
+  users,
+  { search, areaFilter, authFilter, tierFilter, purchaseFilter, sortBy }
+) {
   const q = search.trim().toLowerCase();
   let list = users;
 
@@ -43,16 +58,26 @@ function filterAndSortUsers(users, { search, areaFilter, authFilter, tierFilter,
     list = list.filter((u) => u.engagement?.tier === tierFilter);
   }
 
+  if (purchaseFilter !== "all") {
+    list = list.filter(
+      (u) => (u.billing?.purchaseStatus || "none") === purchaseFilter
+    );
+  }
+
   if (authFilter === "clerk") {
     list = list.filter((u) => (u.authSources || []).includes("clerk"));
   } else if (authFilter === "oauth") {
-    list = list.filter((u) => (u.authSources || []).includes("oauth") && !(u.authSources || []).includes("clerk"));
+    list = list.filter(
+      (u) =>
+        (u.authSources || []).includes("oauth") &&
+        !(u.authSources || []).includes("clerk")
+    );
   } else if (authFilter === "both") {
     list = list.filter((u) => (u.authSources || []).length > 1);
   }
 
   if (areaFilter !== "all") {
-    list = list.filter((u) => u.usage?.areas?.some((a) => a.area === areaFilter));
+    list = list.filter((u) => userMatchesCategory(u, areaFilter));
   }
 
   if (q) {
@@ -61,7 +86,19 @@ function filterAndSortUsers(users, { search, areaFilter, authFilter, tierFilter,
       const name = (u.name || "").toLowerCase();
       const id = (u.id || "").toLowerCase();
       const legacy = (u.legacyId || "").toLowerCase();
-      return email.includes(q) || name.includes(q) || id.includes(q) || legacy.includes(q);
+      const phone = (u.profile?.phoneNumber || "").toLowerCase();
+      const cats = getUserCategories(u)
+        .all.map((c) => formatCategoryLabel(c).toLowerCase())
+        .join(" ");
+      return (
+        email.includes(q) ||
+        name.includes(q) ||
+        id.includes(q) ||
+        legacy.includes(q) ||
+        phone.includes(q) ||
+        cats.includes(q) ||
+        getUserCategories(u).all.some((c) => c.includes(q))
+      );
     });
   }
 
@@ -75,6 +112,24 @@ function filterAndSortUsers(users, { search, areaFilter, authFilter, tierFilter,
     }
     if (sortBy === "credits") {
       return (b.wallet?.credits || 0) - (a.wallet?.credits || 0);
+    }
+    if (sortBy === "signup") {
+      return String(b.signedUpAt || "").localeCompare(String(a.signedUpAt || ""));
+    }
+    if (sortBy === "purchase") {
+      const diff =
+        (PURCHASE_RANK[b.billing?.purchaseStatus] ?? 0) -
+        (PURCHASE_RANK[a.billing?.purchaseStatus] ?? 0);
+      if (diff !== 0) return diff;
+      return (
+        (b.billing?.totals?.revenuePaise || 0) -
+        (a.billing?.totals?.revenuePaise || 0)
+      );
+    }
+    if (sortBy === "category") {
+      const aCat = getUserCategories(a).primary || "";
+      const bCat = getUserCategories(b).primary || "";
+      return aCat.localeCompare(bCat);
     }
     const aTime = a.engagement?.lastActiveAt || a.lastSignInAt || "";
     const bTime = b.engagement?.lastActiveAt || b.lastSignInAt || "";
@@ -90,6 +145,7 @@ function StatCard({ icon: Icon, label, value, hint, tone = "neutral" }) {
     emerald: "border-emerald-100 bg-emerald-50/50",
     sky: "border-sky-100 bg-sky-50/50",
     amber: "border-amber-100 bg-amber-50/50",
+    violet: "border-violet-100 bg-violet-50/50",
   };
   return (
     <div className={`rounded-2xl border p-4 ${tones[tone] || tones.neutral}`}>
@@ -117,13 +173,15 @@ export default function AdminUsersDashboard({
   const [areaFilter, setAreaFilter] = useState("all");
   const [authFilter, setAuthFilter] = useState("all");
   const [tierFilter, setTierFilter] = useState("all");
+  const [purchaseFilter, setPurchaseFilter] = useState("all");
   const [sortBy, setSortBy] = useState("last_active");
+  const [selectedUser, setSelectedUser] = useState(null);
 
   const allAreas = useMemo(() => {
     const set = new Set();
     users.forEach((u) => {
-      u.usage?.areas?.forEach((a) => {
-        if (a.area) set.add(a.area);
+      getUserCategories(u).all.forEach((c) => {
+        if (c) set.add(c);
       });
     });
     return Array.from(set).sort();
@@ -136,9 +194,10 @@ export default function AdminUsersDashboard({
         areaFilter,
         authFilter,
         tierFilter,
+        purchaseFilter,
         sortBy,
       }),
-    [users, search, areaFilter, authFilter, tierFilter, sortBy]
+    [users, search, areaFilter, authFilter, tierFilter, purchaseFilter, sortBy]
   );
 
   return (
@@ -147,11 +206,11 @@ export default function AdminUsersDashboard({
         <div>
           <h1 className="text-xl sm:text-2xl font-semibold text-neutral-900 flex items-center gap-2">
             <Users className="w-5 h-5 text-neutral-700" />
-            User progress dashboard
+            Users & subscriptions
           </h1>
           <p className="text-sm text-neutral-600 max-w-2xl mt-1">
-            Merged Clerk + Google users (one row per email). Track who is practicing regularly,
-            returning, or going dormant.
+            Signup, contact, subscriptions, and checkout attempts (purchased vs tried) —
+            one row per email.
           </p>
         </div>
         <button
@@ -178,7 +237,7 @@ export default function AdminUsersDashboard({
         </div>
       )}
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
         <StatCard icon={Users} label="Total users" value={summary?.total ?? users.length} />
         <StatCard
           icon={TrendingUp}
@@ -203,6 +262,36 @@ export default function AdminUsersDashboard({
         />
       </div>
 
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+        <StatCard
+          icon={CreditCard}
+          label="Active subs"
+          value={summary?.activeSubs ?? 0}
+          tone="violet"
+        />
+        <StatCard
+          icon={ShoppingBag}
+          label="Purchased"
+          value={summary?.purchased ?? 0}
+          hint="Completed checkout"
+          tone="emerald"
+        />
+        <StatCard
+          icon={Wallet}
+          label="Tried checkout"
+          value={summary?.tried ?? 0}
+          hint="Pending / abandoned"
+          tone="amber"
+        />
+        <StatCard
+          icon={CircleDollarSign}
+          label="Revenue"
+          value={formatMoneyPaise(summary?.revenuePaise ?? 0)}
+          hint="Completed orders only"
+          tone="sky"
+        />
+      </div>
+
       <div className="mb-4 flex flex-wrap gap-2 text-xs">
         <span className="rounded-full bg-violet-50 text-violet-800 px-2.5 py-1 border border-violet-100">
           Clerk: {counts?.clerkOnly ?? 0}
@@ -221,10 +310,20 @@ export default function AdminUsersDashboard({
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search name, email, id…"
+            placeholder="Search name, email, phone, category…"
             className="w-full pl-9 pr-3 py-2 text-sm border border-neutral-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
           />
         </div>
+        <select
+          value={purchaseFilter}
+          onChange={(e) => setPurchaseFilter(e.target.value)}
+          className="px-3 py-2 text-sm border border-neutral-300 rounded-xl bg-white"
+        >
+          <option value="all">All purchase status</option>
+          <option value="purchased">Purchased</option>
+          <option value="tried">Tried checkout</option>
+          <option value="none">No purchase</option>
+        </select>
         <select
           value={tierFilter}
           onChange={(e) => setTierFilter(e.target.value)}
@@ -256,7 +355,7 @@ export default function AdminUsersDashboard({
           <option value="all">All categories</option>
           {allAreas.map((area) => (
             <option key={area} value={area}>
-              {area}
+              {formatCategoryLabel(area)}
             </option>
           ))}
         </select>
@@ -266,6 +365,9 @@ export default function AdminUsersDashboard({
           className="px-3 py-2 text-sm border border-neutral-300 rounded-xl bg-white"
         >
           <option value="last_active">Sort: last active</option>
+          <option value="signup">Sort: signed up</option>
+          <option value="category">Sort: category</option>
+          <option value="purchase">Sort: purchase status</option>
           <option value="active_days">Sort: active days (30d)</option>
           <option value="practice">Sort: questions done</option>
           <option value="credits">Sort: credits</option>
@@ -297,7 +399,7 @@ export default function AdminUsersDashboard({
           </span>
           <span className="hidden sm:inline text-neutral-400">
             <Sparkles className="inline w-3.5 h-3.5 mr-1" />
-            Engagement from practice + mock tests
+            Click a row for full billing history
           </span>
         </div>
 
@@ -310,12 +412,24 @@ export default function AdminUsersDashboard({
           <AdminUsersTable
             users={filtered}
             onAdjustCredits={onAdjustCredits}
+            onSelectUser={setSelectedUser}
             emptyMessage="No users match the current filters."
             formatRelativeTime={formatRelativeTime}
             tierMeta={TIER_META}
           />
         )}
       </div>
+
+      <AdminUserDetailDrawer
+        user={selectedUser}
+        open={Boolean(selectedUser)}
+        onClose={() => setSelectedUser(null)}
+        onAdjustCredits={(u) => {
+          setSelectedUser(null);
+          onAdjustCredits?.(u);
+        }}
+        formatRelativeTime={formatRelativeTime}
+      />
     </div>
   );
 }

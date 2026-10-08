@@ -25,15 +25,27 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     signIn: "/sign-in",
   },
   callbacks: {
-    jwt({ token, user }) {
+    jwt({ token, user, profile }) {
       if (user?.id) {
         token.id = user.id;
+      }
+      // Persist Google verification + Workspace hd for vendor domain access checks.
+      // Only set when profile is present (initial sign-in); keep prior values on refresh.
+      if (profile) {
+        token.emailVerified = profile.email_verified === true;
+        token.hostedDomain =
+          typeof profile.hd === "string" && profile.hd.trim()
+            ? profile.hd.trim().toLowerCase()
+            : null;
       }
       return token;
     },
     session({ session, token }) {
       if (session.user) {
-        session.user.id = token.sub;
+        // Prefer token.id (set on sign-in); fall back to token.sub (JWT subject).
+        session.user.id = token.id || token.sub;
+        session.user.emailVerified = token.emailVerified === true;
+        session.user.hostedDomain = token.hostedDomain || null;
       }
       return session;
     },

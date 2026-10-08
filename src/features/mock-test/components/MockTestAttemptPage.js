@@ -235,13 +235,13 @@ const ProgressRing = memo(({ progress, size = 60, strokeWidth = 4, className = "
           fill="transparent"
           strokeDasharray={circumference}
           strokeDashoffset={strokeDashoffset}
-          className="text-neutral-700 transition-all duration-500 ease-out"
+          className="text-emerald-600 transition-all duration-500 ease-out"
           strokeLinecap="round"
         />
       </svg>
       {showPercentage && (
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-xs font-semibold text-neutral-700">
+          <span className="text-xs font-semibold text-neutral-800">
             {Math.round(validProgress)}%
           </span>
         </div>
@@ -329,10 +329,10 @@ const TimerDisplay = memo(({
         size={32} 
         strokeWidth={3} 
         showPercentage={false}
-        className={isWarning ? 'text-red-500' : 'text-neutral-600'}
+        className={isWarning ? 'text-rose-500' : 'text-emerald-600'}
       />
-      <div className={`font-mono text-sm md:text-lg font-bold ${
-        isWarning ? 'text-red-600' : 'text-neutral-800'
+      <div className={`font-mono text-sm md:text-lg font-bold tabular-nums ${
+        isWarning ? 'text-rose-600' : 'text-neutral-900'
       }`}>
         {formatTime(timeRemaining)}
       </div>
@@ -345,18 +345,18 @@ TimerDisplay.displayName = 'TimerDisplay';
 
 // Mobile Connection Status Component
 const ConnectionStatus = memo(({ isOnline, lastSaved }) => (
-  <div className="flex items-center space-x-1 text-xs">
+  <div className="flex items-center space-x-1.5 text-xs">
     {isOnline ? (
-      <Wifi className="h-3 w-3 text-green-500" />
+      <Wifi className="h-3 w-3 text-emerald-600" />
     ) : (
-      <WifiOff className="h-3 w-3 text-red-500" />
+      <WifiOff className="h-3 w-3 text-rose-500" />
     )}
-    <span className={isOnline ? 'text-green-600' : 'text-red-600'}>
+    <span className={isOnline ? 'text-emerald-700 font-medium' : 'text-rose-600 font-medium'}>
       {isOnline ? 'Online' : 'Offline'}
     </span>
     {lastSaved && (
       <span className="text-neutral-500 hidden sm:inline">
-        • Saved {new Date(lastSaved).toLocaleTimeString()}
+        · Saved {new Date(lastSaved).toLocaleTimeString()}
       </span>
     )}
   </div>
@@ -378,21 +378,24 @@ const QuestionGrid = memo(({
     const isMarked = markedIds.includes(questionId);
     const isCurrent = index === currentIndex;
 
-    if (isCurrent) return "bg-neutral-900 text-white scale-105 ring-2 ring-neutral-400";
-    if (isAnswered && isMarked) return "bg-neutral-600 text-white";
-    if (isAnswered) return "bg-neutral-700 text-white";
+    if (isCurrent) return "bg-neutral-900 text-white ring-2 ring-emerald-300/80";
+    if (isAnswered && isMarked) return "bg-emerald-800 text-white";
+    if (isAnswered) return "bg-emerald-600 text-white";
     if (isMarked) return "bg-amber-500 text-white";
-    return "bg-neutral-200 text-neutral-700 hover:bg-neutral-300 active:bg-neutral-400";
+    return "bg-neutral-100 text-neutral-600 hover:bg-neutral-200 border border-neutral-200";
   }, [answeredIds, markedIds, currentIndex]);
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl w-full max-w-md max-h-[80vh] overflow-hidden border border-neutral-200 shadow-xl">
-        <div className="p-4 border-b border-neutral-200 flex justify-between items-center">
-          <h3 className="text-lg font-semibold text-neutral-900">Questions</h3>
+    <div className="fixed inset-0 bg-neutral-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl w-full max-w-md max-h-[80vh] overflow-hidden border border-neutral-200 shadow-xl">
+        <div className="px-4 py-3.5 border-b border-neutral-100 flex justify-between items-center">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-700">Navigate</p>
+            <h3 className="text-sm font-bold text-neutral-900">Questions</h3>
+          </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-neutral-100 rounded-lg text-neutral-600"
+            className="p-2 hover:bg-neutral-100 rounded-xl text-neutral-600"
             aria-label="Close"
           >
             <X className="h-5 w-5" />
@@ -403,7 +406,7 @@ const QuestionGrid = memo(({
             {questions.map((q, index) => (
               <button
                 key={q.id || index}
-                className={`relative p-3 text-sm font-semibold rounded-lg transition-all duration-200 touch-manipulation active:scale-95 ${getQuestionStatus(q.id, index)}`}
+                className={`relative p-3 text-sm font-semibold rounded-xl transition-all duration-200 touch-manipulation active:scale-95 ${getQuestionStatus(q.id, index)}`}
                 onClick={() => {
                   onNavigate(index);
                   onClose();
@@ -412,18 +415,18 @@ const QuestionGrid = memo(({
               >
                 {index + 1}
                 {markedIds.includes(q.id) && (
-                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-amber-400 rounded-full" />
+                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-amber-400 rounded-full ring-1 ring-white" />
                 )}
               </button>
             ))}
           </div>
-          <div className="bg-neutral-50 rounded-lg p-3 border border-neutral-200">
-            <h5 className="text-xs font-semibold text-neutral-700 mb-2">Legend</h5>
+          <div className="bg-neutral-50 rounded-xl p-3 border border-neutral-200">
+            <h5 className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 mb-2">Legend</h5>
             <div className="grid grid-cols-2 gap-2 text-xs text-neutral-600">
-              <div className="flex items-center space-x-2"><div className="w-3 h-3 bg-neutral-900 rounded" /><span>Current</span></div>
-              <div className="flex items-center space-x-2"><div className="w-3 h-3 bg-neutral-600 rounded" /><span>Answered</span></div>
-              <div className="flex items-center space-x-2"><div className="w-3 h-3 bg-amber-500 rounded" /><span>Marked</span></div>
-              <div className="flex items-center space-x-2"><div className="w-3 h-3 bg-neutral-200 rounded" /><span>Pending</span></div>
+              <div className="flex items-center space-x-2"><div className="w-3 h-3 bg-neutral-900 rounded-md" /><span>Current</span></div>
+              <div className="flex items-center space-x-2"><div className="w-3 h-3 bg-emerald-600 rounded-md" /><span>Answered</span></div>
+              <div className="flex items-center space-x-2"><div className="w-3 h-3 bg-amber-500 rounded-md" /><span>Marked</span></div>
+              <div className="flex items-center space-x-2"><div className="w-3 h-3 bg-neutral-100 border border-neutral-200 rounded-md" /><span>Pending</span></div>
             </div>
           </div>
         </div>
@@ -436,48 +439,53 @@ QuestionGrid.displayName = 'QuestionGrid';
 
 // Previous Attempt Check Component
 const PreviousAttemptCard = memo(({ attempt, onViewResult, onRetakeTest }) => (
-  <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6 mb-6">
-    <div className="flex items-center justify-between mb-4">
-      <div className="flex items-center space-x-3">
-        <CheckCircle className="h-8 w-8 text-green-600 flex-shrink-0" />
+  <div className="rounded-2xl border border-neutral-200/90 bg-white shadow-sm overflow-hidden mb-4">
+    <div className="px-4 sm:px-5 pt-4 pb-3 border-b border-neutral-100">
+      <div className="flex items-start gap-2.5">
+        <span className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-emerald-100 bg-emerald-50">
+          <CheckCircle className="h-4 w-4 text-emerald-700" />
+        </span>
         <div>
-          <h3 className="text-xl font-bold text-neutral-900">Test Already Attempted</h3>
-          <p className="text-neutral-600 text-sm">You have previously taken this test.</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-700">Already attempted</p>
+          <h3 className="text-base font-bold text-neutral-900">Previous result</h3>
+          <p className="text-sm text-neutral-500 mt-0.5">You have previously taken this test.</p>
         </div>
       </div>
     </div>
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-      <div className="text-center p-3 bg-neutral-50 rounded-lg border border-neutral-200">
-        <div className="text-xl font-bold text-neutral-900">{attempt.score ?? 0}</div>
-        <div className="text-neutral-600 text-xs">Score</div>
+    <div className="px-4 sm:px-5 py-4">
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 mb-4">
+      <div className="text-center p-3 bg-neutral-50 rounded-xl border border-neutral-200">
+        <div className="text-xl font-bold text-neutral-900 tabular-nums">{attempt.score ?? 0}</div>
+        <div className="text-neutral-500 text-[11px]">Score</div>
       </div>
-      <div className="text-center p-3 bg-neutral-50 rounded-lg border border-neutral-200">
-        <div className="text-xl font-bold text-neutral-900">{attempt.percentage ?? 0}%</div>
-        <div className="text-neutral-600 text-xs">Percentage</div>
+      <div className="text-center p-3 bg-neutral-50 rounded-xl border border-neutral-200">
+        <div className="text-xl font-bold text-neutral-900 tabular-nums">{attempt.percentage ?? 0}%</div>
+        <div className="text-neutral-500 text-[11px]">Percentage</div>
       </div>
-      <div className="text-center p-3 bg-neutral-50 rounded-lg border border-neutral-200">
-        <div className="text-xl font-bold text-neutral-900">{attempt.attempted_questions ?? 0}</div>
-        <div className="text-neutral-600 text-xs">Attempted</div>
+      <div className="text-center p-3 bg-neutral-50 rounded-xl border border-neutral-200">
+        <div className="text-xl font-bold text-neutral-900 tabular-nums">{attempt.attempted_questions ?? 0}</div>
+        <div className="text-neutral-500 text-[11px]">Attempted</div>
       </div>
-      <div className="text-center p-3 bg-neutral-50 rounded-lg border border-neutral-200">
-        <div className="text-xl font-bold text-neutral-900">{formatDurationShort(attempt.duration_taken)}</div>
-        <div className="text-neutral-600 text-xs">Time</div>
+      <div className="text-center p-3 bg-neutral-50 rounded-xl border border-neutral-200">
+        <div className="text-xl font-bold text-neutral-900 tabular-nums">{formatDurationShort(attempt.duration_taken)}</div>
+        <div className="text-neutral-500 text-[11px]">Time</div>
       </div>
     </div>
-    <div className="mb-6 text-sm text-neutral-600 space-y-1">
-      <p className="flex items-center gap-1.5"><Calendar className="h-4 w-4" /> Attempted on: {new Date(attempt.submitted_at).toLocaleDateString()}</p>
-      <p className="flex items-center gap-1.5"><User className="h-4 w-4" /> Status: <span className="font-semibold capitalize text-neutral-800">{attempt.status}</span></p>
+    <div className="mb-4 text-sm text-neutral-600 space-y-1">
+      <p className="flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" /> {new Date(attempt.submitted_at).toLocaleDateString()}</p>
+      <p className="flex items-center gap-1.5"><User className="h-3.5 w-3.5" /> Status: <span className="font-semibold capitalize text-neutral-800">{attempt.status}</span></p>
     </div>
-    <div className="flex flex-col sm:flex-row gap-3">
+    <div className="flex flex-col sm:flex-row gap-2.5">
       {attempt.status === 'completed' ? (
-        <button onClick={onViewResult} className="flex-1 bg-neutral-900 text-white px-6 py-3 rounded-lg hover:bg-neutral-800 transition-colors flex items-center justify-center font-medium">
-          <Trophy className="h-5 w-5 mr-2" /> View Results
+        <button onClick={onViewResult} className="flex-1 bg-neutral-900 text-white px-5 py-2.5 rounded-xl hover:bg-neutral-800 transition-colors flex items-center justify-center font-semibold text-sm">
+          <Trophy className="h-4 w-4 mr-2" /> View Results
         </button>
       ) : (
-        <button onClick={onRetakeTest} className="flex-1 bg-neutral-100 text-neutral-800 px-6 py-3 rounded-lg hover:bg-neutral-200 transition-colors flex items-center justify-center font-medium">
-          <RefreshCw className="h-5 w-5 mr-2" /> Start Test
+        <button onClick={onRetakeTest} className="flex-1 bg-white border border-neutral-200 text-neutral-800 px-5 py-2.5 rounded-xl hover:bg-neutral-50 transition-colors flex items-center justify-center font-semibold text-sm">
+          <RefreshCw className="h-4 w-4 mr-2" /> Start Test
         </button>
       )}
+    </div>
     </div>
   </div>
 ));
@@ -1267,11 +1275,11 @@ export default function EnhancedMobileMockTestPage() {
     const isMarked = state.markedForReview.includes(questionId);
     const isCurrent = index === state.currentQuestionIndex;
 
-    if (isCurrent) return "bg-blue-600 text-white scale-105 ring-2 ring-blue-300";
-    if (isAnswered && isMarked) return "bg-purple-500 text-white";
-    if (isAnswered) return "bg-green-500 text-white";
-    if (isMarked) return "bg-yellow-500 text-white";
-    return "bg-gray-200 text-gray-700 hover:bg-gray-300 active:bg-gray-400";
+    if (isCurrent) return "bg-neutral-900 text-white ring-2 ring-emerald-300/80";
+    if (isAnswered && isMarked) return "bg-emerald-800 text-white";
+    if (isAnswered) return "bg-emerald-600 text-white";
+    if (isMarked) return "bg-amber-500 text-white";
+    return "bg-neutral-100 text-neutral-600 hover:bg-neutral-200 border border-neutral-200";
   }, [state.answeredQuestionIds, state.markedForReview, state.currentQuestionIndex]);
 
   // Handle previous attempt actions
@@ -1289,11 +1297,11 @@ export default function EnhancedMobileMockTestPage() {
 
   if (authLoading || isLoading) {
     return (
-      <div className="min-h-screen bg-neutral-50 pt-24">
+      <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-50/70 via-neutral-50 to-neutral-100 pt-24">
         <div className="min-h-[60vh] flex items-center justify-center p-4">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-4 border-neutral-200 border-t-emerald-600 mx-auto mb-4" />
-            <p className="text-neutral-600 font-medium text-sm md:text-base">Loading test…</p>
+            <div className="animate-spin rounded-full h-10 w-10 border-2 border-neutral-200 border-t-emerald-600 mx-auto mb-4" />
+            <p className="text-neutral-600 font-medium text-sm">Loading test…</p>
           </div>
         </div>
       </div>
@@ -1302,15 +1310,17 @@ export default function EnhancedMobileMockTestPage() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-neutral-50 pt-24">
+      <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-50/70 via-neutral-50 to-neutral-100 pt-24">
         <div className="min-h-[60vh] flex items-center justify-center p-4">
-          <div className="text-center bg-white rounded-3xl shadow-sm border border-neutral-200 p-6 md:p-8 max-w-sm md:max-w-md w-full">
-            <BookOpen className="h-12 w-12 md:h-14 md:w-14 text-emerald-600 mx-auto mb-4" />
-            <h2 className="text-xl md:text-2xl font-bold text-neutral-900 mb-2">Sign in required</h2>
-            <p className="text-neutral-600 mb-6 text-sm md:text-base">Sign in to take this mock test.</p>
+          <div className="text-center bg-white rounded-2xl shadow-sm border border-neutral-200 p-6 md:p-8 max-w-sm md:max-w-md w-full">
+            <span className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-50 border border-emerald-100 mb-4">
+              <BookOpen className="h-6 w-6 text-emerald-700" />
+            </span>
+            <h2 className="text-xl font-bold text-neutral-900 mb-2">Sign in required</h2>
+            <p className="text-neutral-600 mb-6 text-sm">Sign in to take this mock test.</p>
             <button
               onClick={() => router.push(`/sign-in?redirect=${encodeURIComponent(`/mock-test/${examcategory}/attempt/${testId}`)}`)}
-              className="w-full bg-emerald-600 text-white py-3 px-6 rounded-2xl hover:bg-emerald-700 transition-colors font-semibold"
+              className="w-full bg-neutral-900 text-white py-3 px-6 rounded-xl hover:bg-neutral-800 transition-colors font-semibold"
             >
               Sign in
             </button>
@@ -1322,15 +1332,15 @@ export default function EnhancedMobileMockTestPage() {
 
   if (!testInfo) {
     return (
-      <div className="min-h-screen bg-neutral-50 pt-24">
+      <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-50/70 via-neutral-50 to-neutral-100 pt-24">
         <div className="min-h-[60vh] flex items-center justify-center p-4">
-          <div className="text-center bg-white rounded-3xl shadow-sm border border-neutral-200 p-6 md:p-8 max-w-sm md:max-w-md w-full">
-            <AlertTriangle className="h-12 w-12 md:h-14 md:w-14 text-red-600 mx-auto mb-4" />
-            <h2 className="text-xl md:text-2xl font-bold text-neutral-900 mb-2">Test not found</h2>
-            <p className="text-neutral-600 mb-6 text-sm md:text-base">The requested test is not available.</p>
+          <div className="text-center bg-white rounded-2xl shadow-sm border border-neutral-200 p-6 md:p-8 max-w-sm md:max-w-md w-full">
+            <AlertTriangle className="h-12 w-12 text-rose-600 mx-auto mb-4" />
+            <h2 className="text-xl font-bold text-neutral-900 mb-2">Test not found</h2>
+            <p className="text-neutral-600 mb-6 text-sm">The requested test is not available.</p>
             <button
               onClick={() => router.push(`/mock-test/${examcategory}`)}
-              className="w-full bg-emerald-600 text-white py-3 px-6 rounded-2xl hover:bg-emerald-700 transition-colors font-semibold"
+              className="w-full bg-neutral-900 text-white py-3 px-6 rounded-xl hover:bg-neutral-800 transition-colors font-semibold"
             >
               Browse tests
             </button>
@@ -1343,8 +1353,8 @@ export default function EnhancedMobileMockTestPage() {
   // Pre-test screen with previous attempt check
   if (!state.testStarted) {
     return (
-      <div className="min-h-screen bg-neutral-50 pt-24 pb-16">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
+      <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-50/70 via-neutral-50 to-neutral-100 pt-24 pb-16">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-5 md:py-6">
           <MockTestSubpageHeader
             backHref={`/mock-test/${examcategory}`}
             backLabel="Back to mock tests"
@@ -1352,19 +1362,7 @@ export default function EnhancedMobileMockTestPage() {
             description={`${categoryLabel} · ${testInfo.total_questions} questions · ${Math.floor(testInfo.duration / 60) > 0 ? `${Math.floor(testInfo.duration / 60)}h ` : ''}${testInfo.duration % 60}m`}
           />
 
-            <div className="max-w-4xl mx-auto">
-              {/* Desktop Header */}
-              <div className="text-center mb-6 md:mb-8 hidden md:block">
-                <Trophy className="h-12 w-12 md:h-14 md:w-14 text-neutral-600 mx-auto mb-4" />
-                <h1 className="text-2xl md:text-3xl font-semibold text-neutral-900 mb-2">
-                  {testInfo.name}
-                </h1>
-                <p className="text-base md:text-lg text-neutral-600">
-                  {categoryLabel} · Full-length mock test
-                </p>
-              </div>
-
-            {/* Previous Attempt Check */}
+            <div className="max-w-4xl mx-auto space-y-4">
             {previousAttempt && (
               <PreviousAttemptCard 
                 attempt={previousAttempt}
@@ -1373,44 +1371,51 @@ export default function EnhancedMobileMockTestPage() {
               />
             )}
 
-            {/* Only show test start if no previous attempt or retake is allowed */}
 {(!previousAttempt) && (
   <>
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 mb-6 md:mb-8">
-      <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-neutral-200 p-4 md:p-6">
-        <h2 className="text-lg font-semibold text-neutral-900 mb-4 flex items-center">
-          <BarChart3 className="h-5 w-5 mr-2 text-neutral-600" />
-          Test overview
-        </h2>
-        <div className="grid grid-cols-2 gap-3 md:gap-4 mb-6">
-          <div className="flex items-center space-x-2 md:space-x-3">
-            <Target className="h-6 w-6 text-neutral-600 flex-shrink-0" />
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4 mb-2">
+      <div className="lg:col-span-2 rounded-2xl border border-neutral-200/90 bg-white shadow-sm overflow-hidden">
+        <div className="px-4 sm:px-5 pt-4 pb-3 border-b border-neutral-100">
+          <div className="flex items-start gap-2.5">
+            <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-emerald-100 bg-emerald-50 text-[10px] font-bold text-emerald-800">
+              01
+            </span>
             <div>
-              <p className="text-xs md:text-sm text-neutral-600">Questions</p>
-              <p className="text-lg md:text-xl font-bold text-neutral-900">{testInfo.total_questions}</p>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-700">Overview</p>
+              <h2 className="text-sm font-bold text-neutral-900">Test details</h2>
             </div>
           </div>
-          <div className="flex items-center space-x-2 md:space-x-3">
-            <Timer className="h-6 w-6 text-neutral-600 flex-shrink-0" />
+        </div>
+        <div className="px-4 sm:px-5 py-4">
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <div className="flex items-center gap-2.5 rounded-xl border border-neutral-100 bg-neutral-50/80 px-3 py-2.5">
+            <Target className="h-5 w-5 text-emerald-700 flex-shrink-0" />
             <div>
-              <p className="text-xs md:text-sm text-neutral-600">Duration</p>
-              <p className="text-lg md:text-xl font-bold text-neutral-900">{Math.floor(testInfo.duration / 60)}h {testInfo.duration % 60}m</p>
+              <p className="text-[11px] text-neutral-500">Questions</p>
+              <p className="text-lg font-bold text-neutral-900 tabular-nums">{testInfo.total_questions}</p>
             </div>
           </div>
-          <div className="flex items-center space-x-2 md:space-x-3">
-            <Zap className="h-6 w-6 text-neutral-600 flex-shrink-0" />
+          <div className="flex items-center gap-2.5 rounded-xl border border-neutral-100 bg-neutral-50/80 px-3 py-2.5">
+            <Timer className="h-5 w-5 text-emerald-700 flex-shrink-0" />
             <div>
-              <p className="text-xs md:text-sm text-neutral-600">Difficulty</p>
-              <p className="text-lg md:text-xl font-bold text-neutral-900 capitalize">{testInfo.difficulty}</p>
+              <p className="text-[11px] text-neutral-500">Duration</p>
+              <p className="text-lg font-bold text-neutral-900 tabular-nums">{Math.floor(testInfo.duration / 60)}h {testInfo.duration % 60}m</p>
             </div>
           </div>
-          <div className="flex items-center space-x-2 md:space-x-3">
-            <Award className="h-6 w-6 text-neutral-600 flex-shrink-0" />
+          <div className="flex items-center gap-2.5 rounded-xl border border-neutral-100 bg-neutral-50/80 px-3 py-2.5">
+            <Zap className="h-5 w-5 text-amber-600 flex-shrink-0" />
             <div>
-              <p className="text-xs md:text-sm text-neutral-600">
+              <p className="text-[11px] text-neutral-500">Difficulty</p>
+              <p className="text-lg font-bold text-neutral-900 capitalize">{testInfo.difficulty}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2.5 rounded-xl border border-neutral-100 bg-neutral-50/80 px-3 py-2.5">
+            <Award className="h-5 w-5 text-violet-600 flex-shrink-0" />
+            <div>
+              <p className="text-[11px] text-neutral-500">
                 {usesGateMarking(examcategory) ? 'Max marks' : 'Max score'}
               </p>
-              <p className="text-lg md:text-xl font-bold text-neutral-900">
+              <p className="text-lg font-bold text-neutral-900 tabular-nums">
                 {usesGateMarking(examcategory)
                   ? testInfo.total_questions
                   : testInfo.total_questions * 100}
@@ -1421,57 +1426,58 @@ export default function EnhancedMobileMockTestPage() {
             </div>
           </div>
         </div>
-        <div className="border-t border-neutral-200 pt-4 space-y-2 text-sm text-neutral-600">
-          <div className="flex justify-between py-2 border-b border-neutral-100">
-            <span className="flex items-center gap-1.5"><Clock className="h-4 w-4" /> Avg. time per question</span>
-            <span className="font-medium text-neutral-800">{Math.round(testInfo.duration / testInfo.total_questions * 60)}s</span>
+        <div className="border-t border-neutral-100 pt-3 space-y-1.5 text-sm text-neutral-600">
+          <div className="flex justify-between py-1.5">
+            <span className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" /> Avg. time / question</span>
+            <span className="font-semibold text-neutral-800 tabular-nums">{Math.round(testInfo.duration / testInfo.total_questions * 60)}s</span>
           </div>
-          <div className="flex justify-between py-2 border-b border-neutral-100">
-            <span className="flex items-center gap-1.5"><Brain className="h-4 w-4" /> Type</span>
-            <span className="font-medium text-neutral-800">MCQ</span>
+          <div className="flex justify-between py-1.5">
+            <span className="flex items-center gap-1.5"><Brain className="h-3.5 w-3.5" /> Type</span>
+            <span className="font-semibold text-neutral-800">MCQ</span>
           </div>
-          <div className="flex justify-between py-2">
-            <span className="flex items-center gap-1.5"><Flag className="h-4 w-4" /> Mark for review</span>
-            <span className="font-medium text-neutral-800">Available</span>
+          <div className="flex justify-between py-1.5">
+            <span className="flex items-center gap-1.5"><Flag className="h-3.5 w-3.5" /> Mark for review</span>
+            <span className="font-semibold text-neutral-800">Available</span>
           </div>
         </div>
-        <div className="mt-4 p-3 bg-neutral-50 rounded-lg border border-neutral-200 md:hidden">
-          <h4 className="text-sm font-semibold text-neutral-900 mb-2 flex items-center"><Star className="h-4 w-4 mr-1" /> Quick tips</h4>
-          <ul className="text-xs text-neutral-700 space-y-1">
-            <li>• ~{Math.round(testInfo.duration / testInfo.total_questions * 60)}s per question</li>
-            <li>• Mark difficult ones; review if time permits</li>
-          </ul>
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-4 md:p-6">
-        <h3 className="text-base font-semibold text-neutral-900 mb-3 flex items-center">
-          <BookOpen className="h-4 w-4 mr-2 text-neutral-600" />
-          Instructions
-        </h3>
-        <ul className="space-y-2 text-sm text-neutral-600">
-          <li className="flex items-start gap-2"><CheckCircle className="h-4 w-4 mt-0.5 flex-shrink-0 text-green-600" /> Use nav or grid to move between questions</li>
-          <li className="flex items-start gap-2"><CheckCircle className="h-4 w-4 mt-0.5 flex-shrink-0 text-green-600" /> Answers auto-saved</li>
-          <li className="flex items-start gap-2"><Flag className="h-4 w-4 mt-0.5 flex-shrink-0" /> Mark for review; clear/change anytime</li>
-          <li className="flex items-start gap-2"><Save className="h-4 w-4 mt-0.5 flex-shrink-0" /> Auto-save every 30s; time warnings at 10, 5, 1 min</li>
-          <li className="flex items-start gap-2"><AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" /> Test auto-submits when time ends</li>
+      <div className="rounded-2xl border border-neutral-200/90 bg-white shadow-sm overflow-hidden">
+        <div className="px-4 sm:px-5 pt-4 pb-3 border-b border-neutral-100">
+          <div className="flex items-start gap-2.5">
+            <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-emerald-100 bg-emerald-50 text-[10px] font-bold text-emerald-800">
+              02
+            </span>
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-700">Before you begin</p>
+              <h3 className="text-sm font-bold text-neutral-900">Instructions</h3>
+            </div>
+          </div>
+        </div>
+        <ul className="px-4 sm:px-5 py-4 space-y-2.5 text-sm text-neutral-600">
+          <li className="flex items-start gap-2"><CheckCircle className="h-4 w-4 mt-0.5 flex-shrink-0 text-emerald-600" /> Use nav or grid to move between questions</li>
+          <li className="flex items-start gap-2"><CheckCircle className="h-4 w-4 mt-0.5 flex-shrink-0 text-emerald-600" /> Answers auto-saved</li>
+          <li className="flex items-start gap-2"><Flag className="h-4 w-4 mt-0.5 flex-shrink-0 text-amber-600" /> Mark for review; clear/change anytime</li>
+          <li className="flex items-start gap-2"><Save className="h-4 w-4 mt-0.5 flex-shrink-0 text-neutral-500" /> Auto-save every 30s; warnings at 10, 5, 1 min</li>
+          <li className="flex items-start gap-2"><AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0 text-rose-500" /> Auto-submits when time ends</li>
         </ul>
       </div>
     </div>
 
-    <div className="sticky bottom-0 bg-white/95 backdrop-blur-sm border-t border-neutral-200 p-4 md:relative md:bg-transparent md:border-0 md:p-0">
-      <div className="text-center">
+    <div className="sticky bottom-16 md:bottom-4 z-20 rounded-2xl border border-neutral-200 bg-white/95 backdrop-blur shadow-md px-4 py-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <p className="text-xs text-neutral-500 text-center sm:text-left">
+          Starts immediately · progress auto-saved
+        </p>
         <button
           onClick={startTestAttempt}
           disabled={!state.questionsQueue.length}
-          className="w-full md:w-auto inline-flex items-center justify-center px-6 md:px-8 py-4 bg-emerald-600 text-white text-base md:text-lg font-semibold rounded-2xl hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors min-h-[52px]"
+          className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-emerald-700 text-white text-sm font-semibold rounded-xl hover:bg-emerald-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
-          <Play className="h-5 w-5 mr-2" />
+          <Play className="h-4 w-4" />
           Start {testInfo.total_questions} question test
         </button>
-        <p className="mt-2 text-xs text-neutral-500">
-          Test starts immediately. Progress is auto-saved.
-        </p>
       </div>
     </div>
   </>
@@ -1489,9 +1495,9 @@ export default function EnhancedMobileMockTestPage() {
   const progressPct = totalQ > 0 ? (currentQ / totalQ) * 100 : 0;
 
   return (
-    <div className="min-h-screen bg-neutral-50 pt-24 pb-16">
+    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-50/70 via-neutral-50 to-neutral-100 pt-24 pb-20 md:pb-16">
       {networkError && (
-        <div className="bg-red-600 text-white px-4 py-2 text-center text-xs md:text-sm">
+        <div className="bg-rose-600 text-white px-4 py-2 text-center text-xs md:text-sm">
           <WifiOff className="h-3 w-3 md:h-4 md:w-4 inline mr-2" />
           No internet. Progress saved locally.
         </div>
@@ -1500,34 +1506,40 @@ export default function EnhancedMobileMockTestPage() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
         {state.currentQuestion ? (
           <MathJaxContext config={config}>
-          <div className="space-y-4">
-            <div className="bg-white rounded-3xl shadow-sm border border-neutral-200 p-3 md:p-4 lg:p-5 mb-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2 md:space-x-4 min-w-0 flex-1">
-                  <div className="hidden md:block w-8 h-8 lg:w-10 lg:h-10 bg-neutral-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <BookOpen className="h-4 w-4 lg:h-5 lg:w-5 text-neutral-700" />
-                  </div>
+          <div className="space-y-3 sm:space-y-4">
+            {/* Sticky attempt header */}
+            <div className="sticky top-20 z-30 rounded-2xl border border-neutral-200/90 bg-white/95 shadow-sm backdrop-blur overflow-hidden">
+              <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(16,185,129,0.06),transparent_50%)] pointer-events-none" />
+              <div className="relative p-3 md:p-4 space-y-2.5">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                  <span className="hidden sm:inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-emerald-100 bg-emerald-50 text-[11px] font-bold tabular-nums text-emerald-800">
+                    {String(currentQ).padStart(2, '0')}
+                  </span>
                   <div className="min-w-0 flex-1">
-                    <h2 className="text-sm md:text-lg font-bold text-neutral-900 truncate">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-700">In progress</p>
+                    <h2 className="text-sm md:text-base font-bold text-neutral-900 truncate">
                       {testInfo.name}
                     </h2>
-                    <p className="text-xs md:text-sm text-neutral-600">
-                      Q {currentQ}/{totalQ}
+                    <p className="text-xs text-neutral-500 tabular-nums">
+                      Question {currentQ} of {totalQ}
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center space-x-2 md:space-x-4 flex-shrink-0">
-                  <TimerDisplay
-                    testDuration={state.testDuration}
-                    testStarted={state.testStarted}
-                    testStartTime={state.testStartTime}
-                    onTimeEnd={handleTimeEnd}
-                    onTimeWarning={handleTimeWarning}
-                    onTick={(tick) => dispatch({ type: "UPDATE_TIME", payload: tick })}
-                  />
+                <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
+                  <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-2.5 py-1.5">
+                    <TimerDisplay
+                      testDuration={state.testDuration}
+                      testStarted={state.testStarted}
+                      testStartTime={state.testStartTime}
+                      onTimeEnd={handleTimeEnd}
+                      onTimeWarning={handleTimeWarning}
+                      onTick={(tick) => dispatch({ type: "UPDATE_TIME", payload: tick })}
+                    />
+                  </div>
                   <button
                     onClick={() => dispatch({ type: "TOGGLE_QUESTION_GRID" })}
-                    className="md:hidden p-2 text-neutral-600 hover:bg-neutral-100 rounded-lg"
+                    className="md:hidden p-2 text-neutral-600 hover:bg-neutral-100 rounded-xl border border-neutral-200"
                     aria-label="Question list"
                   >
                     <Menu className="h-5 w-5" />
@@ -1535,51 +1547,58 @@ export default function EnhancedMobileMockTestPage() {
                   <button
                     onClick={() => setShowConfirmSubmit(true)}
                     disabled={isSubmitting}
-                    className="bg-red-600 text-white px-3 md:px-4 py-2 rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors flex items-center text-xs md:text-sm font-medium"
+                    className="bg-neutral-900 text-white px-3 md:px-4 py-2 rounded-xl hover:bg-neutral-800 disabled:opacity-50 transition-colors flex items-center text-xs md:text-sm font-semibold"
                   >
-                    <AlertTriangle className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
+                    <AlertTriangle className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1 md:mr-1.5" />
                     <span className="hidden sm:inline">Submit</span>
                     <span className="sm:hidden">End</span>
                   </button>
                 </div>
               </div>
-              <div className="flex justify-between items-center text-xs">
+              <div className="flex justify-between items-center text-xs gap-3">
                 <ConnectionStatus isOnline={state.isOnline} lastSaved={state.lastSaved} />
-                <div className="flex items-center space-x-2 md:space-x-4">
-                  <span className="text-neutral-500">{Math.round(progressPct)}%</span>
-                  <div className="w-16 md:w-20 bg-neutral-200 rounded-full h-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-neutral-500 tabular-nums font-medium">{Math.round(progressPct)}%</span>
+                  <div className="w-16 md:w-24 bg-neutral-100 rounded-full h-1.5 overflow-hidden">
                     <div
-                      className="bg-neutral-700 h-1.5 rounded-full transition-all duration-300"
+                      className="bg-emerald-600 h-1.5 rounded-full transition-all duration-300"
                       style={{ width: `${progressPct}%` }}
                     />
                   </div>
                 </div>
               </div>
-            </div>
+              </div>
             </div>
 
-          <div className="flex flex-col lg:flex-row gap-4">
-            <div className="hidden lg:block w-72 xl:w-80 bg-white rounded-xl shadow-sm border border-neutral-200 flex-shrink-0">
+          <div className="flex flex-col lg:flex-row gap-3 sm:gap-4">
+            <aside className="hidden lg:block w-72 xl:w-80 rounded-2xl border border-neutral-200/90 bg-white shadow-sm flex-shrink-0 overflow-hidden">
+              <div className="px-4 pt-4 pb-3 border-b border-neutral-100">
+                <div className="flex items-start gap-2.5">
+                  <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-emerald-100 bg-emerald-50 text-[10px] font-bold text-emerald-800">
+                    Q
+                  </span>
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-700">Palette</p>
+                    <h3 className="text-sm font-bold text-neutral-900">Progress</h3>
+                  </div>
+                </div>
+              </div>
               <div className="p-4">
-                <h3 className="text-base font-semibold text-neutral-900 mb-3 flex items-center">
-                  <LineChart className="h-4 w-4 mr-2 text-neutral-600" />
-                  Progress
-                </h3>
                 <div className="grid grid-cols-2 gap-2 mb-4">
-                  <div className="bg-neutral-50 p-3 rounded-lg text-center border border-neutral-200">
-                    <div className="text-xl font-bold text-neutral-900">{state.questionsAnswered}</div>
-                    <div className="text-neutral-600 text-xs">Answered</div>
+                  <div className="bg-emerald-50/80 p-3 rounded-xl text-center border border-emerald-100">
+                    <div className="text-xl font-bold text-neutral-900 tabular-nums">{state.questionsAnswered}</div>
+                    <div className="text-emerald-800 text-[11px] font-medium">Answered</div>
                   </div>
-                  <div className="bg-neutral-50 p-3 rounded-lg text-center border border-neutral-200">
-                    <div className="text-xl font-bold text-neutral-900">{state.markedForReview.length}</div>
-                    <div className="text-neutral-600 text-xs">Marked</div>
+                  <div className="bg-amber-50/80 p-3 rounded-xl text-center border border-amber-100">
+                    <div className="text-xl font-bold text-neutral-900 tabular-nums">{state.markedForReview.length}</div>
+                    <div className="text-amber-800 text-[11px] font-medium">Marked</div>
                   </div>
                 </div>
-                <div className="mb-2 flex justify-center">
-                  <ProgressRing progress={progressPct} size={72} className="mx-auto" />
+                <div className="mb-3 flex justify-center">
+                  <ProgressRing progress={progressPct} size={72} className="mx-auto text-emerald-600" />
                 </div>
-                <h4 className="text-xs font-semibold text-neutral-700 mb-2">Questions</h4>
-                <div className="grid grid-cols-5 gap-1.5 max-h-48 overflow-y-auto">
+                <h4 className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 mb-2">Questions</h4>
+                <div className="grid grid-cols-5 gap-1.5 max-h-52 overflow-y-auto">
                   {state.questionsQueue.map((q, index) => (
                     <button
                       key={q.id || index}
@@ -1588,62 +1607,59 @@ export default function EnhancedMobileMockTestPage() {
                       title={`Question ${index + 1}`}
                     >
                       {index + 1}
-                      {state.markedForReview.includes(q.id) && <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-amber-400 rounded-full" />}
+                      {state.markedForReview.includes(q.id) && <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-amber-400 rounded-full ring-1 ring-white" />}
                     </button>
                   ))}
                 </div>
-                <div className="mt-3 bg-neutral-50 rounded-lg p-2 border border-neutral-200">
-                  <div className="grid grid-cols-2 gap-1 text-xs text-neutral-600">
-                    <div className="flex items-center gap-1"><div className="w-2.5 h-2.5 bg-neutral-900 rounded" /><span>Current</span></div>
-                    <div className="flex items-center gap-1"><div className="w-2.5 h-2.5 bg-neutral-600 rounded" /><span>Done</span></div>
-                    <div className="flex items-center gap-1"><div className="w-2.5 h-2.5 bg-amber-500 rounded" /><span>Marked</span></div>
-                    <div className="flex items-center gap-1"><div className="w-2.5 h-2.5 bg-neutral-200 rounded" /><span>Pending</span></div>
+                <div className="mt-3 bg-neutral-50 rounded-xl p-2.5 border border-neutral-200">
+                  <div className="grid grid-cols-2 gap-1.5 text-[11px] text-neutral-600">
+                    <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 bg-neutral-900 rounded" /><span>Current</span></div>
+                    <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 bg-emerald-600 rounded" /><span>Done</span></div>
+                    <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 bg-amber-500 rounded" /><span>Marked</span></div>
+                    <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 bg-neutral-100 border border-neutral-200 rounded" /><span>Pending</span></div>
                   </div>
                 </div>
               </div>
-            </div>
+            </aside>
 
             <div
-              className="flex-1 bg-white rounded-xl shadow-sm border border-neutral-200 min-w-0"
+              className="flex-1 rounded-2xl border border-neutral-200/90 bg-white shadow-sm min-w-0 overflow-hidden"
               onTouchStart={handleTouchStart}
               onTouchEnd={handleTouchEnd}
             >
-              <div className="p-3 md:p-6 lg:p-8">
-                {/* Question Header - Mobile First */}
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4 md:mb-6 space-y-3 md:space-y-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="bg-neutral-100 text-neutral-800 px-2 md:px-3 py-1 rounded-full text-xs md:text-sm font-medium">
+              <div className="p-4 md:p-6 lg:p-8">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4 md:mb-5 gap-3">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="border border-emerald-100 bg-emerald-50 text-emerald-800 px-2.5 py-1 rounded-full text-xs font-semibold">
                       {state.currentQuestion.subject}
                     </span>
-                    <span className="bg-neutral-100 text-neutral-700 px-2 md:px-3 py-1 rounded-full text-xs md:text-sm">
+                    <span className="border border-neutral-200 bg-neutral-50 text-neutral-700 px-2.5 py-1 rounded-full text-xs">
                       {state.currentQuestion.topic}
                     </span>
-                    <span className="bg-neutral-100 text-neutral-700 px-2 md:px-3 py-1 rounded-full text-xs md:text-sm capitalize">
+                    <span className="border border-neutral-200 bg-neutral-50 text-neutral-600 px-2.5 py-1 rounded-full text-xs capitalize">
                       {state.currentQuestion.difficulty}
                     </span>
                   </div>
                   <button
                     onClick={handleMarkForReview}
-                    className={`flex items-center px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-all ${
+                    className={`inline-flex items-center px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
                       state.markedForReview.includes(state.currentQuestion.id)
-                        ? 'bg-amber-100 text-amber-800 border border-amber-400'
-                        : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200 border border-transparent'
+                        ? 'bg-amber-50 text-amber-900 border border-amber-300'
+                        : 'bg-white text-neutral-700 hover:bg-neutral-50 border border-neutral-200'
                     }`}
                   >
-                    <Flag className="h-3 w-3 md:h-4 md:w-4 mr-1" />
-                    {state.markedForReview.includes(state.currentQuestion.id) ? 'Unmark' : 'Mark'}
+                    <Flag className="h-3.5 w-3.5 mr-1.5" />
+                    {state.markedForReview.includes(state.currentQuestion.id) ? 'Unmark' : 'Mark for review'}
                   </button>
                 </div>
 
-                {/* Question Content */}
                 <MathJax hideUntilTypeset={"first"} inline dynamic>
                   <div
                     dangerouslySetInnerHTML={{ __html: state.currentQuestion.question }}
-                    className="text-base md:text-lg mb-6 md:mb-8 prose max-w-none leading-relaxed"
+                    className="text-base md:text-lg mb-5 md:mb-6 prose max-w-none leading-relaxed text-neutral-900"
                   />
                   
-                  {/* Answer input — inline text or MCQ options */}
-                  <div className="space-y-3 md:space-y-4">
+                  <div className="space-y-2.5 md:space-y-3">
                     {isInlineAnswerQuestion(state.currentQuestion) ? (
                       <InlineAnswerInput
                         value={state.userAnswer || ""}
@@ -1666,10 +1682,10 @@ export default function EnhancedMobileMockTestPage() {
                       getVisibleMcqOptions(state.currentQuestion).map((option) => (
                       <label
                         key={option}
-                        className={`flex items-start p-3 md:p-4 border-2 rounded-xl cursor-pointer transition-all ${
+                        className={`flex items-start p-3 md:p-3.5 border rounded-xl cursor-pointer transition-all ${
                           state.userAnswer === option
-                            ? "bg-neutral-100 border-neutral-700 shadow-sm"
-                            : "border-neutral-200 hover:border-neutral-300 hover:bg-neutral-50"
+                            ? "bg-emerald-50/80 border-emerald-300 shadow-sm shadow-emerald-100/50"
+                            : "border-neutral-200 hover:border-neutral-300 hover:bg-neutral-50/80 bg-white"
                         }`}
                       >
                         <input
@@ -1678,16 +1694,18 @@ export default function EnhancedMobileMockTestPage() {
                           value={option}
                           checked={state.userAnswer === option}
                           onChange={() => handleAnswerSelect(option)}
-                          className="h-4 w-4 md:h-5 md:w-5 text-neutral-700 focus:ring-neutral-600 mr-3 md:mr-4 mt-0.5 flex-shrink-0"
+                          className="sr-only"
                         />
-                        <div className={`w-6 h-6 md:w-8 md:h-8 rounded-full flex items-center justify-center text-xs md:text-sm font-bold mr-3 md:mr-4 flex-shrink-0 ${
-                          state.userAnswer === option ? "bg-neutral-900 text-white" : "bg-neutral-200 text-neutral-600"
+                        <div className={`w-7 h-7 md:w-8 md:h-8 rounded-lg flex items-center justify-center text-xs md:text-sm font-bold mr-3 flex-shrink-0 ${
+                          state.userAnswer === option
+                            ? "bg-emerald-700 text-white"
+                            : "bg-neutral-100 text-neutral-600 border border-neutral-200"
                         }`}>
                           {option}
                         </div>
                         <span
                           dangerouslySetInnerHTML={{ __html: state.currentQuestion[`options_${option}`] }}
-                          className="flex-1 text-sm md:text-base leading-relaxed"
+                          className="flex-1 text-sm md:text-base leading-relaxed pt-0.5 text-neutral-800"
                         />
                       </label>
                     ))
@@ -1695,19 +1713,18 @@ export default function EnhancedMobileMockTestPage() {
                   </div>
                 </MathJax>
 
-                {/* Action Buttons - Mobile First */}
-                <div className="mt-6 md:mt-8">
-                  <div className="flex justify-between items-center mb-4 md:hidden">
+                <div className="mt-6 md:mt-8 pt-4 border-t border-neutral-100">
+                  <div className="flex justify-between items-center mb-3 md:hidden">
                   <button
                     onClick={() => handleNavigation('prev')}
                     disabled={state.currentQuestionIndex === 0}
-                    className="bg-neutral-100 text-neutral-700 px-4 py-2 rounded-lg flex items-center hover:bg-neutral-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+                    className="bg-white border border-neutral-200 text-neutral-700 px-3.5 py-2 rounded-xl flex items-center hover:bg-neutral-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-semibold"
                   >
-                    <ChevronLeft className="h-4 w-4 mr-1" /> Prev
+                    <ChevronLeft className="h-4 w-4 mr-0.5" /> Prev
                   </button>
                   <button
                     onClick={() => dispatch({ type: "TOGGLE_QUESTION_GRID" })}
-                    className="bg-neutral-100 text-neutral-800 px-4 py-2 rounded-lg flex items-center hover:bg-neutral-200 font-medium"
+                    className="bg-neutral-50 border border-neutral-200 text-neutral-800 px-3.5 py-2 rounded-xl flex items-center hover:bg-neutral-100 text-sm font-semibold tabular-nums"
                   >
                     <Target className="h-4 w-4 mr-1" />
                     {currentQ}/{totalQ}
@@ -1715,40 +1732,40 @@ export default function EnhancedMobileMockTestPage() {
                   <button
                     onClick={() => handleNavigation('next')}
                     disabled={currentQ >= totalQ}
-                    className="bg-neutral-100 text-neutral-700 px-4 py-2 rounded-lg flex items-center hover:bg-neutral-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+                    className="bg-white border border-neutral-200 text-neutral-700 px-3.5 py-2 rounded-xl flex items-center hover:bg-neutral-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-semibold"
                   >
-                    Next <ChevronRight className="h-4 w-4 ml-1" />
+                    Next <ChevronRight className="h-4 w-4 ml-0.5" />
                   </button>
                 </div>
 
-                <div className="space-y-3 md:hidden">
+                <div className="space-y-2.5 md:hidden">
                   {state.userAnswer && (
                     <button
                       onClick={() => {
                         if (currentQ < totalQ) handleNavigation('next');
                         else setShowConfirmSubmit(true);
                       }}
-                      className="w-full bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center font-medium"
+                      className="w-full bg-emerald-700 text-white py-2.5 px-4 rounded-xl hover:bg-emerald-800 transition-colors flex items-center justify-center font-semibold text-sm"
                     >
                       <Save className="h-4 w-4 mr-2" />
                       {state.currentQuestionIndex + 1 < state.questionsQueue.length ? 'Save & Next' : 'Save & Finish'}
                     </button>
                   )}
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-2.5">
                     {state.userAnswer && (
                       <button
                         onClick={() => dispatch({ type: "ANSWER_QUESTION", payload: { userAnswer: "" } })}
-                        className="bg-neutral-100 text-neutral-700 py-3 px-4 rounded-lg hover:bg-neutral-200 transition-colors flex items-center justify-center font-medium"
+                        className="bg-white border border-neutral-200 text-neutral-700 py-2.5 px-4 rounded-xl hover:bg-neutral-50 transition-colors flex items-center justify-center font-semibold text-sm"
                       >
-                        <XCircle className="h-4 w-4 mr-2" /> Clear
+                        <XCircle className="h-4 w-4 mr-1.5" /> Clear
                       </button>
                     )}
                     {currentQ < totalQ && (
                       <button
                         onClick={() => handleNavigation('next')}
-                        className="bg-neutral-900 text-white py-3 px-4 rounded-lg hover:bg-neutral-800 transition-colors flex items-center justify-center font-medium"
+                        className="bg-neutral-900 text-white py-2.5 px-4 rounded-xl hover:bg-neutral-800 transition-colors flex items-center justify-center font-semibold text-sm"
                       >
-                        <SkipForward className="h-4 w-4 mr-2" /> Skip
+                        <SkipForward className="h-4 w-4 mr-1.5" /> Skip
                       </button>
                     )}
                   </div>
@@ -1758,9 +1775,9 @@ export default function EnhancedMobileMockTestPage() {
                   <button
                     onClick={() => handleNavigation('prev')}
                     disabled={state.currentQuestionIndex === 0}
-                    className="bg-neutral-100 text-neutral-700 px-5 py-2.5 rounded-lg flex items-center hover:bg-neutral-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+                    className="bg-white border border-neutral-200 text-neutral-700 px-5 py-2.5 rounded-xl flex items-center hover:bg-neutral-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-semibold text-sm"
                   >
-                    <ChevronLeft className="h-5 w-5 mr-2" /> Previous
+                    <ChevronLeft className="h-4 w-4 mr-1.5" /> Previous
                   </button>
                   <div className="flex flex-wrap items-center gap-2">
                     {state.userAnswer && (
@@ -1769,32 +1786,33 @@ export default function EnhancedMobileMockTestPage() {
                           if (state.currentQuestionIndex + 1 < state.questionsQueue.length) handleNavigation('next');
                           else setShowConfirmSubmit(true);
                         }}
-                        className="bg-green-600 text-white px-5 py-2.5 rounded-lg flex items-center hover:bg-green-700 transition-colors font-medium"
+                        className="bg-emerald-700 text-white px-5 py-2.5 rounded-xl flex items-center hover:bg-emerald-800 transition-colors font-semibold text-sm"
                       >
-                        <Save className="h-4 w-4 mr-2" />
+                        <Save className="h-4 w-4 mr-1.5" />
                         {state.currentQuestionIndex + 1 < state.questionsQueue.length ? 'Save & Next' : 'Save & Finish'}
                       </button>
                     )}
                     {state.userAnswer && (
                       <button
                         onClick={() => dispatch({ type: "ANSWER_QUESTION", payload: { userAnswer: "" } })}
-                        className="bg-neutral-100 text-neutral-700 px-4 py-2.5 rounded-lg flex items-center hover:bg-neutral-200 font-medium"
+                        className="bg-white border border-neutral-200 text-neutral-700 px-4 py-2.5 rounded-xl flex items-center hover:bg-neutral-50 font-semibold text-sm"
                       >
-                        <XCircle className="h-4 w-4 mr-2" /> Clear
+                        <XCircle className="h-4 w-4 mr-1.5" /> Clear
                       </button>
                     )}
                     {currentQ < totalQ && (
                       <button
                         onClick={() => handleNavigation('next')}
-                        className="bg-neutral-900 text-white px-5 py-2.5 rounded-lg flex items-center hover:bg-neutral-800 font-medium"
+                        className="bg-neutral-900 text-white px-5 py-2.5 rounded-xl flex items-center hover:bg-neutral-800 font-semibold text-sm"
                       >
-                        <SkipForward className="h-4 w-4 mr-2" /> Skip
+                        <SkipForward className="h-4 w-4 mr-1.5" /> Skip
                       </button>
                     )}
                   </div>
                 </div>
               </div>
             </div>
+          </div>
           </div>
 
           {state.showQuestionGrid && (
@@ -1810,12 +1828,12 @@ export default function EnhancedMobileMockTestPage() {
           </div>
         </MathJaxContext>
       ) : (
-        <div className="text-center py-12 bg-white rounded-xl shadow-sm border border-neutral-200">
-          <AlertTriangle className="h-14 w-14 text-neutral-400 mx-auto mb-4" />
-          <p className="text-lg text-neutral-600 mb-6">No questions available</p>
+        <div className="text-center py-12 bg-white rounded-2xl shadow-sm border border-neutral-200">
+          <AlertTriangle className="h-12 w-12 text-neutral-400 mx-auto mb-4" />
+          <p className="text-base text-neutral-600 mb-6">No questions available</p>
           <button
             onClick={() => router.push(`/mock-test/${examcategory}`)}
-            className="bg-neutral-900 text-white px-6 py-3 rounded-lg hover:bg-neutral-800 transition-colors font-medium"
+            className="bg-neutral-900 text-white px-6 py-2.5 rounded-xl hover:bg-neutral-800 transition-colors font-semibold text-sm"
           >
             Back to tests
           </button>
@@ -1824,35 +1842,42 @@ export default function EnhancedMobileMockTestPage() {
     </div>
 
     {showConfirmSubmit && (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-xl shadow-xl border border-neutral-200 max-w-md w-full max-h-[90vh] overflow-y-auto">
-          <div className="p-5 md:p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <AlertTriangle className="h-8 w-8 text-red-600 flex-shrink-0" />
-              <h3 className="text-lg font-bold text-neutral-900">Submit test?</h3>
+      <div className="fixed inset-0 bg-neutral-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-2xl shadow-xl border border-neutral-200 max-w-md w-full max-h-[90vh] overflow-y-auto">
+          <div className="px-5 pt-5 pb-3 border-b border-neutral-100">
+            <div className="flex items-start gap-2.5">
+              <span className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-rose-100 bg-rose-50">
+                <AlertTriangle className="h-4 w-4 text-rose-600" />
+              </span>
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-rose-700">Final step</p>
+                <h3 className="text-base font-bold text-neutral-900">Submit test?</h3>
+                <p className="text-sm text-neutral-500 mt-0.5">
+                  You cannot change answers after submission.
+                </p>
+              </div>
             </div>
-            <p className="text-neutral-600 mb-4 text-sm">
-              You cannot change answers after submission.
-            </p>
-            <div className="bg-neutral-50 rounded-lg p-4 mb-5 border border-neutral-200 space-y-2 text-sm text-neutral-700">
-              <div className="flex justify-between"><span>Total</span><span className="font-semibold text-neutral-900">{state.questionsQueue.length}</span></div>
-              <div className="flex justify-between"><span>Answered</span><span className="font-semibold text-green-600">{state.questionsAnswered}</span></div>
-              <div className="flex justify-between"><span>Skipped</span><span className="font-semibold text-neutral-900">{state.questionsQueue.length - state.questionsAnswered}</span></div>
-              <div className="flex justify-between"><span>Marked</span><span className="font-semibold text-neutral-900">{state.markedForReview.length}</span></div>
-              <div className="flex justify-between"><span>Time left</span><span className="font-semibold">{formatTime(state.timeRemaining)}</span></div>
+          </div>
+          <div className="p-5">
+            <div className="rounded-xl p-3.5 mb-4 border border-neutral-200 bg-neutral-50 space-y-2 text-sm text-neutral-700">
+              <div className="flex justify-between"><span>Total</span><span className="font-semibold text-neutral-900 tabular-nums">{state.questionsQueue.length}</span></div>
+              <div className="flex justify-between"><span>Answered</span><span className="font-semibold text-emerald-700 tabular-nums">{state.questionsAnswered}</span></div>
+              <div className="flex justify-between"><span>Skipped</span><span className="font-semibold text-neutral-900 tabular-nums">{state.questionsQueue.length - state.questionsAnswered}</span></div>
+              <div className="flex justify-between"><span>Marked</span><span className="font-semibold text-amber-700 tabular-nums">{state.markedForReview.length}</span></div>
+              <div className="flex justify-between"><span>Time left</span><span className="font-semibold tabular-nums">{formatTime(state.timeRemaining)}</span></div>
             </div>
-            <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex flex-col sm:flex-row gap-2.5">
               <button
                 onClick={() => setShowConfirmSubmit(false)}
                 disabled={isSubmitting}
-                className="flex-1 bg-neutral-100 text-neutral-800 px-4 py-3 rounded-lg hover:bg-neutral-200 disabled:opacity-50 font-medium"
+                className="flex-1 bg-white border border-neutral-200 text-neutral-800 px-4 py-2.5 rounded-xl hover:bg-neutral-50 disabled:opacity-50 font-semibold text-sm"
               >
                 Continue test
               </button>
               <button
                 onClick={() => { setShowConfirmSubmit(false); submitTest(); }}
                 disabled={isSubmitting}
-                className="flex-1 bg-red-600 text-white px-4 py-3 rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center justify-center font-medium"
+                className="flex-1 bg-neutral-900 text-white px-4 py-2.5 rounded-xl hover:bg-neutral-800 disabled:opacity-50 flex items-center justify-center font-semibold text-sm"
               >
                 {isSubmitting ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : null}
                 Submit
@@ -1863,14 +1888,13 @@ export default function EnhancedMobileMockTestPage() {
       </div>
     )}
 
-    {/* Time Warning - Mobile Optimized */}
     {state.testStarted && state.timeRemaining <= 300 && state.timeRemaining > 0 && (
-      <div className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-auto bg-red-600 text-white px-4 md:px-6 py-3 md:py-4 rounded-xl shadow-2xl animate-pulse z-40">
-        <div className="flex items-center space-x-2 md:space-x-3">
+      <div className="fixed bottom-20 md:bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-auto bg-rose-600 text-white px-4 py-3 rounded-2xl shadow-lg z-40 border border-rose-500">
+        <div className="flex items-center gap-2.5">
           <Clock className="h-4 w-4 md:h-5 md:w-5 flex-shrink-0" />
           <div>
-            <div className="font-bold text-sm md:text-base">Time Warning!</div>
-            <div className="text-xs md:text-sm">{formatTime(state.timeRemaining)} remaining</div>
+            <div className="font-bold text-sm">Time running low</div>
+            <div className="text-xs text-rose-100 tabular-nums">{formatTime(state.timeRemaining)} remaining</div>
           </div>
         </div>
       </div>

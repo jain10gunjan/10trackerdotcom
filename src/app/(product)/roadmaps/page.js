@@ -1,14 +1,6 @@
-import { Suspense } from 'react';
-import RoadmapsCatalogPage from '@/features/roadmaps/components/RoadmapsCatalogPage';
-import { fetchRoadmapCatalog } from '@/features/roadmaps/lib/fetchRoadmapCatalog';
+import { redirect } from 'next/navigation';
 
-export const revalidate = 120;
-
-export default async function RoadmapsPage() {
-  const { roadmaps } = await fetchRoadmapCatalog();
-  return (
-    <Suspense fallback={null}>
-      <RoadmapsCatalogPage initialRoadmaps={roadmaps} />
-    </Suspense>
-  );
+/** Legacy roadmaps product replaced by OG Trackers. */
+export default function RoadmapsRedirectPage() {
+  redirect('/og-trackers');
 }

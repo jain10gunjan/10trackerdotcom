@@ -41,6 +41,13 @@ const CARDS = [
     accent: "from-indigo-600 to-violet-600",
   },
   {
+    href: "/admin/vendors",
+    title: "Vendors (institutes)",
+    desc: "Multi-tenant practice-test portals — create vendors, assign admins, open /practice-tests/[slug].",
+    icon: GraduationCap,
+    accent: "from-teal-600 to-emerald-600",
+  },
+  {
     href: "/admin/mock-tests",
     title: "Mock tests",
     desc: "Create, edit, and deactivate mock tests per exam category (UPSC, GATE, etc.).",
@@ -76,9 +83,9 @@ const CARDS = [
     accent: "from-sky-600 to-blue-600",
   },
   {
-    href: "/admin/roadmaps",
-    title: "Roadmaps",
-    desc: "Study roadmaps — pricing, preview days, and day-by-day content.",
+    href: "/admin/og-trackers",
+    title: "OG Trackers",
+    desc: "Learning paths — videos, LeetCode, CodeStudio, and premium unlock.",
     icon: GraduationCap,
     accent: "from-rose-600 to-pink-600",
   },

@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import * as cheerio from "cheerio";
 import axios from "axios";
+import {
+  verifyAdminOrAutomationSecret,
+  forbiddenArticlesWriteResponse,
+} from "@/features/articles/lib/verifyArticlesWriteAuth";
+import { assertAllowedFetchUrl } from "@/lib/safeFetchUrl";
 
 // ─── Known categories (slug → display label) ─────────────────────────────────
 // These slugs appear inside breadcrumb hrefs on careers360 pages.
@@ -35,15 +40,11 @@ const CATEGORY_MAP: Record<string, string> = {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function isValidCareers360Url(url: string): boolean {
-  try {
-    const { hostname } = new URL(url);
-    return (
-      hostname === "news.careers360.com" ||
-      hostname === "www.news.careers360.com"
-    );
-  } catch {
-    return false;
-  }
+  const check = assertAllowedFetchUrl(url, [
+    "news.careers360.com",
+    "careers360.com",
+  ]);
+  return check.ok;
 }
 
 /**
@@ -281,6 +282,11 @@ function scrapeArticle(
 
 // ─── Route Handler ────────────────────────────────────────────────────────────
 export async function GET(request: NextRequest) {
+  const auth = await verifyAdminOrAutomationSecret(request);
+  if (!auth.ok) {
+    return forbiddenArticlesWriteResponse(auth.error);
+  }
+
   const { searchParams } = new URL(request.url);
   const rawUrl   = searchParams.get("url") || searchParams.get("link") || "";
   // Optional: restrict to specific categories via ?category=on-campus,colleges
@@ -317,11 +323,12 @@ export async function GET(request: NextRequest) {
   try {
     $ = await fetchAndParse(rawUrl);
   } catch (err: unknown) {
+    console.error("career360 fetch failed:", err instanceof Error ? err.message : err);
     return NextResponse.json(
       {
         status: "error",
         code: "FETCH_FAILED",
-        message: `Could not fetch the URL: ${err instanceof Error ? err.message : err}`,
+        message: "Could not fetch the URL",
         providedUrl: rawUrl,
       },
       { status: 502 }

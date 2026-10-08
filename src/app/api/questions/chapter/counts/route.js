@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { fetchChapterCountsServer } from '@/features/practice/lib/server/chapterQuestions';
 import { checkApiRateLimit, rateLimitResponse } from '@/lib/apiRateLimit';
+import { sanitizePracticeParam } from '@/features/practice/lib/chapterPracticeUtils';
 
 const CACHE_HEADERS = {
   'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=60',
@@ -17,8 +18,9 @@ export async function GET(request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const category = searchParams.get('category');
-    const chapter = searchParams.get('chapter');
+    const category = sanitizePracticeParam(searchParams.get('category'));
+    const chapter = sanitizePracticeParam(searchParams.get('chapter'));
+    const subject = sanitizePracticeParam(searchParams.get('subject'));
 
     if (!category || !chapter) {
       return NextResponse.json(
@@ -27,14 +29,13 @@ export async function GET(request) {
       );
     }
 
-    const result = await fetchChapterCountsServer(category, chapter);
+    const result = await fetchChapterCountsServer(category, chapter, subject);
     return NextResponse.json(result, { status: 200, headers: CACHE_HEADERS });
   } catch (error) {
     console.error('Chapter counts API error:', error);
     return NextResponse.json(
       {
         error: 'Failed to fetch counts',
-        details: error.message,
         counts: { easy: 0, medium: 0, hard: 0 },
         total: 0,
         easy: 0,

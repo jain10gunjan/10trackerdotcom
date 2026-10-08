@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { fetchChapterQuestionIdsServer } from '@/features/practice/lib/server/chapterQuestions';
 import { checkApiRateLimit, rateLimitResponse } from '@/lib/apiRateLimit';
+import {
+  sanitizePracticeParam,
+  DIFFICULTIES,
+} from '@/features/practice/lib/chapterPracticeUtils';
 
 const CACHE_HEADERS = {
   'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=60',
@@ -17,9 +21,11 @@ export async function GET(request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const category = searchParams.get('category');
-    const chapter = searchParams.get('chapter');
-    const difficulty = searchParams.get('difficulty');
+    const category = sanitizePracticeParam(searchParams.get('category'));
+    const chapter = sanitizePracticeParam(searchParams.get('chapter'));
+    const subject = sanitizePracticeParam(searchParams.get('subject'));
+    const difficultyRaw = String(searchParams.get('difficulty') || '').toLowerCase();
+    const difficulty = DIFFICULTIES.includes(difficultyRaw) ? difficultyRaw : null;
 
     if (!category || !chapter) {
       return NextResponse.json(
@@ -28,12 +34,17 @@ export async function GET(request) {
       );
     }
 
-    const result = await fetchChapterQuestionIdsServer({ category, chapter, difficulty });
+    const result = await fetchChapterQuestionIdsServer({
+      category,
+      chapter,
+      subject,
+      difficulty,
+    });
     return NextResponse.json(result, { status: 200, headers: CACHE_HEADERS });
   } catch (error) {
     console.error('Chapter question ids API error:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch question ids', details: error.message, ids: [] },
+      { error: 'Failed to fetch question ids', ids: [] },
       { status: 500 }
     );
   }

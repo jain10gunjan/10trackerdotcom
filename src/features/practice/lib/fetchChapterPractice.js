@@ -8,7 +8,6 @@ async function fetchWithRetry(url, { signal, retries = 2, backoffMs = 350 } = {}
       if (!res.ok) {
         const err = new Error(`HTTP ${res.status}`);
         err.status = res.status;
-        // Retry transient errors
         if (res.status >= 500 || res.status === 429) throw err;
         throw err;
       }
@@ -17,16 +16,26 @@ async function fetchWithRetry(url, { signal, retries = 2, backoffMs = 350 } = {}
       lastErr = e;
       if (e?.name === 'AbortError') throw e;
       if (attempt >= retries) break;
-      await new Promise((r) => setTimeout(r, backoffMs * (attempt + 1)));
     }
+    await new Promise((r) => setTimeout(r, backoffMs * (attempt + 1)));
   }
   throw lastErr || new Error('Request failed');
 }
 
-export async function fetchChapterCounts(category, chapter) {
-  const res = await fetchWithRetry(
-    `/api/questions/chapter/counts?category=${encodeURIComponent(category)}&chapter=${encodeURIComponent(chapter)}`
-  );
+function buildChapterQuery({ category, chapter, subject, difficulty, page, limit }) {
+  const params = new URLSearchParams();
+  params.set('category', category);
+  params.set('chapter', chapter);
+  if (subject) params.set('subject', subject);
+  if (difficulty) params.set('difficulty', difficulty);
+  if (page != null) params.set('page', String(page));
+  if (limit != null) params.set('limit', String(limit));
+  return params.toString();
+}
+
+export async function fetchChapterCounts(category, chapter, subject) {
+  const qs = buildChapterQuery({ category, chapter, subject });
+  const res = await fetchWithRetry(`/api/questions/chapter/counts?${qs}`);
   const data = await res.json();
   return {
     easy: data.easy ?? 0,
@@ -35,41 +44,46 @@ export async function fetchChapterCounts(category, chapter) {
     total: data.total ?? 0,
     matchedChapter: data.matchedChapter ?? null,
     matchedSlug: data.matchedSlug ?? null,
-    chapterSlugSupported: Boolean(data.chapterSlugSupported),
+    matchedSubject: data.matchedSubject ?? null,
   };
 }
 
 export async function fetchChapterQuestions({
   category,
   chapter,
+  subject,
   difficulty,
   page,
   limit,
   signal,
 }) {
-  const res = await fetchWithRetry(
-    `/api/questions/chapter?category=${encodeURIComponent(category)}&chapter=${encodeURIComponent(chapter)}&difficulty=${difficulty}&page=${page}&limit=${limit}`,
-    { signal }
-  );
+  const qs = buildChapterQuery({ category, chapter, subject, difficulty, page, limit });
+  const res = await fetchWithRetry(`/api/questions/chapter?${qs}`, { signal });
   const data = await res.json();
   return {
     questions: data.questions ?? [],
     hasMore: data.hasMore ?? false,
     matchedChapter: data.matchedChapter ?? null,
     matchedSlug: data.matchedSlug ?? null,
+    matchedSubject: data.matchedSubject ?? null,
   };
 }
 
-export async function fetchChapterQuestionIds({ category, chapter, difficulty, signal }) {
-  const res = await fetchWithRetry(
-    `/api/questions/chapter/ids?category=${encodeURIComponent(category)}&chapter=${encodeURIComponent(chapter)}&difficulty=${encodeURIComponent(difficulty ?? '')}`,
-    { signal }
-  );
+export async function fetchChapterQuestionIds({
+  category,
+  chapter,
+  subject,
+  difficulty,
+  signal,
+}) {
+  const qs = buildChapterQuery({ category, chapter, subject, difficulty });
+  const res = await fetchWithRetry(`/api/questions/chapter/ids?${qs}`, { signal });
   const data = await res.json();
   return {
     ids: data.ids ?? [],
     matchedChapter: data.matchedChapter ?? null,
     matchedSlug: data.matchedSlug ?? null,
+    matchedSubject: data.matchedSubject ?? null,
   };
 }
 

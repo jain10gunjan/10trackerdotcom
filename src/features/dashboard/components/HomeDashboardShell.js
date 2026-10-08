@@ -1,52 +1,47 @@
 'use client';
 
-import DashboardPageHeader from '@/features/dashboard/components/DashboardPageHeader';
-import DashboardContinueCard from '@/features/dashboard/components/DashboardContinueCard';
-import DashboardQuickStats from '@/features/dashboard/components/DashboardQuickStats';
-import { HeatmapSkeleton, RecentActivitySkeleton } from '@/features/dashboard/components/DashboardSkeletons';
-
-function CardShell({ children }) {
-  return (
-    <section className="rounded-2xl border border-neutral-200 bg-white shadow-sm overflow-hidden">
-      <div className="px-5 py-3.5 border-b border-neutral-100">
-        <div className="h-4 w-32 bg-neutral-200 rounded animate-pulse" />
-      </div>
-      <div className="p-5">{children}</div>
-    </section>
-  );
-}
-
 export default function HomeDashboardShell() {
   return (
-    <div className="min-h-screen bg-neutral-50">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-10 sm:pb-12">
-        <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-6 lg:gap-8 items-start">
-          <div className="hidden lg:block space-y-4">
-            <div className="rounded-2xl border border-neutral-200 bg-white shadow-sm p-5 animate-pulse">
-              <div className="flex items-center gap-3">
-                <div className="w-14 h-14 rounded-xl bg-neutral-200" />
-                <div className="flex-1 space-y-2">
-                  <div className="h-4 w-28 bg-neutral-200 rounded" />
-                  <div className="h-3 w-36 bg-neutral-200 rounded" />
-                </div>
-              </div>
-              <div className="h-9 w-full bg-neutral-200 rounded-xl mt-4" />
-            </div>
-          </div>
+    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-50/70 via-neutral-50 to-neutral-100">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-14 sm:pb-20">
+        <div className="mb-6 flex justify-end animate-pulse">
+          <div className="h-9 w-52 rounded-2xl border border-neutral-200 bg-white" />
+        </div>
 
-          <div className="space-y-5 min-w-0">
-            <DashboardPageHeader loading />
-            <DashboardContinueCard loading />
-            <DashboardQuickStats loading />
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
-              <CardShell>
-                <HeatmapSkeleton />
-              </CardShell>
-              <CardShell>
-                <RecentActivitySkeleton />
-              </CardShell>
+        <div className="relative overflow-hidden rounded-[1.75rem] border border-neutral-200 bg-white shadow-sm animate-pulse">
+          <div className="absolute -top-20 -right-20 w-72 h-72 bg-emerald-200/25 rounded-full blur-3xl pointer-events-none" />
+          <div className="p-6 sm:p-8 lg:p-10 space-y-4">
+            <div className="h-6 w-44 bg-neutral-200 rounded-full" />
+            <div className="h-10 w-64 max-w-full bg-neutral-200 rounded" />
+            <div className="h-4 w-80 max-w-full bg-neutral-100 rounded" />
+            <div className="h-28 w-full bg-neutral-100 rounded-2xl mt-2" />
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-2">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-36 bg-neutral-100 rounded-2xl" />
+              ))}
             </div>
           </div>
+        </div>
+
+        <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-3 animate-pulse">
+          <div className="h-36 rounded-2xl border border-neutral-200 bg-white" />
+          <div className="h-36 rounded-2xl border border-neutral-200 bg-white" />
+        </div>
+
+        <div className="mt-8 grid grid-cols-2 lg:grid-cols-4 gap-3 animate-pulse">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-20 rounded-2xl border border-neutral-200 bg-white" />
+          ))}
+        </div>
+
+        <div className="mt-10 space-y-8 animate-pulse">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="space-y-3">
+              <div className="h-3 w-20 bg-emerald-100 rounded" />
+              <div className="h-7 w-48 bg-neutral-200 rounded" />
+              <div className="h-32 rounded-2xl border border-neutral-200 bg-white" />
+            </div>
+          ))}
         </div>
       </div>
     </div>

@@ -1,25 +1,18 @@
 'use client';
 
 import { useState } from 'react';
-import { createClient } from '@supabase/supabase-js';
-
-// Initialize Supabase client (outside component to avoid reinitialization)
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
 
 const RazorpayButton = ({
   name,
   email,
   plan,
-  amount,
+  amount: _ignoredClientAmount,
   currency = 'INR',
   buttonText = 'Proceed to Payment',
   buttonClassName = 'group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50',
   onSuccess = () => {},
   onError = () => {},
-  setError = () => {}, // Added to receive setError from parent
+  setError = () => {},
   razorpayOptions = {},
 }) => {
   const [loading, setLoading] = useState(false);
@@ -28,9 +21,8 @@ const RazorpayButton = ({
   const handlePayment = async () => {
     setLoading(true);
     setLocalError(null);
-    setError(null); // Clear parent error state
+    setError(null);
 
-    // Check if Razorpay script is loaded
     if (!window.Razorpay) {
       const errorMessage = 'Razorpay SDK not loaded. Please try again later.';
       setLocalError(errorMessage);
@@ -41,7 +33,7 @@ const RazorpayButton = ({
     }
 
     try {
-      // Create Razorpay order
+      // Amount is resolved server-side from `plan` — never send client amount.
       const response = await fetch('/api/create-razorpay-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -49,17 +41,19 @@ const RazorpayButton = ({
           plan,
           email,
           name,
-          amount,
           currency,
         }),
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `API request failed with status ${response.status}`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error || `API request failed with status ${response.status}`
+        );
       }
 
-      const { orderId, amount: orderAmount, currency: orderCurrency } = await response.json();
+      const { orderId, amount: orderAmount, currency: orderCurrency } =
+        await response.json();
 
       if (!orderId) {
         throw new Error('Failed to create Razorpay order');
@@ -69,23 +63,6 @@ const RazorpayButton = ({
         throw new Error('Currency mismatch between order and configuration');
       }
 
-      // Save order to Supabase
-      const { error: supabaseError } = await supabase.from('orders').insert([
-        {
-          user_email: email,
-          plan,
-          status: 'pending',
-          amount, // Store as number (INTEGER in schema)
-          razorpay_order_id: orderId,
-          created_at: new Date().toISOString(),
-        },
-      ]);
-
-      if (supabaseError) {
-        throw new Error(supabaseError.message);
-      }
-
-      // Initialize Razorpay checkout
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
         amount: orderAmount,
@@ -93,35 +70,20 @@ const RazorpayButton = ({
         name: `${plan} PYQs`,
         description: `${plan} Plan`,
         order_id: orderId,
-        handler: async (response) => {
+        handler: async (paymentResponse) => {
           try {
             const verifyResponse = await fetch('/api/verify-razorpay-payment', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-                email,
+                razorpay_order_id: paymentResponse.razorpay_order_id,
+                razorpay_payment_id: paymentResponse.razorpay_payment_id,
+                razorpay_signature: paymentResponse.razorpay_signature,
               }),
             });
 
             const verifyResult = await verifyResponse.json();
             if (verifyResult.success) {
-              // Update order status to completed
-              const { error: updateError } = await supabase
-                .from('orders')
-                .update({
-                  status: 'completed',
-                  razorpay_payment_id: response.razorpay_payment_id,
-                  updated_at: new Date().toISOString(),
-                })
-                .eq('razorpay_order_id', response.razorpay_order_id);
-
-              if (updateError) {
-                throw new Error(updateError.message);
-              }
-
               onSuccess();
             } else {
               throw new Error(verifyResult.error || 'Payment verification failed');
@@ -146,14 +108,17 @@ const RazorpayButton = ({
         theme: {
           color: '#4F46E5',
         },
-        // Merge only safe Razorpay options
         ...(razorpayOptions.theme ? { theme: { ...razorpayOptions.theme } } : {}),
-        ...(razorpayOptions.description ? { description: razorpayOptions.description } : {}),
+        ...(razorpayOptions.description
+          ? { description: razorpayOptions.description }
+          : {}),
       };
 
       const rzp = new window.Razorpay(options);
-      rzp.on('payment.failed', (response) => {
-        const errorMessage = `Payment failed: ${response.error.description || 'Unknown error'}`;
+      rzp.on('payment.failed', (paymentFailed) => {
+        const errorMessage = `Payment failed: ${
+          paymentFailed.error.description || 'Unknown error'
+        }`;
         setLocalError(errorMessage);
         setError(errorMessage);
         onError(new Error(errorMessage));

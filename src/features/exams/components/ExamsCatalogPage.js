@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, BadgeCheck, BookOpen, Search } from 'lucide-react';
+import { ArrowRight, Search, Sparkles } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useProfileGate } from '@/context/ProfileGateContext';
 import {
@@ -13,15 +13,6 @@ import {
 import ExamCatalogCard from '@/features/exams/components/ExamCatalogCard';
 import ExamsFeaturedPanel from '@/features/exams/components/ExamsFeaturedPanel';
 import ExamsFilterBar from '@/features/exams/components/ExamsFilterBar';
-
-function Pill({ children }) {
-  return (
-    <span className="inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-emerald-50/80 px-3 py-1 text-xs font-medium text-emerald-800">
-      <BadgeCheck className="h-3.5 w-3.5 text-emerald-600" />
-      {children}
-    </span>
-  );
-}
 
 export default function ExamsCatalogPage({ initialExams = [] }) {
   const { user } = useAuth();
@@ -47,35 +38,39 @@ export default function ExamsCatalogPage({ initialExams = [] }) {
   );
 
   return (
-    <div className="min-h-screen bg-neutral-50 text-neutral-900">
-      {/* Hero */}
-      <section className="pt-24 pb-6 sm:pb-8">
+    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-50/70 via-neutral-50 to-neutral-100 text-neutral-900">
+      <section className="pt-24 pb-5 sm:pb-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-5 items-start">
             <div className="lg:col-span-7">
-              <div className="relative overflow-hidden rounded-3xl border border-neutral-200 bg-white shadow-sm">
-                <div className="absolute -top-16 -right-16 w-56 h-56 bg-emerald-200/40 rounded-full blur-3xl pointer-events-none" />
-                <div className="absolute -bottom-20 -left-16 w-56 h-56 bg-amber-200/30 rounded-full blur-3xl pointer-events-none" />
-                <div className="absolute inset-0 bg-gradient-to-br from-white via-white to-neutral-50/80 pointer-events-none" />
-
-                <div className="relative p-6 sm:p-8">
-                  <Pill>10Tracker exam catalog</Pill>
-                  <h1 className="mt-4 text-3xl sm:text-4xl font-bold tracking-tight text-neutral-900">
+              <header className="relative overflow-hidden rounded-2xl border border-neutral-200/90 bg-white/95 shadow-sm">
+                <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(16,185,129,0.08),transparent_45%,rgba(139,92,246,0.04))] pointer-events-none" />
+                <div className="absolute -top-16 -right-12 h-40 w-40 rounded-full bg-emerald-200/35 blur-3xl pointer-events-none" />
+                <div className="relative p-5 sm:p-6">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-100 bg-emerald-50/90 px-2.5 py-1 text-[11px] font-semibold text-emerald-800">
+                    <Sparkles className="h-3.5 w-3.5 text-emerald-600" />
+                    Exam catalog
+                  </span>
+                  <h1 className="mt-3 text-2xl sm:text-3xl font-bold tracking-tight text-neutral-900 leading-tight">
                     Every active exam. One place to start.
                   </h1>
-                  <p className="mt-3 text-base sm:text-lg text-neutral-600 max-w-2xl leading-relaxed">
-                    Browse the full catalog, filter by category, and jump into topic-wise practice
-                    or mock tests — no clutter, only exams you can use today.
+                  <p className="mt-2 text-sm sm:text-base text-neutral-600 max-w-xl leading-relaxed">
+                    Filter by category, then jump into chapter practice or mock tests — only exams
+                    you can use today.
                   </p>
-                  <Link
-                    href="/"
-                    className="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-neutral-600 hover:text-neutral-900"
-                  >
-                    <BookOpen className="w-4 h-4" />
-                    Back to home
-                  </Link>
+                  <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-neutral-500">
+                    <span className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-neutral-50 px-2.5 py-1 font-semibold text-neutral-800 tabular-nums">
+                      {exams.length} active
+                    </span>
+                    <Link
+                      href="/"
+                      className="font-semibold text-neutral-600 hover:text-neutral-900 transition-colors"
+                    >
+                      Back to home
+                    </Link>
+                  </div>
                 </div>
-              </div>
+              </header>
             </div>
 
             <div className="lg:col-span-5">
@@ -98,16 +93,27 @@ export default function ExamsCatalogPage({ initialExams = [] }) {
         onToggleMobileFilters={() => setShowMobileFilters((v) => !v)}
       />
 
-      {/* Catalog grid */}
-      <section className="py-10 sm:py-12">
+      <section className="py-6 sm:py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="mb-3.5 flex items-center gap-2">
+            <span className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-emerald-100 bg-emerald-50 text-[10px] font-bold text-emerald-800">
+              01
+            </span>
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-700">
+                Browse
+              </p>
+              <h2 className="text-sm font-bold text-neutral-900 leading-none mt-0.5">All exams</h2>
+            </div>
+          </div>
+
           {visibleExams.length === 0 ? (
-            <div className="rounded-3xl border border-neutral-200 bg-white py-16 text-center px-6">
-              <div className="w-12 h-12 rounded-2xl bg-neutral-100 flex items-center justify-center mx-auto mb-4">
-                <Search className="w-6 h-6 text-neutral-400" />
+            <div className="rounded-2xl border border-neutral-200 bg-white py-12 text-center px-6 shadow-sm">
+              <div className="w-11 h-11 rounded-xl bg-neutral-100 border border-neutral-200 flex items-center justify-center mx-auto mb-3">
+                <Search className="w-5 h-5 text-neutral-400" />
               </div>
-              <h2 className="text-lg font-semibold text-neutral-900">No exams match your filters</h2>
-              <p className="text-sm text-neutral-500 mt-2 max-w-md mx-auto">
+              <h3 className="text-base font-bold text-neutral-900">No exams match your filters</h3>
+              <p className="text-sm text-neutral-500 mt-1.5 max-w-md mx-auto">
                 Try clearing search or choosing a different category.
               </p>
               <button
@@ -117,13 +123,13 @@ export default function ExamsCatalogPage({ initialExams = [] }) {
                   setActiveCategory('All');
                   setSortBy('popular');
                 }}
-                className="mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-800"
+                className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-800"
               >
                 Reset filters
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
               {visibleExams.map((exam) => (
                 <ExamCatalogCard key={exam.slug} exam={exam} />
               ))}
@@ -132,53 +138,51 @@ export default function ExamsCatalogPage({ initialExams = [] }) {
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="pb-16 md:pb-20">
+      <section className="pb-14 sm:pb-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="rounded-3xl border border-neutral-900/10 bg-neutral-900 text-white p-8 sm:p-10 text-center relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-            <div className="relative">
-              {user ? (
-                <>
-                  <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
-                    Continue on your dashboard
-                  </h2>
-                  <p className="mt-2 text-neutral-300 text-sm sm:text-base max-w-lg mx-auto">
-                    Track streaks, mock rankings, and subject progress from your personalized home.
-                  </p>
+          <div className="relative overflow-hidden rounded-2xl border border-neutral-200/90 bg-neutral-900 text-white p-6 sm:p-8">
+            <div className="absolute -top-16 -right-12 h-48 w-48 rounded-full bg-emerald-500/20 blur-3xl pointer-events-none" />
+            <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-300">
+                  Next step
+                </p>
+                <h2 className="mt-1 text-xl sm:text-2xl font-bold tracking-tight">
+                  {user ? 'Continue on your dashboard' : 'Track progress across exams'}
+                </h2>
+                <p className="mt-1.5 text-sm text-neutral-300 max-w-lg leading-relaxed">
+                  {user
+                    ? 'Streaks, mock rankings, and subject progress live on your personalized home.'
+                    : 'Create a free account to save practice history, streaks, and mock rankings.'}
+                </p>
+              </div>
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 shrink-0">
+                {user ? (
                   <Link
                     href="/"
-                    className="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white text-neutral-900 font-semibold text-sm hover:bg-neutral-100 transition-colors"
+                    className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-white text-neutral-900 font-semibold text-sm hover:bg-neutral-100 transition-colors"
                   >
                     Go to dashboard
                     <ArrowRight className="w-4 h-4" />
                   </Link>
-                </>
-              ) : (
-                <>
-                  <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
-                    Track progress across exams
-                  </h2>
-                  <p className="mt-2 text-neutral-300 text-sm sm:text-base max-w-lg mx-auto">
-                    Create a free account to save practice history, streaks, and mock test rankings.
-                  </p>
-                  <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
+                ) : (
+                  <>
                     <Link
                       href="/sign-up?redirect=%2Fexams"
-                      className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white text-neutral-900 font-semibold text-sm hover:bg-neutral-100 transition-colors"
+                      className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-white text-neutral-900 font-semibold text-sm hover:bg-neutral-100 transition-colors"
                     >
                       Get started free
                       <ArrowRight className="w-4 h-4" />
                     </Link>
                     <Link
                       href="/"
-                      className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-white/25 text-white font-semibold text-sm hover:bg-white/10 transition-colors"
+                      className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border border-white/20 text-white font-semibold text-sm hover:bg-white/10 transition-colors"
                     >
                       Back to home
                     </Link>
-                  </div>
-                </>
-              )}
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </div>

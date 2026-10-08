@@ -37,7 +37,14 @@ export function isChapterPracticePath(pathname) {
 export function isImmersiveMobileNavPath(pathname) {
   if (!pathname) return false;
   if (isChapterPracticePath(pathname)) return true;
+  if (isVendorAttemptPath(pathname)) return true;
   return /\/mock-test\/[^/]+\/attempt\//.test(pathname);
+}
+
+/** Vendor practice-test taking UI — hide site chrome */
+export function isVendorAttemptPath(pathname) {
+  if (!pathname) return false;
+  return /\/practice-tests\/[^/]+\/attempt\//.test(pathname);
 }
 
 export function isProfileExemptPath(pathname) {

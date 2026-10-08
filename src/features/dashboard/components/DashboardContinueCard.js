@@ -1,5 +1,7 @@
 'use client';
 
+import Link from 'next/link';
+import { ArrowRight, Play } from 'lucide-react';
 import ExamHubContinueCard from '@/features/exam-hub/components/ExamHubContinueCard';
 
 function ContinueSkeleton() {
@@ -10,9 +12,42 @@ function ContinueSkeleton() {
   );
 }
 
+function EmptyContinue({ href, label }) {
+  return (
+    <section aria-label="Get started">
+      <div className="rounded-3xl border border-emerald-200 bg-gradient-to-br from-emerald-50/80 to-white p-5 sm:p-6 shadow-sm">
+        <p className="text-xs font-semibold uppercase tracking-wide mb-2 text-emerald-800">
+          Ready when you are
+        </p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="min-w-0">
+            <h2 className="text-lg font-bold text-neutral-900">
+              No session in progress
+            </h2>
+            <p className="text-sm text-neutral-500 mt-1">
+              Start practicing and we&apos;ll save your place for next time.
+            </p>
+          </div>
+          <Link
+            href={href || '/exams'}
+            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold shrink-0"
+          >
+            <Play className="w-4 h-4" />
+            {label || 'Browse exams'}
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function DashboardContinueCard({
   continueOptions,
   loading = false,
+  primaryExam,
+  emptyHref,
+  emptyLabel,
 }) {
   if (loading) {
     return <ContinueSkeleton />;
@@ -24,7 +59,15 @@ export default function DashboardContinueCard({
   const hasFallback = Boolean(fallback?.href) && !hasPractice && !hasMock;
 
   if (!hasPractice && !hasMock && !hasFallback) {
-    return null;
+    return (
+      <EmptyContinue
+        href={emptyHref}
+        label={
+          emptyLabel ||
+          (primaryExam?.name ? `Start ${primaryExam.name} practice` : 'Browse exams')
+        }
+      />
+    );
   }
 
   return (

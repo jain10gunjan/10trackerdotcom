@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { verifyAdminAuth } from '@/middleware/adminAuth';
 
 const CANVA_API_BASE = 'https://api.canva.com/rest/v1';
 const DEFAULT_POLL_INTERVAL_MS = 2000;
@@ -70,6 +71,14 @@ async function pollJob({ token, pathBuilder, jobId, timeoutMs, pollIntervalMs, g
  * }
  */
 export async function POST(request) {
+  const { isAdmin, error: authError } = await verifyAdminAuth();
+  if (!isAdmin) {
+    return NextResponse.json(
+      { success: false, error: authError || 'Admin access required' },
+      { status: 403 }
+    );
+  }
+
   try {
     const token = process.env.CANVA_ACCESS_TOKEN;
     if (!token) {

@@ -1,5 +1,23 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
+## Vendor practice-tests (multi-tenant)
+
+Institute portals live at `/practice-tests/[slug]` (e.g. `/practice-tests/ips-academy-indore`). Existing `/tests/[category]` practice routes are unchanged.
+
+1. Ensure `SUPABASE_SERVICE_ROLE_KEY` is set (service_role JWT — server only).
+2. Run `supabase/migrations/setup_vendor_practice_tests.sql` (or `scripts/setup_vendor_practice_tests.sql`) in the Supabase SQL Editor.
+3. Reload the PostgREST schema (Dashboard → Settings → API → Reload).
+4. Open `/admin/vendors` as a platform admin to list/create vendors.
+5. Domain access uses Google `email_verified` from the Auth.js session. Default mode is domain + allowlist; exact domain match only.
+
+Domain unit tests: `npm run test:vendor-domain`.
+
+**Vendor admin (after SQL):** `/practice-tests/[slug]/admin` → Settings, Members, **Questions** (manual / CSV / import from examtracker), **Tests** (draft/publish, pin questions, seed sample).  
+**Platform admin:** `/admin/vendors` → create, suspend/activate, assign admins.
+
+CSV template: `GET /api/practice-tests/[slug]/questions/csv`  
+Columns: `topic,category,subject,chapter,difficulty,year,question,options_A,options_B,options_C,options_D,correct_option,solution,directionHTML,questionImage` (max 500 rows).
+
 ## Getting Started
 
 First, run the development server:

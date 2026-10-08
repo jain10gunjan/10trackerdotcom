@@ -1,5 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
 import { verifyAdminAuth } from '@/middleware/adminAuth';
+import {
+  verifyAdminOrAutomationSecret,
+  forbiddenArticlesWriteResponse,
+} from '@/features/articles/lib/verifyArticlesWriteAuth';
 
 // Helper function to get Supabase client (prefers service role for admin operations)
 function getSupabaseClient(useServiceRole = false) {
@@ -16,6 +20,11 @@ const supabase = getSupabaseClient();
 // GET - Fetch one unposted entry (marks it as posted automatically)
 export async function GET(request) {
   try {
+    const auth = await verifyAdminOrAutomationSecret(request);
+    if (!auth.ok) {
+      return forbiddenArticlesWriteResponse(auth.error);
+    }
+
     const { searchParams } = new URL(request.url);
     const markAsPosted = searchParams.get('mark_as_posted') !== 'false'; // Default true
     

@@ -5,6 +5,86 @@ export const slugifySubject = (str) =>
 
 export const unslugTopic = (str) => String(str ?? '').replace(/-/g, ' ');
 
+function normalizeMatchKey(value) {
+  return String(value ?? '')
+    .toLowerCase()
+    .replace(/[-_]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function slugifyChapterSegment(chapter) {
+  return String(chapter ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '-');
+}
+
+/** /{exam}/{subject}/{chapter}/practice — matches SubjectPracticePage chapter cards. */
+export function buildChapterPracticeHref(categorySlug, subject, chapter) {
+  const cat = String(categorySlug || '')
+    .trim()
+    .toLowerCase();
+  const sub = slugifySubject(subject);
+  const ch = slugifyChapterSegment(chapter);
+  if (!cat || !sub || !ch) return cat ? `/${cat}` : '/exams';
+  return `/${cat}/${sub}/${ch}/practice`;
+}
+
+/**
+ * Map a user_progress.topic value to the chapter practice route using exam catalog.
+ * Falls back to subject hub or exam hub when chapter cannot be resolved.
+ */
+export function resolveChapterPracticeHref(
+  categorySlug,
+  progressTopic,
+  catalogSubjects = []
+) {
+  const cat = String(categorySlug || '')
+    .trim()
+    .toLowerCase();
+  if (!cat) return '/exams';
+  if (!progressTopic) return `/${cat}`;
+
+  const key = normalizeMatchKey(progressTopic);
+  const slugKey = slugifyChapterSegment(progressTopic);
+
+  for (const sub of catalogSubjects || []) {
+    for (const topic of sub.subtopics || []) {
+      const titleKey = normalizeMatchKey(topic.title);
+      const titleSlug = slugifyChapterSegment(topic.title);
+      if (titleKey === key || titleSlug === slugKey) {
+        const chapter = topic.chapter || topic.title;
+        return buildChapterPracticeHref(cat, sub.subject, chapter);
+      }
+    }
+  }
+
+  for (const sub of catalogSubjects || []) {
+    for (const topic of sub.subtopics || []) {
+      if (!topic.chapter) continue;
+      const chapterKey = normalizeMatchKey(topic.chapter);
+      const chapterSlug = slugifyChapterSegment(topic.chapter);
+      if (chapterKey === key || chapterSlug === slugKey) {
+        return buildChapterPracticeHref(cat, sub.subject, topic.chapter);
+      }
+    }
+  }
+
+  for (const sub of catalogSubjects || []) {
+    const hit = (sub.subtopics || []).some((topic) => {
+      const titleKey = normalizeMatchKey(topic.title);
+      const titleSlug = slugifyChapterSegment(topic.title);
+      return titleKey === key || titleSlug === slugKey;
+    });
+    if (hit) {
+      return `/${cat}/${slugifySubject(sub.subject)}`;
+    }
+  }
+
+  return `/${cat}`;
+}
+
 export function getSubjectStats(subject) {
   const topicsCount = subject?.subtopics?.length ?? 0;
   const questionsCount =

@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { fetchChapterQuestionsServer } from '@/features/practice/lib/server/chapterQuestions';
 import { checkApiRateLimit, rateLimitResponse } from '@/lib/apiRateLimit';
+import {
+  sanitizePracticeParam,
+  DIFFICULTIES,
+} from '@/features/practice/lib/chapterPracticeUtils';
 
 const CACHE_HEADERS = {
   'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=60',
@@ -17,11 +21,13 @@ export async function GET(request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const category = searchParams.get('category');
-    const chapter = searchParams.get('chapter');
-    const difficulty = searchParams.get('difficulty');
-    const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
-    const limitParam = Math.min(50, Math.max(1, parseInt(searchParams.get('limit') || '10', 10)));
+    const category = sanitizePracticeParam(searchParams.get('category'));
+    const chapter = sanitizePracticeParam(searchParams.get('chapter'));
+    const subject = sanitizePracticeParam(searchParams.get('subject'));
+    const difficultyRaw = String(searchParams.get('difficulty') || '').toLowerCase();
+    const difficulty = DIFFICULTIES.includes(difficultyRaw) ? difficultyRaw : null;
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
+    const limitParam = Math.min(50, Math.max(1, parseInt(searchParams.get('limit') || '10', 10) || 10));
 
     if (!category || !chapter) {
       return NextResponse.json(
@@ -33,6 +39,7 @@ export async function GET(request) {
     const result = await fetchChapterQuestionsServer({
       category,
       chapter,
+      subject,
       difficulty,
       page,
       limit: limitParam,
@@ -43,7 +50,7 @@ export async function GET(request) {
   } catch (error) {
     console.error('Chapter questions API error:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch questions', details: error.message },
+      { error: 'Failed to fetch questions' },
       { status: 500 }
     );
   }

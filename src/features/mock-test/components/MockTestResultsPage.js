@@ -390,7 +390,7 @@ export default function TestResultPage() {
   // Show loading until auth is resolved; then show loading again while fetching data (never flash "Sign in required" first)
   if (authLoading) {
     return (
-      <div className="pt-24 min-h-screen bg-neutral-50 flex items-center justify-center">
+      <div className="pt-24 min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-50/70 via-neutral-50 to-neutral-100 flex items-center justify-center">
         <div className="text-center max-w-xs px-4">
           <div className="w-12 h-12 sm:w-16 sm:h-16 border-2 border-neutral-200 rounded-full animate-spin border-t-emerald-600 mx-auto mb-4" />
           <p className="text-sm sm:text-base text-neutral-600 font-medium">Checking sign-in…</p>
@@ -401,8 +401,8 @@ export default function TestResultPage() {
 
   if (!user) {
     return (
-      <div className="pt-24 min-h-screen bg-neutral-50 flex items-center justify-center px-4">
-        <div className="text-center p-6 sm:p-8 bg-white rounded-3xl shadow-sm border border-neutral-200 max-w-md w-full">
+      <div className="pt-24 min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-50/70 via-neutral-50 to-neutral-100 flex items-center justify-center px-4">
+        <div className="text-center p-6 sm:p-8 bg-white rounded-2xl shadow-sm border border-neutral-200 max-w-md w-full">
           <BookOpen className="w-12 h-12 text-emerald-600 mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-neutral-900 mb-2">Sign in required</h2>
           <p className="text-neutral-600 text-sm sm:text-base">Sign in to view test results.</p>
@@ -413,7 +413,7 @@ export default function TestResultPage() {
 
   if (isLoading) {
     return (
-      <div className="pt-24 min-h-screen bg-neutral-50 flex items-center justify-center">
+      <div className="pt-24 min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-50/70 via-neutral-50 to-neutral-100 flex items-center justify-center">
         <div className="text-center max-w-xs px-4">
           <div className="w-12 h-12 sm:w-16 sm:h-16 border-2 border-neutral-200 rounded-full animate-spin border-t-emerald-600 mx-auto mb-4" />
           <p className="text-sm sm:text-base text-neutral-600 font-medium">Loading results…</p>
@@ -424,8 +424,8 @@ export default function TestResultPage() {
 
   if (!attempt || !testInfo) {
     return (
-      <div className="pt-24 min-h-screen bg-neutral-50 flex items-center justify-center px-4">
-        <div className="text-center p-6 sm:p-8 bg-white rounded-3xl shadow-sm border border-neutral-200 max-w-md w-full">
+      <div className="pt-24 min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-50/70 via-neutral-50 to-neutral-100 flex items-center justify-center px-4">
+        <div className="text-center p-6 sm:p-8 bg-white rounded-2xl shadow-sm border border-neutral-200 max-w-md w-full">
           <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-neutral-900 mb-2">Attempt not found</h2>
           <p className="text-neutral-600 text-sm sm:text-base mb-4">The requested test attempt could not be found.</p>
@@ -455,9 +455,9 @@ export default function TestResultPage() {
     attempt?.total_questions;
 
   return (
-    <div className="min-h-screen bg-neutral-50 pt-24 pb-16">
+    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-50/70 via-neutral-50 to-neutral-100 pt-24 pb-16">
       <MathJaxContext config={MATHJAX_CONFIG}>
-        <div className="max-w-6xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-6xl mx-auto py-5 px-4 sm:px-6 lg:px-8">
           <MockTestSubpageHeader
             backHref={`/mock-test/${examcategory}?tab=progress`}
             backLabel="Back to mock tests"
@@ -466,9 +466,9 @@ export default function TestResultPage() {
           />
 
             {/* Score hero */}
-            <div className="bg-white rounded-3xl shadow-sm border border-neutral-200 mb-4 sm:mb-6 overflow-hidden">
-              <div className="p-4 sm:p-6">
-                <div className="flex flex-wrap gap-2 mb-4 sm:mb-6">
+            <div className="bg-white rounded-2xl shadow-sm border border-neutral-200/90 mb-4 sm:mb-5 overflow-hidden">
+              <div className="p-4 sm:p-5">
+                <div className="flex flex-wrap gap-2 mb-4">
                   <span className="px-2.5 py-1 bg-emerald-50 text-emerald-800 rounded-full text-xs font-semibold border border-emerald-100">
                     {testInfo.category || categoryLabel}
                   </span>
@@ -481,12 +481,12 @@ export default function TestResultPage() {
                     </span>
                   ) : null}
                 </div>
-                <div className="mb-4 sm:mb-6 p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-700 text-white">
-                  <p className="text-xs text-emerald-100 uppercase tracking-wide mb-1">Overall score</p>
+                <div className="mb-4 p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-emerald-700 to-emerald-800 text-white">
+                  <p className="text-[11px] text-emerald-100 uppercase tracking-wider font-semibold mb-1">Overall score</p>
                   {gateMarking ? (
                     <p className="text-2xl sm:text-3xl font-bold">
-                      {netMarks} <span className="text-lg font-medium text-neutral-300">/ {maxMarks} marks</span>
-                      <span className="block text-sm font-normal text-neutral-400 mt-1">
+                      {netMarks} <span className="text-lg font-medium text-emerald-100/80">/ {maxMarks} marks</span>
+                      <span className="block text-sm font-normal text-emerald-100/70 mt-1">
                         ({attempt.percentage}% of max)
                       </span>
                     </p>
@@ -495,32 +495,32 @@ export default function TestResultPage() {
                   )}
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-                  <div className="bg-green-50 p-3 sm:p-4 rounded-lg border border-green-200">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
+                  <div className="bg-emerald-50 p-3 sm:p-4 rounded-xl border border-emerald-100">
                     <div className="flex items-center justify-between mb-1">
-                      <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 flex-shrink-0" />
-                      <span className="text-lg sm:text-2xl font-bold text-green-900">{attempt.correct_answers}</span>
+                      <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-600 flex-shrink-0" />
+                      <span className="text-lg sm:text-2xl font-bold text-emerald-900 tabular-nums">{attempt.correct_answers}</span>
                     </div>
-                    <div className="text-xs sm:text-sm font-medium text-green-700">Correct</div>
+                    <div className="text-xs sm:text-sm font-medium text-emerald-700">Correct</div>
                   </div>
-                  <div className="bg-red-50 p-3 sm:p-4 rounded-lg border border-red-200">
+                  <div className="bg-rose-50 p-3 sm:p-4 rounded-xl border border-rose-100">
                     <div className="flex items-center justify-between mb-1">
-                      <XCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-600 flex-shrink-0" />
-                      <span className="text-lg sm:text-2xl font-bold text-red-900">{attempt.wrong_answers}</span>
+                      <XCircle className="w-4 h-4 sm:w-5 sm:h-5 text-rose-600 flex-shrink-0" />
+                      <span className="text-lg sm:text-2xl font-bold text-rose-900 tabular-nums">{attempt.wrong_answers}</span>
                     </div>
-                    <div className="text-xs sm:text-sm font-medium text-red-700">Incorrect</div>
+                    <div className="text-xs sm:text-sm font-medium text-rose-700">Incorrect</div>
                   </div>
-                  <div className="bg-amber-50 p-3 sm:p-4 rounded-lg border border-amber-200">
+                  <div className="bg-amber-50 p-3 sm:p-4 rounded-xl border border-amber-100">
                     <div className="flex items-center justify-between mb-1">
                       <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-amber-600 flex-shrink-0" />
-                      <span className="text-lg sm:text-2xl font-bold text-amber-900">{attempt.unanswered}</span>
+                      <span className="text-lg sm:text-2xl font-bold text-amber-900 tabular-nums">{attempt.unanswered}</span>
                     </div>
                     <div className="text-xs sm:text-sm font-medium text-amber-700">Skipped</div>
                   </div>
-                  <div className="bg-neutral-50 p-3 sm:p-4 rounded-lg border border-neutral-200">
+                  <div className="bg-neutral-50 p-3 sm:p-4 rounded-xl border border-neutral-200">
                     <div className="flex items-center justify-between mb-1">
                       <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-neutral-600 flex-shrink-0" />
-                      <span className="text-lg sm:text-2xl font-bold text-neutral-900">
+                      <span className="text-lg sm:text-2xl font-bold text-neutral-900 tabular-nums">
                         {formatDurationShort(attempt.duration_taken)}
                       </span>
                     </div>

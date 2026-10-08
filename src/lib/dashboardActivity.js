@@ -1,7 +1,7 @@
 import { formatExamSlug, mockTestHrefForSlug, practiceHrefForSlug } from '@/lib/platformExams';
 import { parseProgressIdArray } from '@/lib/progressIdentity';
 import { normalizeCategorySlug } from '@/features/exam-hub/lib/categoryKey';
-import { slugifySubject } from '@/features/exam-hub/lib/examHubUtils';
+import { slugifySubject, resolveChapterPracticeHref } from '@/features/exam-hub/lib/examHubUtils';
 import { practiceAreaMatchesSlug } from '@/lib/examProfile';
 import { examHubContinueToPracticeCard } from '@/features/exam-hub/lib/examHubProgress';
 
@@ -25,7 +25,7 @@ export function rowProgressStats(row) {
 }
 
 /** Global latest practice row (any exam). */
-export function buildContinueSession(rows) {
+export function buildContinueSession(rows, catalogsByArea = {}) {
   let best = null;
 
   for (const row of rows || []) {
@@ -38,6 +38,7 @@ export function buildContinueSession(rows) {
     const practicedAtMs = practicedAt ? new Date(practicedAt).getTime() : 0;
     const area = normalizeCategorySlug(row.area);
     const topic = String(row.topic);
+    const catalog = catalogsByArea[area] || [];
 
     if (!best || practicedAtMs > best.practicedAtMs) {
       best = {
@@ -46,7 +47,7 @@ export function buildContinueSession(rows) {
         topic,
         topicLabel: formatTopicLabel(topic),
         category: formatExamSlug(area),
-        href: `/${area}/practice/${encodeURIComponent(topic)}`,
+        href: resolveChapterPracticeHref(area, topic, catalog),
         completedQuestions,
         accuracy,
         practicedAt,
@@ -89,7 +90,7 @@ export function buildExamHubStyleContinue(rows, examSlug, catalogSubjects = []) 
         topicLabel: formatTopicLabel(row.topic),
         subject: slugifySubject(subjectKey),
         category: formatExamSlug(slug),
-        href: `/${slug}/practice/${encodeURIComponent(row.topic)}`,
+        href: resolveChapterPracticeHref(slug, row.topic, catalogSubjects),
         completedQuestions,
         accuracy,
         practicedAt,
@@ -122,6 +123,11 @@ export function enrichPracticeContinue(continueSession, catalogSubjects = []) {
     ...continueSession,
     subject,
     topic: continueSession.topic,
+    href: resolveChapterPracticeHref(
+      continueSession.area,
+      continueSession.topic,
+      catalogSubjects
+    ),
     description: 'Continue your last practice session for this exam.',
   };
 }
@@ -262,7 +268,7 @@ export function resolveContinueTarget(args) {
   return null;
 }
 
-export function buildRecentPractice(rows, limit = RECENT_ACTIVITY_LIMIT) {
+export function buildRecentPractice(rows, limit = RECENT_ACTIVITY_LIMIT, catalogsByArea = {}) {
   return (rows || [])
     .filter((r) => r.area && r.topic)
     .sort((a, b) => {
@@ -275,6 +281,7 @@ export function buildRecentPractice(rows, limit = RECENT_ACTIVITY_LIMIT) {
       const area = normalizeCategorySlug(r.area);
       const topic = String(r.topic);
       const { completedQuestions, accuracy } = rowProgressStats(r);
+      const catalog = catalogsByArea[area] || [];
 
       return {
         type: 'practice',
@@ -286,7 +293,7 @@ export function buildRecentPractice(rows, limit = RECENT_ACTIVITY_LIMIT) {
             ? `${formatExamSlug(area)} · ${completedQuestions} questions`
             : formatExamSlug(area),
         at: r.updated_at || r.created_at || null,
-        href: `/${area}/practice/${topic}`,
+        href: resolveChapterPracticeHref(area, topic, catalog),
         score: accuracy,
       };
     });

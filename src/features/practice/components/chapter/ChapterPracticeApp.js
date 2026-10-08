@@ -69,8 +69,8 @@ export default function ChapterPracticeApp({ initialData = null }) {
         <ExamSubpageHeader
           title={`${p.chapterTitle} — Practice`}
           description={`${p.subjectTitle} · ${p.activeDifficulty} · ${p.stats.total} questions`}
-          backHref={p.chapterHref}
-          backLabel="Back to chapter"
+          backHref={p.subjectHref}
+          backLabel="Back to subject"
         >
           <p className="mt-2 text-xs text-neutral-500 font-medium">
             {p.subjectTitle} › {p.chapterTitle} › Practice

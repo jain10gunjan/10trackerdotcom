@@ -10,8 +10,16 @@ const NUMERIC_TOLERANCE = 1e-6;
 
 export function getOptionField(question, letter) {
   if (!question) return '';
-  const v = question[`options_${letter}`];
-  return typeof v === 'string' ? v.trim() : '';
+  const upper = String(letter || '').toUpperCase();
+  if (!upper) return '';
+  const lower = upper.toLowerCase();
+  const v =
+    question[`options_${upper}`] ??
+    question[`options_${lower}`] ??
+    question[`option_${upper}`] ??
+    question[`option${upper}`];
+  if (v == null) return '';
+  return String(v).trim();
 }
 
 /** At least one options_A–D field is non-empty. */

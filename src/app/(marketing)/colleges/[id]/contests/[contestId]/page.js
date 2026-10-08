@@ -103,7 +103,7 @@ const ContestDetailPage = () => {
   const handleJoinContest = async () => {
     if (!currentUser) {
       setError("Please log in to participate.");
-      router.push("/login");
+      router.push("/sign-in");
       return;
     }
 
@@ -313,7 +313,7 @@ const ContestDetailPage = () => {
               )
             ) : (
               <button
-                onClick={() => router.push("/login")}
+                onClick={() => router.push("/sign-in")}
                 className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors"
               >
                 Log in to Participate

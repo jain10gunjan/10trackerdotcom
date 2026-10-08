@@ -24,9 +24,13 @@ function processExamtrackerRows(allData) {
         title: row.topic,
         count: 1,
         category: row.category,
+        chapter: row.chapter || null,
       });
     } else {
       acc[row.subject].subtopics[topicIndex].count += 1;
+      if (!acc[row.subject].subtopics[topicIndex].chapter && row.chapter) {
+        acc[row.subject].subtopics[topicIndex].chapter = row.chapter;
+      }
     }
 
     return acc;
@@ -46,7 +50,7 @@ const getCachedExamSubjects = unstable_cache(
     while (fetchMore) {
       const { data, error } = await supabase
         .from('examtracker')
-        .select('subject, topic, category')
+        .select('subject, topic, category, chapter')
         .eq('category', dbCategory)
         .range(from, from + pageSize - 1);
 
@@ -63,7 +67,7 @@ const getCachedExamSubjects = unstable_cache(
 
     return processExamtrackerRows(allData);
   },
-  ['exam-hub-subjects'],
+  ['exam-hub-subjects-with-chapter-v1'],
   {
     tags: ['examtracker'],
     revalidate: 120,

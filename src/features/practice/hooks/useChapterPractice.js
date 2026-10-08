@@ -162,7 +162,7 @@ export function useChapterPractice(options = {}) {
   const fetchCounts = useCallback(async () => {
     if (!category || !normalizedChapter) return;
     try {
-      const d = await fetchChapterCounts(category, normalizedChapter);
+      const d = await fetchChapterCounts(category, normalizedChapter, subject);
       setCounts({ easy: d.easy, medium: d.medium, hard: d.hard });
       setTotalQ(d.total);
       if (d.matchedChapter) setMatchedChapter(d.matchedChapter);
@@ -170,7 +170,7 @@ export function useChapterPractice(options = {}) {
       setCounts({ easy: 0, medium: 0, hard: 0 });
       setTotalQ(0);
     }
-  }, [category, normalizedChapter]);
+  }, [category, normalizedChapter, subject]);
 
   const fetchDifficultyQuestionIds = useCallback(async (difficulty) => {
     if (!category || !normalizedChapter || !difficulty) return;
@@ -178,6 +178,7 @@ export function useChapterPractice(options = {}) {
       const d = await fetchChapterQuestionIds({
         category,
         chapter: normalizedChapter,
+        subject,
         difficulty,
       });
       const idsArr = (d.ids ?? []).map(progressQuestionId).filter(Boolean);
@@ -187,7 +188,7 @@ export function useChapterPractice(options = {}) {
     } catch {
       setDifficultyQuestionIds(new Set());
     }
-  }, [category, normalizedChapter]);
+  }, [category, normalizedChapter, subject]);
 
   const fetchQuestions = useCallback(async (diff, page = 1, append = false) => {
     if (!normalizedChapter || !category) return;
@@ -199,6 +200,7 @@ export function useChapterPractice(options = {}) {
       const d = await fetchChapterQuestions({
         category,
         chapter: normalizedChapter,
+        subject,
         difficulty: diff,
         page,
         limit: QUESTIONS_PER_PAGE,
@@ -216,7 +218,7 @@ export function useChapterPractice(options = {}) {
     } finally {
       setLoadingQ(false);
     }
-  }, [category, normalizedChapter]);
+  }, [category, normalizedChapter, subject]);
 
   const fetchUserProgress = useCallback(async () => {
     const uid = userRef.current?.id;

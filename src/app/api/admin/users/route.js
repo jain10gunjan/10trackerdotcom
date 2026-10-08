@@ -11,12 +11,25 @@ import {
 } from '@/lib/adminUserActivity';
 import {
   buildUsageIndex,
+  fetchBillingByEmail,
   fetchClerkUsers,
   fetchOauthUsers,
+  fetchProfilesByEmail,
   fetchWalletsByEmail,
   mapClerkUser,
   mergeAdminUsers,
+  summarizeBilling,
+  summarizeBillingAcrossUsers,
 } from '@/lib/adminUserSources';
+
+function resolveSignedUpAt(user, profile) {
+  return (
+    profile?.createdAt ||
+    user.createdAt ||
+    user.walletCreatedAt ||
+    null
+  );
+}
 
 export async function GET() {
   const { isAdmin, error: authError } = await verifyAdminAuth();
@@ -103,6 +116,17 @@ export async function GET() {
 
     const merged = mergeAdminUsers(legacyUsers, oauthUsers);
 
+    const allEmails = [
+      ...new Set(
+        merged.map((u) => normalizeEmail(u.email)).filter(Boolean)
+      ),
+    ];
+
+    const [profilesByEmail, billingIndexes] = await Promise.all([
+      fetchProfilesByEmail(supabaseAdmin, allEmails),
+      fetchBillingByEmail(supabaseAdmin, allEmails),
+    ]);
+
     const activityByKey = buildActivityBuckets({
       progressRows,
       attemptRows,
@@ -112,6 +136,10 @@ export async function GET() {
     const users = merged.map((user) => {
       const rawActivity = resolveActivityForUser(user, activityByKey);
       const engagement = computeEngagement(rawActivity);
+      const emailKey = normalizeEmail(user.email);
+      const profile = emailKey ? profilesByEmail[emailKey] || null : null;
+      const billing = summarizeBilling(user.email, billingIndexes);
+      const signedUpAt = resolveSignedUpAt(user, profile);
 
       return {
         ...user,
@@ -122,19 +150,31 @@ export async function GET() {
           lastSignInAt: rawActivity.lastSignInAt,
         },
         engagement,
+        profile,
+        billing,
+        signedUpAt,
+        hasProfile: profile ? true : user.hasProfile,
       };
     });
 
-    const summary = summarizeEngagement(users);
+    const engagementSummary = summarizeEngagement(users);
+    const billingSummary = summarizeBillingAcrossUsers(users);
 
     return NextResponse.json({
       success: true,
       users,
-      summary,
+      summary: {
+        ...engagementSummary,
+        ...billingSummary,
+      },
       counts: {
         total: users.length,
-        clerkOnly: users.filter((u) => u.authSources?.length === 1 && u.authSources[0] === 'clerk').length,
-        oauthOnly: users.filter((u) => u.authSources?.length === 1 && u.authSources[0] === 'oauth').length,
+        clerkOnly: users.filter(
+          (u) => u.authSources?.length === 1 && u.authSources[0] === 'clerk'
+        ).length,
+        oauthOnly: users.filter(
+          (u) => u.authSources?.length === 1 && u.authSources[0] === 'oauth'
+        ).length,
         both: users.filter((u) => (u.authSources || []).length > 1).length,
       },
       clerkError: clerkError || null,
