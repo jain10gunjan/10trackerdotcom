@@ -105,6 +105,14 @@ export default function VendorAttemptAnalysisClient({ slug, attemptId }) {
             </p>
           ) : null}
 
+          {finished && summary.cheated ? (
+            <p className="mb-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
+              This attempt was auto-submitted and marked as cheated because fullscreen was left
+              or the tab was switched more than the allowed number of times. Answers already
+              given were still scored.
+            </p>
+          ) : null}
+
           {finished && !summary.resultsReleased ? (
             <VendorCard className="mb-5 border-amber-200 bg-amber-50/80 p-5">
               <p className="text-sm text-amber-900">

@@ -11,6 +11,8 @@ import { isSuperAdminEmail } from '@/features/vendor-tests/lib/vendorAccess';
 import {
   normalizeRollNo,
   assertRollNoUnique,
+  validateRollNo,
+  enrollmentRulesFromSettings,
 } from '@/features/vendor-tests/lib/vendorEnrollment';
 
 const VALID_ROLES = new Set(Object.values(MEMBER_ROLES));
@@ -113,6 +115,7 @@ export async function POST(request, { params }) {
 
     const rows = [];
     const rowErrors = [];
+    const seenRolls = new Set();
     for (let i = 0; i < items.length; i++) {
       const parsed = parseMemberRow(items[i] || {});
       if (!parsed.ok) {
@@ -128,6 +131,37 @@ export async function POST(request, { params }) {
         rowErrors.push({ index: i, error: 'Cannot assign vendor_admin' });
         continue;
       }
+      if (parsed.row.roll_no) {
+        const format = validateRollNo(
+          parsed.row.roll_no,
+          enrollmentRulesFromSettings(ctx.settings)
+        );
+        if (!format.ok) {
+          rowErrors.push({ index: i, error: format.error });
+          continue;
+        }
+        const rollKey = format.rollNo.toLowerCase();
+        if (seenRolls.has(rollKey)) {
+          rowErrors.push({
+            index: i,
+            error: 'This enrollment / roll number is already used by another member',
+          });
+          continue;
+        }
+        const unique = await assertRollNoUnique(
+          ctx.supabase,
+          ctx.vendor.id,
+          format.rollNo,
+          null,
+          parsed.row.user_email
+        );
+        if (!unique.ok) {
+          rowErrors.push({ index: i, error: unique.error });
+          continue;
+        }
+        seenRolls.add(rollKey);
+        parsed.row.roll_no = unique.rollNo;
+      }
       rows.push({
         vendor_id: ctx.vendor.id,
         ...parsed.row,
@@ -138,7 +172,7 @@ export async function POST(request, { params }) {
 
     if (!rows.length) {
       return NextResponse.json(
-        { success: false, error: 'No valid members', rowErrors },
+        { success: false, error: rowErrors[0]?.error || 'No valid members', rowErrors },
         { status: 400 }
       );
     }
@@ -232,10 +266,14 @@ export async function PATCH(request, { params }) {
     }
 
     if (updates.roll_no) {
+      const format = validateRollNo(updates.roll_no, enrollmentRulesFromSettings(ctx.settings));
+      if (!format.ok) {
+        return NextResponse.json({ success: false, error: format.error }, { status: 400 });
+      }
       const unique = await assertRollNoUnique(
         ctx.supabase,
         ctx.vendor.id,
-        updates.roll_no,
+        format.rollNo,
         excludeId
       );
       if (!unique.ok) {

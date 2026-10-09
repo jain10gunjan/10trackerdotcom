@@ -12,6 +12,7 @@ import {
   Send,
   Save,
   SkipForward,
+  Maximize2,
 } from 'lucide-react';
 import MathHtmlRenderer, {
   McqMathProvider,
@@ -22,6 +23,27 @@ function formatMmSs(totalSeconds) {
   const m = Math.floor(s / 60);
   const r = s % 60;
   return `${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}`;
+}
+
+function fullscreenElement() {
+  if (typeof document === 'undefined') return null;
+  return document.fullscreenElement || document.webkitFullscreenElement || null;
+}
+
+function fullscreenSupported() {
+  if (typeof document === 'undefined') return false;
+  const el = document.documentElement;
+  return (
+    typeof el.requestFullscreen === 'function' ||
+    typeof el.webkitRequestFullscreen === 'function'
+  );
+}
+
+async function enterFullscreen() {
+  const el = document.documentElement;
+  if (typeof el.requestFullscreen === 'function') return el.requestFullscreen();
+  if (typeof el.webkitRequestFullscreen === 'function') return el.webkitRequestFullscreen();
+  throw new Error('Fullscreen is not available in this browser');
 }
 
 function getAnswer(answers, qid) {
@@ -44,7 +66,10 @@ export default function VendorAttemptClient({ slug, attemptId }) {
   const [remaining, setRemaining] = useState(0);
   const [lastSaved, setLastSaved] = useState(null);
   const [saveError, setSaveError] = useState(null);
-  const [warnBlur, setWarnBlur] = useState(0);
+  const [violations, setViolations] = useState(0);
+  const [fsOn, setFsOn] = useState(false);
+  const [fsReady, setFsReady] = useState(false);
+  const [fsSupported, setFsSupported] = useState(false);
 
   const saveTimer = useRef(null);
   const dirty = useRef(false);
@@ -53,6 +78,9 @@ export default function VendorAttemptClient({ slug, attemptId }) {
   const markedRef = useRef(marked);
   const indexRef = useRef(index);
   const questionTopRef = useRef(null);
+  const violationLock = useRef(false);
+  const lastViolationAt = useRef(0);
+  const enteredFullscreen = useRef(false);
 
   useEffect(() => {
     answersRef.current = answers;
@@ -81,6 +109,7 @@ export default function VendorAttemptClient({ slug, attemptId }) {
       setQuestions(data.questions || []);
       setAnswers(data.attempt?.answers || {});
       setMarked(data.attempt?.markedForReview || []);
+      setViolations(Number(data.attempt?.focusViolationCount) || 0);
       setIndex(
         Math.min(
           data.attempt?.currentQuestionIndex || 0,
@@ -216,7 +245,13 @@ export default function VendorAttemptClient({ slug, attemptId }) {
         if (!res.ok || !data.success) {
           throw new Error(data.error || 'Submit failed');
         }
-        toast.success(auto ? 'Time up — auto-submitted' : 'Submitted');
+        toast.success(
+          data.attempt?.cheated
+            ? 'Submitted and marked as cheated'
+            : auto
+              ? 'Time up — auto-submitted'
+              : 'Submitted'
+        );
         router.replace(`/practice-tests/${slug}/results/${attemptId}`);
       } catch (err) {
         toast.error(err.message);
@@ -256,51 +291,88 @@ export default function VendorAttemptClient({ slug, attemptId }) {
     submit({ auto: true });
   }, [remaining, loading, attempt, submit]);
 
-  // Anti-cheat
+  const recordViolation = useCallback(
+    async (kind) => {
+      if (!test?.antiCheatEnabled || submitting.current) return;
+      const now = Date.now();
+      if (violationLock.current || now - lastViolationAt.current < 1000) return;
+      violationLock.current = true;
+      lastViolationAt.current = now;
+      try {
+        await persist();
+        const res = await fetch(`/api/practice-tests/${slug}/attempts/${attemptId}/events`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'focus_violation', meta: { kind } }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || 'Could not record the switch');
+        }
+        if (typeof data.violationCount === 'number') setViolations(data.violationCount);
+        if (data.exceeded || data.submitted) {
+          submitting.current = true;
+          toast.error('Submitted and marked as cheated');
+          router.replace(`/practice-tests/${slug}/results/${attemptId}`);
+        }
+      } catch (err) {
+        toast.error(err.message);
+      } finally {
+        violationLock.current = false;
+      }
+    },
+    [test?.antiCheatEnabled, persist, slug, attemptId, router]
+  );
+
+  // Semi-proctor: fullscreen required, one count for a fullscreen exit or a tab switch.
   useEffect(() => {
     if (!test?.antiCheatEnabled || loading) return undefined;
 
-    const logEvent = (type, meta) => {
-      fetch(`/api/practice-tests/${slug}/attempts/${attemptId}/events`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type, meta }),
-      }).catch(() => {});
-    };
+    const alreadyFullscreen = Boolean(fullscreenElement());
+    setFsSupported(fullscreenSupported());
+    setFsOn(alreadyFullscreen);
+    if (alreadyFullscreen) enteredFullscreen.current = true;
+    setFsReady(true);
 
-    const onVis = () => {
-      if (document.visibilityState === 'hidden') {
-        logEvent('visibility_hidden');
-        setWarnBlur((n) => n + 1);
-      } else {
-        logEvent('visibility_visible');
+    const onFs = () => {
+      const on = Boolean(fullscreenElement());
+      setFsOn(on);
+      if (on) {
+        enteredFullscreen.current = true;
+        return;
       }
+      if (enteredFullscreen.current) recordViolation('fullscreen_exit');
     };
-    const onBlur = () => {
-      logEvent('window_blur');
-      setWarnBlur((n) => n + 1);
+    const onVis = () => {
+      if (document.visibilityState === 'hidden') recordViolation('tab_hidden');
     };
     const block = (e) => {
       e.preventDefault();
-      logEvent('blocked_action', { kind: e.type });
+      fetch(`/api/practice-tests/${slug}/attempts/${attemptId}/events`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'blocked_action', meta: { kind: e.type } }),
+      }).catch(() => {});
     };
 
+    document.addEventListener('fullscreenchange', onFs);
+    document.addEventListener('webkitfullscreenchange', onFs);
     document.addEventListener('visibilitychange', onVis);
-    window.addEventListener('blur', onBlur);
     document.addEventListener('copy', block);
     document.addEventListener('cut', block);
     document.addEventListener('paste', block);
     document.addEventListener('contextmenu', block);
 
     return () => {
+      document.removeEventListener('fullscreenchange', onFs);
+      document.removeEventListener('webkitfullscreenchange', onFs);
       document.removeEventListener('visibilitychange', onVis);
-      window.removeEventListener('blur', onBlur);
       document.removeEventListener('copy', block);
       document.removeEventListener('cut', block);
       document.removeEventListener('paste', block);
       document.removeEventListener('contextmenu', block);
     };
-  }, [test?.antiCheatEnabled, loading, slug, attemptId]);
+  }, [test?.antiCheatEnabled, loading, slug, attemptId, recordViolation]);
 
   // Flush on unload
   useEffect(() => {
@@ -328,6 +400,7 @@ export default function VendorAttemptClient({ slug, attemptId }) {
     if (loading) return undefined;
     const onKey = (e) => {
       if (e.target && ['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
+      if (test?.antiCheatEnabled && fullscreenSupported() && !fullscreenElement()) return;
       if (e.key === 'ArrowLeft') {
         e.preventDefault();
         if (indexRef.current > 0) goTo(indexRef.current - 1);
@@ -366,6 +439,18 @@ export default function VendorAttemptClient({ slug, attemptId }) {
   const lowTime = remaining < 60;
   const isLast = index >= questions.length - 1;
   const hasAnswer = Boolean(String(currentAnswer || '').trim());
+  const switchLimit = test.maxFocusViolations || 4;
+  const needsFullscreen = Boolean(test.antiCheatEnabled && fsReady && fsSupported && !fsOn);
+
+  const requestTestFullscreen = async () => {
+    try {
+      await enterFullscreen();
+      enteredFullscreen.current = true;
+      setFsOn(true);
+    } catch (err) {
+      toast.error(err.message || 'Could not enter fullscreen');
+    }
+  };
 
   return (
     <McqMathProvider>
@@ -410,9 +495,11 @@ export default function VendorAttemptClient({ slug, attemptId }) {
               </button>
             </div>
           </div>
-          {warnBlur > 0 && test.antiCheatEnabled ? (
+          {test.antiCheatEnabled ? (
             <p className="border-t border-amber-200 bg-amber-50 px-4 py-1.5 text-center text-xs font-medium text-amber-900">
-              Focus left the test window {warnBlur} time(s). This is logged.
+              {violations > 0
+                ? `Switches: ${violations} of ${test.maxFocusViolations || 4}. The next one past that limit submits this test and marks it as cheated.`
+                : `Stay in fullscreen. You can leave or switch away ${test.maxFocusViolations || 4} times. The next switch submits the test and marks it as cheated.`}
             </p>
           ) : null}
         </header>
@@ -623,6 +710,39 @@ export default function VendorAttemptClient({ slug, attemptId }) {
           </div>
         </div>
       </div>
+      {needsFullscreen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/80 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-white/10 bg-white p-6 shadow-xl">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-teal-50 text-teal-800">
+              <Maximize2 className="h-6 w-6" aria-hidden />
+            </div>
+            <h2 className="mt-4 text-center text-lg font-bold text-neutral-900">
+              {violations > 0 ? 'Return to fullscreen' : 'Fullscreen is required'}
+            </h2>
+            <p className="mt-2 text-center text-sm leading-relaxed text-neutral-600">
+              {violations > 0
+                ? `You left fullscreen or switched away ${violations} time${violations === 1 ? '' : 's'}. The test clock keeps running. More than ${switchLimit} switches submits your answers and marks this attempt as cheated.`
+                : `This test stays in fullscreen. Leaving it, or switching to another tab, counts as one switch. More than ${switchLimit} switches submits the test and marks it as cheated. Your score is still calculated.`}
+            </p>
+            <p className="mt-3 text-center font-mono text-sm font-semibold text-neutral-800">
+              Time left {formatMmSs(remaining)}
+            </p>
+            <button
+              type="button"
+              onClick={requestTestFullscreen}
+              className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-800"
+            >
+              <Maximize2 className="h-4 w-4" aria-hidden />
+              {violations > 0 ? 'Return to fullscreen' : 'Enter fullscreen'}
+            </button>
+          </div>
+        </div>
+      ) : null}
+      {test.antiCheatEnabled && fsReady && !fsSupported ? (
+        <p className="fixed bottom-3 left-1/2 z-50 -translate-x-1/2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs text-amber-900">
+          This browser cannot lock fullscreen. Stay on this tab — switching away still counts.
+        </p>
+      ) : null}
     </McqMathProvider>
   );
 }

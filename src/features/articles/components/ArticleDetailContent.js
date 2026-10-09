@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight, Clock, Eye, Tag } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Tag } from 'lucide-react';
 import '@/styles/article-content.css';
 import ArticleShareButton from '@/features/articles/components/ArticleShareButton';
 import ArticleViewTracker from '@/features/articles/components/ArticleViewTracker';
@@ -70,7 +70,7 @@ function RelatedPagination({ slug, page, totalPages, totalCount }) {
   );
 }
 
-function ArticleMeta({ dateLabel, readMinutes, views, className = '' }) {
+function ArticleMeta({ dateLabel, readMinutes, viewNode, className = '' }) {
   return (
     <div className={`flex flex-wrap items-center gap-x-3 gap-y-1 text-xs sm:text-sm text-neutral-500 ${className}`}>
       <time dateTime={dateLabel}>{dateLabel}</time>
@@ -80,10 +80,7 @@ function ArticleMeta({ dateLabel, readMinutes, views, className = '' }) {
         {readMinutes} min read
       </span>
       <span className="text-neutral-300" aria-hidden>·</span>
-      <span className="inline-flex items-center gap-1">
-        <Eye className="w-3.5 h-3.5" />
-        {views.toLocaleString()} views
-      </span>
+      {viewNode}
     </div>
   );
 }
@@ -114,8 +111,6 @@ export default async function ArticleDetailContent({
 
   return (
     <div className="min-h-screen bg-neutral-50 pt-20 pb-8 sm:pb-12">
-      <ArticleViewTracker articleId={article.id} />
-
       {/* Top bar */}
       <div className="border-b border-neutral-200/80 bg-white/90 backdrop-blur-sm sticky top-20 z-30">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex items-center justify-between gap-3">
@@ -180,7 +175,9 @@ export default async function ArticleDetailContent({
                 <ArticleMeta
                   dateLabel={dateLabel}
                   readMinutes={readMinutes}
-                  views={views}
+                  viewNode={
+                    <ArticleViewTracker articleId={article.id} initialCount={views} />
+                  }
                   className="mt-4 sm:mt-5"
                 />
 

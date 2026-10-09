@@ -64,6 +64,9 @@ export async function GET(_request, { params }) {
     denseRank: finished && released ? attempt.dense_rank : null,
     rank: finished && released ? attempt.rank : null,
     percentile: null,
+    cheated: Boolean(attempt.cheated || attempt.final_stats?.cheated),
+    focusViolationCount:
+      attempt.final_stats?.focusViolationCount ?? attempt.focus_violation_count ?? null,
   };
 
   if (!finished) {

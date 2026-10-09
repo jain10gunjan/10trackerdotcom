@@ -3,6 +3,7 @@ import { requireVendorApi } from '@/features/vendor-tests/server/requireVendorAp
 import { writeVendorAuditLog } from '@/features/vendor-tests/lib/vendorDb';
 import { ACCESS_MODES } from '@/features/vendor-tests/lib/vendorConstants';
 import { isSuperAdminEmail } from '@/features/vendor-tests/lib/vendorAccess';
+import { parseEnrollmentSettings } from '@/features/vendor-tests/lib/vendorEnrollment';
 
 const VALID_MODES = new Set(Object.values(ACCESS_MODES));
 
@@ -92,6 +93,14 @@ export async function PATCH(request, { params }) {
     if (body.require_workspace_hd !== undefined) {
       settingsUpdates.require_workspace_hd = !!body.require_workspace_hd;
     }
+    if (body.allow_gmail_auto_enroll !== undefined) {
+      settingsUpdates.allow_gmail_auto_enroll = !!body.allow_gmail_auto_enroll;
+    }
+    const enrollment = parseEnrollmentSettings(body, ctx.settings || {});
+    if (enrollment.error) {
+      return NextResponse.json({ success: false, error: enrollment.error }, { status: 400 });
+    }
+    Object.assign(settingsUpdates, enrollment.data || {});
 
     if (Object.keys(settingsUpdates).length) {
       settingsUpdates.updated_at = new Date().toISOString();
@@ -99,7 +108,16 @@ export async function PATCH(request, { params }) {
         .from('vendor_access_settings')
         .upsert({ vendor_id: vendorId, ...settingsUpdates }, { onConflict: 'vendor_id' });
       if (sErr) {
-        return NextResponse.json({ success: false, error: sErr.message }, { status: 500 });
+        const missingEnrollment = /enrollment_/i.test(sErr.message || '');
+        return NextResponse.json(
+          {
+            success: false,
+            error: missingEnrollment
+              ? 'Enrollment settings are not in the database yet. Run scripts/vendor_enrollment_rules.sql in the Supabase SQL editor, then reload the API schema.'
+              : sErr.message,
+          },
+          { status: 500 }
+        );
       }
       changes.settings = settingsUpdates;
     }

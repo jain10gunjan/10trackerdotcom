@@ -3,6 +3,7 @@ import { resolveVendorAccess } from '@/features/vendor-tests/server/resolveVendo
 import VendorRestrictedPanel from '@/features/vendor-tests/components/VendorRestrictedPanel';
 import VendorTestInstructionsClient from '@/features/vendor-tests/components/VendorTestInstructionsClient';
 import { primaryDomainHint } from '@/features/vendor-tests/lib/vendorAccess';
+import { enrollmentRulesFromSettings } from '@/features/vendor-tests/lib/vendorEnrollment';
 import { canReleaseResults } from '@/features/vendor-tests/lib/attemptQuestions';
 
 export default async function VendorTestInstructionsPage({ params }) {
@@ -74,6 +75,7 @@ export default async function VendorTestInstructionsPage({ params }) {
         branch: result.member?.branch || '',
         batch: result.member?.batch || '',
       }}
+      enrollmentRules={enrollmentRulesFromSettings(result.settings)}
     />
   );
 }

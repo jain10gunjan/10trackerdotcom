@@ -196,6 +196,11 @@ export default function VendorTestResultsClient({ slug, testId }) {
                         </td>
                         <td className="px-3 py-2.5 text-xs">
                           {String(a.status || '').replace(/_/g, ' ')}
+                          {a.cheated ? (
+                            <span className="ml-1 inline-flex rounded-full bg-rose-100 px-1.5 py-0.5 font-semibold text-rose-800">
+                              cheated
+                            </span>
+                          ) : null}
                         </td>
                         <td
                           className={`px-3 py-2.5 tabular-nums ${

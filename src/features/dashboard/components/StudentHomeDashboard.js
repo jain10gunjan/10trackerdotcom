@@ -11,6 +11,7 @@ import {
   ClipboardList,
   Clock,
   Coins,
+  Eye,
   Infinity,
   Layers,
   RefreshCw,
@@ -406,6 +407,11 @@ function UpdateCard({ item }) {
       {item.excerpt ? (
         <p className="mt-1.5 text-xs text-neutral-500 line-clamp-2">{item.excerpt}</p>
       ) : null}
+      <p className="mt-2 inline-flex items-center gap-1 text-[11px] text-neutral-500">
+        <Eye className="h-3 w-3" />
+        {Number(item.viewCount || 0).toLocaleString()}{' '}
+        {Number(item.viewCount || 0) === 1 ? 'view' : 'views'}
+      </p>
     </Link>
   );
 }

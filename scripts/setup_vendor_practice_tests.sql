@@ -47,6 +47,12 @@ CREATE TABLE IF NOT EXISTS public.vendor_access_settings (
   auto_enroll BOOLEAN NOT NULL DEFAULT true,
   allow_subdomains BOOLEAN NOT NULL DEFAULT false,
   require_workspace_hd BOOLEAN NOT NULL DEFAULT false,
+  allow_gmail_auto_enroll BOOLEAN NOT NULL DEFAULT false,
+  enrollment_min_length INTEGER NOT NULL DEFAULT 1,
+  enrollment_max_length INTEGER NOT NULL DEFAULT 64,
+  enrollment_digits_only BOOLEAN NOT NULL DEFAULT false,
+  enrollment_prefix TEXT,
+  enrollment_hint TEXT,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -199,6 +205,7 @@ CREATE TABLE IF NOT EXISTS public.vendor_tests (
     CHECK (result_release IN ('instant', 'after_window', 'manual')),
   results_released BOOLEAN NOT NULL DEFAULT false,
   anti_cheat_enabled BOOLEAN NOT NULL DEFAULT true,
+  max_focus_violations INTEGER NOT NULL DEFAULT 4,
   total_questions INTEGER NOT NULL DEFAULT 0,
   created_by TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -247,6 +254,8 @@ CREATE TABLE IF NOT EXISTS public.vendor_attempts (
   current_question_index INTEGER NOT NULL DEFAULT 0,
   marked_for_review JSONB NOT NULL DEFAULT '[]'::jsonb,
   anti_cheat_events JSONB NOT NULL DEFAULT '[]'::jsonb,
+  focus_violation_count INTEGER NOT NULL DEFAULT 0,
+  cheated BOOLEAN NOT NULL DEFAULT false,
   score NUMERIC,
   max_score NUMERIC,
   percentage NUMERIC,
@@ -396,3 +405,36 @@ SELECT
   jsonb_build_object('slug', 'ips-academy-indore', 'domain', 'ipsacademy.org')
 FROM public.vendors v
 WHERE v.slug = 'ips-academy-indore';
+
+-- ---------------------------------------------------------------------------
+-- 15) Proctoring limit + Gmail auto-entry (safe to re-run)
+-- ---------------------------------------------------------------------------
+ALTER TABLE public.vendor_tests
+  ADD COLUMN IF NOT EXISTS max_focus_violations INTEGER NOT NULL DEFAULT 4;
+
+ALTER TABLE public.vendor_attempts
+  ADD COLUMN IF NOT EXISTS focus_violation_count INTEGER NOT NULL DEFAULT 0;
+
+ALTER TABLE public.vendor_attempts
+  ADD COLUMN IF NOT EXISTS cheated BOOLEAN NOT NULL DEFAULT false;
+
+ALTER TABLE public.vendor_access_settings
+  ADD COLUMN IF NOT EXISTS allow_gmail_auto_enroll BOOLEAN NOT NULL DEFAULT false;
+
+ALTER TABLE public.vendor_access_settings
+  ADD COLUMN IF NOT EXISTS enrollment_min_length INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE public.vendor_access_settings
+  ADD COLUMN IF NOT EXISTS enrollment_max_length INTEGER NOT NULL DEFAULT 64;
+ALTER TABLE public.vendor_access_settings
+  ADD COLUMN IF NOT EXISTS enrollment_digits_only BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE public.vendor_access_settings
+  ADD COLUMN IF NOT EXISTS enrollment_prefix TEXT;
+ALTER TABLE public.vendor_access_settings
+  ADD COLUMN IF NOT EXISTS enrollment_hint TEXT;
+
+ALTER TABLE public.vendor_members DROP CONSTRAINT IF EXISTS vendor_members_source_check;
+ALTER TABLE public.vendor_members
+  ADD CONSTRAINT vendor_members_source_check
+  CHECK (source IN ('domain', 'allowlist', 'manual', 'gmail'));
+
+NOTIFY pgrst, 'reload schema';

@@ -42,7 +42,6 @@ const INPUT_BASE =
 const ERROR_FIELD_ORDER = [
   'first_name',
   'last_name',
-  'phone_number',
   'country',
   'target_exams',
   'target_exam',
@@ -410,7 +409,6 @@ export default function UserProfileForm({
           'first_name',
           'last_name',
           'country',
-          'phone_number',
           'target_exams',
           'target_exam',
           'avatar_url',
@@ -452,7 +450,12 @@ export default function UserProfileForm({
       return;
     }
     try {
-      const { email: _email, legacy_target_exam: _legacy, ...payload } = form;
+      const {
+        email: _email,
+        legacy_target_exam: _legacy,
+        phone_number: _phone,
+        ...payload
+      } = form;
       await onSave({
         ...payload,
         ...(requireTerms ? { termsAccepted: true, termsVersion: TERMS_VERSION } : {}),
@@ -505,7 +508,7 @@ export default function UserProfileForm({
           <SectionHeading
             number="01"
             title="Personal information"
-            description="Name appears on leaderboards. Email and phone stay private."
+            description="Name appears on leaderboards. Your email stays private."
           />
           <div className="space-y-3">
             <ProfileAvatar
@@ -566,26 +569,7 @@ export default function UserProfileForm({
                   className={`${INPUT_BASE} bg-neutral-50 text-neutral-500 cursor-not-allowed`}
                 />
               </div>
-              <div>
-                <FormLabel htmlFor="phone_number" required>
-                  Phone number
-                </FormLabel>
-                <input
-                  id="phone_number"
-                  type="tel"
-                  value={form.phone_number}
-                  onChange={set('phone_number')}
-                  onBlur={handleBlur('phone_number')}
-                  placeholder="+91 98765 43210"
-                  autoComplete="tel"
-                  inputMode="tel"
-                  aria-invalid={Boolean(visibleError('phone_number'))}
-                  aria-describedby={visibleError('phone_number') ? 'phone_number-error' : undefined}
-                  className={inputClass('phone_number')}
-                />
-                <FieldError id="phone_number-error" message={visibleError('phone_number')} />
-              </div>
-              <div>
+              <div className="sm:col-span-2 sm:max-w-xs">
                 <FormLabel htmlFor="country" required>
                   Country
                 </FormLabel>
@@ -794,7 +778,7 @@ export default function UserProfileForm({
         {showPrivacyNote && !requireTerms && (
           <div className="px-4 sm:px-5 py-2.5 border-b border-neutral-100 flex items-start gap-2 text-xs text-neutral-500 bg-neutral-50/50">
             <User className="w-3.5 h-3.5 mt-0.5 shrink-0 text-emerald-600" aria-hidden />
-            Leaderboards show your name only — never email or phone.
+            Leaderboards show your name only.
           </div>
         )}
 

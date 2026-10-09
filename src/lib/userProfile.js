@@ -3,7 +3,38 @@
 import { isValidExamSlug, normalizeTargetExamsPayload, parseTargetExams } from '@/lib/examProfile';
 import { TERMS_VERSION } from '@/features/billing/lib/legal';
 
-export const PROFILE_REQUIRED_FIELDS = ['first_name', 'last_name', 'country', 'phone_number'];
+export const PROFILE_REQUIRED_FIELDS = ['first_name', 'last_name', 'country'];
+
+/** Exam pre-selected when a student creates a profile from the IPS Academy portal link. */
+export const IPS_ACADEMY_DEFAULT_EXAM = 'general-aptitude';
+
+export function signupExamDefaultForPath(returnPath) {
+  const path = String(returnPath || '')
+    .split('?')[0]
+    .split('#')[0]
+    .toLowerCase();
+  if (
+    path === '/practice-tests/ips-academy' ||
+    path.startsWith('/practice-tests/ips-academy/') ||
+    path.startsWith('/practice-tests/ips-academy-')
+  ) {
+    return IPS_ACADEMY_DEFAULT_EXAM;
+  }
+  return '';
+}
+
+/** Pre-select General Aptitude when the student has not chosen an exam yet. */
+export function applySignupExamDefault(defaults, returnPath) {
+  const preset = signupExamDefaultForPath(returnPath);
+  if (!preset) return defaults;
+  const exams = Array.isArray(defaults?.target_exams) ? defaults.target_exams : [];
+  if (exams.length > 0) return defaults;
+  return {
+    ...defaults,
+    target_exam: preset,
+    target_exams: [preset],
+  };
+}
 
 export function parseSessionName(fullName) {
   const parts = String(fullName || '')
@@ -68,9 +99,10 @@ export function getProfileGateStatus(profile) {
   };
 }
 
+/** Optional. Empty is valid; a provided number must be 8–15 digits. */
 export function validatePhoneNumber(phone) {
   const raw = String(phone || '').trim();
-  if (!raw) return 'Phone number is required';
+  if (!raw) return null;
   const digits = raw.replace(/\D/g, '');
   if (digits.length < 8 || digits.length > 15) {
     return 'Enter a valid phone number (8–15 digits)';
@@ -111,9 +143,6 @@ export function validateProfileFormFields(
 
   if (!String(form.country || '').trim()) errors.country = 'Country is required';
 
-  const phoneErr = validatePhoneNumber(form.phone_number);
-  if (phoneErr) errors.phone_number = phoneErr;
-
   if (!skipExamFields) {
     const exams = Array.isArray(form.target_exams) ? form.target_exams : [];
     if (!exams.length) errors.target_exams = 'Select at least one exam';
@@ -139,7 +168,12 @@ export function validateProfilePayload(body) {
   const first_name = String(body.first_name || body.firstName || '').trim();
   const last_name = String(body.last_name || body.lastName || '').trim();
   const country = String(body.country || '').trim();
-  const phone_number = String(body.phone_number || body.phoneNumber || '').trim();
+  const phoneProvided =
+    Object.prototype.hasOwnProperty.call(body, 'phone_number') ||
+    Object.prototype.hasOwnProperty.call(body, 'phoneNumber');
+  const phone_number = phoneProvided
+    ? String(body.phone_number || body.phoneNumber || '').trim()
+    : null;
   const city = String(body.city || '').trim().slice(0, 80);
   const state = String(body.state || '').trim().slice(0, 80);
   const bio = String(body.bio || '').trim();
@@ -161,9 +195,11 @@ export function validateProfilePayload(body) {
   if (!country) {
     return { error: 'Country is required' };
   }
-  const phoneErr = validatePhoneNumber(phone_number);
-  if (phoneErr) {
-    return { error: phoneErr };
+  if (phoneProvided && phone_number) {
+    const phoneErr = validatePhoneNumber(phone_number);
+    if (phoneErr) {
+      return { error: phoneErr };
+    }
   }
 
   const avatarErr = validateAvatarUrl(avatar_url);
@@ -190,7 +226,7 @@ export function validateProfilePayload(body) {
       first_name,
       last_name,
       country,
-      phone_number,
+      ...(phoneProvided ? { phone_number: phone_number || null } : {}),
       city: city || null,
       state: state || null,
       bio: bio ? bio.slice(0, 300) : null,

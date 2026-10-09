@@ -62,6 +62,15 @@ export function normalizeVendorTestPayload(body, { partial = false } = {}) {
   if (body.anti_cheat_enabled !== undefined) out.anti_cheat_enabled = !!body.anti_cheat_enabled;
   else if (!partial) out.anti_cheat_enabled = true;
 
+  if (body.max_focus_violations !== undefined || !partial) {
+    const raw = body.max_focus_violations ?? 4;
+    const n = Number(raw);
+    if (!Number.isFinite(n) || n < 1 || n > 50) {
+      return { ok: false, error: 'Allowed switches must be a number from 1 to 50' };
+    }
+    out.max_focus_violations = Math.round(n);
+  }
+
   if (body.max_attempts !== undefined || !partial) {
     const m = Number(body.max_attempts ?? 1);
     out.max_attempts = Number.isFinite(m) && m >= 1 ? Math.min(20, Math.round(m)) : 1;

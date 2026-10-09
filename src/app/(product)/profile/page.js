@@ -11,7 +11,7 @@ import { useProfileGate } from '@/context/ProfileGateContext';
 import UserProfileForm from '@/features/profile/components/UserProfileForm';
 import OnboardingBrowseLinks from '@/features/profile/components/OnboardingBrowseLinks';
 import { getSafeRedirect } from '@/lib/safeRedirect';
-import { profileToFormDefaults } from '@/lib/userProfile';
+import { applySignupExamDefault, profileToFormDefaults } from '@/lib/userProfile';
 import { TERMS_VERSION } from '@/features/billing/lib/legal';
 import logo from '@/assets/10tracker.png';
 
@@ -105,12 +105,15 @@ export default function ProfilePage() {
 
   const formDefaults = useMemo(
     () =>
-      profileToFormDefaults(profile, {
-        name: user?.name || user?.fullName,
-        image: user?.image,
-        email: user?.email,
-      }),
-    [profile, user]
+      applySignupExamDefault(
+        profileToFormDefaults(profile, {
+          name: user?.name || user?.fullName,
+          image: user?.image,
+          email: user?.email,
+        }),
+        redirectUrl
+      ),
+    [profile, user, redirectUrl]
   );
 
   const formKey = useMemo(() => {

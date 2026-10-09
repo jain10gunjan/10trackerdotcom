@@ -20,6 +20,37 @@ export function isSuperAdminEmail(email) {
   return isAdminEmail(e);
 }
 
+export function isGmailAddress(email) {
+  const e = normalizeEmail(email);
+  return Boolean(e && e.endsWith('@gmail.com'));
+}
+
+/** When the institute allows it, a Gmail account enters as a student with no approval. */
+function allowGmailAutoEntry({ settings, userEmail, member }) {
+  if (!settings?.allow_gmail_auto_enroll) return null;
+  if (!isGmailAddress(userEmail)) return null;
+  if (member?.status === MEMBER_STATUSES.REVOKED) return null;
+  if (
+    member &&
+    (member.status === MEMBER_STATUSES.ACTIVE || member.status === MEMBER_STATUSES.INVITED)
+  ) {
+    return allow({
+      role: member.role || MEMBER_ROLES.STUDENT,
+      source: member.source || 'gmail',
+      member,
+      autoEnrolled: false,
+      activateInvited: member.status === MEMBER_STATUSES.INVITED,
+    });
+  }
+  return allow({
+    role: MEMBER_ROLES.STUDENT,
+    source: 'gmail',
+    member: null,
+    autoEnrolled: true,
+    userEmail,
+  });
+}
+
 /**
  * @param {object} params
  * @param {string|null} params.email
@@ -79,6 +110,7 @@ export function evaluateVendorAccess({
   const autoEnroll = settings?.auto_enroll !== false;
   const requireHd = !!settings?.require_workspace_hd;
   const domainList = (domains || []).map((d) => (typeof d === 'string' ? d : d.domain));
+  const gmailEntry = allowGmailAutoEntry({ settings, userEmail, member });
 
   if (mode === ACCESS_MODES.OPEN_TO_ALL) {
     return resolveOpenOrMember({
@@ -102,6 +134,7 @@ export function evaluateVendorAccess({
     const hd = normalizeEmail(hostedDomain || '');
     const hdOk = domainList.some((d) => hd === normalizeEmail(d));
     if (!hdOk) {
+      if (gmailEntry) return gmailEntry;
       return deny(
         'workspace_hd_required',
         'Sign in with your institute Google Workspace account.',
@@ -120,6 +153,7 @@ export function evaluateVendorAccess({
         activateInvited: member.status === MEMBER_STATUSES.INVITED,
       });
     }
+    if (gmailEntry) return gmailEntry;
     return deny('not_allowlisted', restrictedMessage(domainList, vendor), {
       contactAdmin: true,
     });
@@ -127,6 +161,7 @@ export function evaluateVendorAccess({
 
   if (mode === ACCESS_MODES.DOMAIN_ONLY) {
     if (!domainOk) {
+      if (gmailEntry) return gmailEntry;
       return deny('domain_mismatch', restrictedMessage(domainList, vendor), {
         contactAdmin: true,
       });
@@ -148,6 +183,7 @@ export function evaluateVendorAccess({
     });
   }
 
+  if (gmailEntry) return gmailEntry;
   return deny('not_authorized', restrictedMessage(domainList, vendor), {
     contactAdmin: true,
   });

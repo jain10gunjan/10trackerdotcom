@@ -7,6 +7,15 @@ import {
 import { fromVendorQuestionRow } from '../lib/vendorQuestionNormalize';
 import { backfillMissingOptionsFromPlatform } from '../lib/backfillQuestionOptions';
 
+function clientViolationCount(attempt) {
+  if (attempt?.focus_violation_count != null && attempt.focus_violation_count !== '') {
+    const n = Number(attempt.focus_violation_count);
+    if (Number.isFinite(n) && n >= 0) return n;
+  }
+  const events = Array.isArray(attempt?.anti_cheat_events) ? attempt.anti_cheat_events : [];
+  return events.filter((event) => event?.type === 'focus_violation').length;
+}
+
 export async function loadPublishedTest(supabase, vendorId, testId) {
   const { data, error } = await supabase
     .from('vendor_tests')
@@ -96,6 +105,9 @@ export function buildClientAttemptPayload({
         answers: answersToClientMap(attempt.answers),
         lastSavedAt: attempt.last_saved_at,
         antiCheatEnabled: test?.anti_cheat_enabled !== false,
+        maxFocusViolations: Number(test?.max_focus_violations) || 4,
+        focusViolationCount: clientViolationCount(attempt),
+        cheated: Boolean(attempt.cheated || attempt.final_stats?.cheated),
         score: !isOpen && released ? attempt.score : null,
         maxScore: !isOpen && released ? attempt.max_score : null,
         percentage: !isOpen && released ? attempt.percentage : null,
@@ -113,6 +125,7 @@ export function buildClientAttemptPayload({
         durationMinutes: test.duration_minutes,
         negativeMarking: test.negative_marking,
         antiCheatEnabled: test.anti_cheat_enabled !== false,
+        maxFocusViolations: Number(test?.max_focus_violations) || 4,
         resultRelease: test.result_release,
         startsAt: test.starts_at,
         endsAt: test.ends_at,
@@ -179,6 +192,9 @@ export function buildClientAttemptPayload({
       answers: isOpen ? answersToClientMap(attempt.answers) : answersToClientMap(attempt.answers),
       lastSavedAt: attempt.last_saved_at,
       antiCheatEnabled: test?.anti_cheat_enabled !== false,
+      maxFocusViolations: Number(test?.max_focus_violations) || 4,
+      focusViolationCount: clientViolationCount(attempt),
+      cheated: Boolean(attempt.cheated || attempt.final_stats?.cheated),
       score: !isOpen && released ? attempt.score : null,
       maxScore: !isOpen && released ? attempt.max_score : null,
       percentage: !isOpen && released ? attempt.percentage : null,
@@ -195,6 +211,7 @@ export function buildClientAttemptPayload({
       durationMinutes: test.duration_minutes,
       negativeMarking: test.negative_marking,
       antiCheatEnabled: test.anti_cheat_enabled !== false,
+      maxFocusViolations: Number(test?.max_focus_violations) || 4,
       resultRelease: test.result_release,
       startsAt: test.starts_at,
       endsAt: test.ends_at,

@@ -12,6 +12,8 @@ import {
 import {
   hasRollNo,
   normalizeRollNo,
+  validateRollNo,
+  enrollmentRulesFromSettings,
 } from '@/features/vendor-tests/lib/vendorEnrollment';
 import {
   getCachedVendorPaper,
@@ -40,6 +42,21 @@ export async function POST(request, { params }) {
           success: false,
           error: 'Enrollment / roll number is required before starting a test',
           code: 'enrollment_required',
+        },
+        { status: 400 }
+      );
+    }
+
+    const enrollmentFormat = validateRollNo(
+      ctx.member.roll_no,
+      enrollmentRulesFromSettings(ctx.settings)
+    );
+    if (!enrollmentFormat.ok) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: enrollmentFormat.error,
+          code: 'enrollment_invalid',
         },
         { status: 400 }
       );

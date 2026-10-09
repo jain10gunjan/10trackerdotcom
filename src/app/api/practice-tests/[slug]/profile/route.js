@@ -3,6 +3,8 @@ import { requireVendorApi } from '@/features/vendor-tests/server/requireVendorAp
 import {
   normalizeRollNo,
   assertRollNoUnique,
+  validateRollNo,
+  enrollmentRulesFromSettings,
 } from '@/features/vendor-tests/lib/vendorEnrollment';
 
 /**
@@ -58,13 +60,14 @@ export async function PATCH(request, { params }) {
 
   try {
     const body = await request.json();
-    const rollNo = normalizeRollNo(body.roll_no ?? body.enrollment_number ?? body.rollNo);
-    if (!rollNo) {
-      return NextResponse.json(
-        { success: false, error: 'Enrollment / roll number is required' },
-        { status: 400 }
-      );
+    const format = validateRollNo(
+      body.roll_no ?? body.enrollment_number ?? body.rollNo,
+      enrollmentRulesFromSettings(ctx.settings)
+    );
+    if (!format.ok) {
+      return NextResponse.json({ success: false, error: format.error }, { status: 400 });
     }
+    const rollNo = format.rollNo;
 
     let member = ctx.member;
     if (!member) {

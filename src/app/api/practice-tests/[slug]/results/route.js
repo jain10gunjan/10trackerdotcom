@@ -128,6 +128,10 @@ export async function GET(request, { params }) {
       rank: a.rank,
       antiCheatEventCount: events.length,
       antiCheatEvents: events.slice(0, 50),
+      cheated: Boolean(a.final_stats?.cheated || a.cheated),
+      focusViolationCount:
+        a.final_stats?.focusViolationCount ??
+        events.filter((event) => event?.type === 'focus_violation').length,
     };
   });
 

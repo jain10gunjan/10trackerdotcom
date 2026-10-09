@@ -20,7 +20,7 @@ export async function GET(request, { params }) {
   let query = ctx.supabase
     .from('vendor_tests')
     .select(
-      'id, title, description, duration_minutes, status, starts_at, ends_at, total_questions, total_marks, passing_marks, negative_marking, max_attempts, result_release, results_released, anti_cheat_enabled, created_at, updated_at'
+      'id, title, description, duration_minutes, status, starts_at, ends_at, total_questions, total_marks, passing_marks, negative_marking, max_attempts, result_release, results_released, anti_cheat_enabled, max_focus_violations, created_at, updated_at'
     )
     .eq('vendor_id', ctx.vendor.id)
     .order('created_at', { ascending: false });

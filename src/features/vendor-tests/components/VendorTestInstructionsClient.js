@@ -12,6 +12,11 @@ import VendorPageHeader, {
   VendorSecondaryButton,
   VendorStatTile,
 } from './VendorUi';
+import {
+  DEFAULT_ENROLLMENT_RULES,
+  enrollmentHelpText,
+  validateRollNo,
+} from '@/features/vendor-tests/lib/vendorEnrollment';
 
 function inWindow(test, now = new Date()) {
   if (test?.starts_at && now < new Date(test.starts_at)) return false;
@@ -25,6 +30,7 @@ export default function VendorTestInstructionsClient({
   questionCount,
   priorAttempts = [],
   initialProfile = null,
+  enrollmentRules = DEFAULT_ENROLLMENT_RULES,
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -34,7 +40,10 @@ export default function VendorTestInstructionsClient({
   const [savingEnrollment, setSavingEnrollment] = useState(false);
 
   const open = inWindow(test);
-  const enrollmentOk = Boolean(String(profile?.roll_no || '').trim());
+  const savedRoll = String(profile?.roll_no || '').trim();
+  const savedRollCheck = savedRoll ? validateRollNo(savedRoll, enrollmentRules) : { ok: false };
+  const enrollmentOk = savedRollCheck.ok;
+  const enrollmentHelp = enrollmentHelpText(enrollmentRules);
   const inProgress = priorAttempts.find((a) => a.status === 'in_progress');
   const finished = priorAttempts.filter((a) =>
     ['submitted', 'auto_submitted'].includes(a.status)
@@ -46,6 +55,8 @@ export default function VendorTestInstructionsClient({
     e?.preventDefault?.();
     setSavingEnrollment(true);
     try {
+      const format = validateRollNo(rollInput, enrollmentRules);
+      if (!format.ok) throw new Error(format.error);
       const res = await fetch(`/api/practice-tests/${slug}/profile`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -67,7 +78,7 @@ export default function VendorTestInstructionsClient({
 
   const startOrResume = async () => {
     if (!enrollmentOk) {
-      toast.error('Enter your enrollment / roll number first');
+      toast.error(savedRollCheck.error || 'Enter your enrollment / roll number first');
       return;
     }
     setBusy(true);
@@ -79,7 +90,7 @@ export default function VendorTestInstructionsClient({
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
-        if (data.code === 'enrollment_required') {
+        if (data.code === 'enrollment_required' || data.code === 'enrollment_invalid') {
           setProfile((p) => ({ ...p, roll_no: null }));
         }
         throw new Error(data.error || 'Could not start attempt');
@@ -133,8 +144,11 @@ export default function VendorTestInstructionsClient({
             Enrollment
           </h2>
           <p className="mt-1 text-sm text-neutral-600">
-            Required before every test. Shown on institute results.
+            Required before every test. Shown on institute results. {enrollmentHelp}
           </p>
+          {savedRoll && !savedRollCheck.ok ? (
+            <p className="mt-2 text-sm text-rose-700">{savedRollCheck.error} Update it below.</p>
+          ) : null}
           {enrollmentOk ? (
             <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-100 bg-emerald-50/80 px-4 py-3">
               <p className="text-sm text-emerald-900">
@@ -160,7 +174,14 @@ export default function VendorTestInstructionsClient({
                   value={rollInput}
                   onChange={(e) => setRollInput(e.target.value)}
                   className="mt-1 w-full rounded-xl border border-neutral-200 px-3 py-2.5 text-sm outline-none focus:border-teal-600 focus:ring-1 focus:ring-teal-600"
-                  placeholder="e.g. IPS2024CS042"
+                  placeholder={
+                    enrollmentRules.prefix
+                      ? `${enrollmentRules.prefix}…`
+                      : 'Enrollment / roll number'
+                  }
+                  minLength={enrollmentRules.minLength}
+                  maxLength={enrollmentRules.maxLength}
+                  inputMode={enrollmentRules.digitsOnly ? 'numeric' : 'text'}
                 />
               </label>
               <label className="block text-sm">
@@ -194,7 +215,11 @@ export default function VendorTestInstructionsClient({
             <li>Answers autosave. You can resume if you leave mid-test.</li>
             <li>Scoring is server-side — answer keys are never sent during the test.</li>
             {test.anti_cheat_enabled !== false ? (
-              <li>Stay in the test tab. Switching away is logged.</li>
+              <li>
+                The test must stay in fullscreen. Leaving fullscreen or switching away counts
+                as one switch. More than {test.max_focus_violations || 4} switches auto-submits
+                the test and marks it as cheated. Your answers are still scored.
+              </li>
             ) : null}
           </ul>
         )}

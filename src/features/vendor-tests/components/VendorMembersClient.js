@@ -57,6 +57,7 @@ export default function VendorMembersClient({ slug }) {
   });
   const [csvText, setCsvText] = useState('');
   const [busy, setBusy] = useState(false);
+  const [rollDrafts, setRollDrafts] = useState({});
 
   const loadMembers = useCallback(async () => {
     const res = await fetch(
@@ -133,7 +134,13 @@ export default function VendorMembersClient({ slug }) {
       });
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || 'Import failed');
-      toast.success(`Imported ${data.upserted?.length || 0} members`);
+      const skipped = data.rowErrors?.length || 0;
+      toast.success(
+        skipped
+          ? `Imported ${data.upserted?.length || 0} members. ${skipped} row(s) skipped.`
+          : `Imported ${data.upserted?.length || 0} members`
+      );
+      if (skipped) toast.error(data.rowErrors[0].error);
       setCsvText('');
       await loadMembers();
     } catch (err) {
@@ -153,7 +160,20 @@ export default function VendorMembersClient({ slug }) {
       });
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || 'Update failed');
-      toast.success(patch.status === 'revoked' ? 'Access revoked' : 'Updated');
+      toast.success(
+        patch.status === 'revoked'
+          ? 'Access revoked'
+          : patch.roll_no !== undefined
+            ? 'Enrollment number saved'
+            : 'Updated'
+      );
+      if (patch.roll_no !== undefined && data.member?.id) {
+        setRollDrafts((prev) => {
+          const next = { ...prev };
+          delete next[data.member.id];
+          return next;
+        });
+      }
       await loadMembers();
     } catch (err) {
       toast.error(err.message);
@@ -317,12 +337,13 @@ export default function VendorMembersClient({ slug }) {
               <li className="p-4 text-sm text-neutral-500">No members yet.</li>
             ) : (
               members.map((m) => (
-                <li key={m.id} className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <li key={m.id} className="flex flex-col gap-3 p-4">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <p className="text-sm font-medium text-neutral-900">{m.user_email}</p>
                     <p className="text-xs text-neutral-500">
                       {m.role} · {m.status} · {m.source}
-                      {m.roll_no ? ` · enrollment ${m.roll_no}` : ''}
+                      {m.roll_no ? ` · enrollment ${m.roll_no}` : ' · no enrollment number'}
                       {m.batch ? ` · ${m.batch}` : ''}
                     </p>
                   </div>
@@ -366,6 +387,35 @@ export default function VendorMembersClient({ slug }) {
                       </button>
                     )}
                   </div>
+                  </div>
+                  <form
+                    className="flex flex-wrap items-center gap-2"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const next = rollDrafts[m.id] ?? m.roll_no ?? '';
+                      patchMember(m.user_email, { roll_no: next });
+                    }}
+                  >
+                    <label className="text-xs text-neutral-600" htmlFor={`roll-${m.id}`}>
+                      Fix enrollment
+                    </label>
+                    <input
+                      id={`roll-${m.id}`}
+                      value={rollDrafts[m.id] ?? m.roll_no ?? ''}
+                      onChange={(e) =>
+                        setRollDrafts((prev) => ({ ...prev, [m.id]: e.target.value }))
+                      }
+                      placeholder="Enrollment / roll no"
+                      className="w-48 rounded-lg border border-neutral-200 px-2 py-1 text-sm"
+                    />
+                    <button
+                      type="submit"
+                      disabled={busy}
+                      className="rounded-lg border border-teal-200 px-2 py-1 text-xs font-semibold text-teal-800"
+                    >
+                      Save number
+                    </button>
+                  </form>
                 </li>
               ))
             )}

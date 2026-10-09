@@ -72,6 +72,8 @@ export async function GET(_request, { params }) {
     'skipped',
     'duration_seconds',
     'anti_cheat_events',
+    'cheated',
+    'focus_violations',
     'submitted_at',
     'attempt_id',
   ];
@@ -103,6 +105,11 @@ export async function GET(_request, { params }) {
         a.skipped_count,
         a.duration_taken,
         events,
+        a.final_stats?.cheated ? 'yes' : 'no',
+        a.final_stats?.focusViolationCount ??
+          (Array.isArray(a.anti_cheat_events)
+            ? a.anti_cheat_events.filter((event) => event?.type === 'focus_violation').length
+            : 0),
         a.submitted_at,
         a.id,
       ]

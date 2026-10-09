@@ -17,6 +17,7 @@ const EMPTY_TEST = {
   shuffle_questions: false,
   shuffle_options: false,
   anti_cheat_enabled: true,
+  max_focus_violations: 4,
   result_release: 'instant',
   starts_at: '',
   ends_at: '',
@@ -121,6 +122,17 @@ export default function VendorTestsClient({ slug }) {
     } finally {
       setBusy(false);
     }
+  };
+
+  const patchTest = async (testId, patch) => {
+    const res = await fetch(`/api/practice-tests/${slug}/tests/${testId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patch),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || 'Update failed');
+    return data;
   };
 
   const setStatus = async (testId, status) => {
@@ -297,7 +309,7 @@ export default function VendorTestsClient({ slug }) {
           />
           Shuffle options
         </label>
-        <label className="flex items-center gap-2 text-sm">
+        <label className="flex items-center gap-2 text-sm sm:col-span-2">
           <input
             type="checkbox"
             checked={form.anti_cheat_enabled}
@@ -305,7 +317,25 @@ export default function VendorTestsClient({ slug }) {
               setForm((f) => ({ ...f, anti_cheat_enabled: e.target.checked }))
             }
           />
-          Anti-cheat enabled
+          Require fullscreen and count switches
+        </label>
+        <label className="text-sm">
+          Allowed switches
+          <input
+            type="number"
+            min={1}
+            max={50}
+            disabled={!form.anti_cheat_enabled}
+            value={form.max_focus_violations}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, max_focus_violations: e.target.value }))
+            }
+            className="mt-1 w-full rounded-xl border border-neutral-200 px-3 py-2 text-sm disabled:bg-neutral-50"
+          />
+          <span className="mt-1 block text-xs text-neutral-500">
+            Leaving fullscreen or switching away counts as one. More than this number
+            auto-submits the test and marks it cheated. The score is kept. Default is 4.
+          </span>
         </label>
         <button
           type="submit"
@@ -336,6 +366,56 @@ export default function VendorTestsClient({ slug }) {
                       {t.status} · {t.duration_minutes} min · {t.total_questions} Q · max{' '}
                       {t.max_attempts} attempts
                     </p>
+                    <div className="mt-3 flex flex-wrap items-end gap-3">
+                      <label className="flex items-center gap-2 text-xs text-neutral-700">
+                        <input
+                          type="checkbox"
+                          checked={t.anti_cheat_enabled !== false}
+                          onChange={async (e) => {
+                            const enabled = e.target.checked;
+                            try {
+                              await patchTest(t.id, { anti_cheat_enabled: enabled });
+                              setTests((prev) =>
+                                prev.map((row) =>
+                                  row.id === t.id ? { ...row, anti_cheat_enabled: enabled } : row
+                                )
+                              );
+                            } catch (err) {
+                              toast.error(err.message);
+                            }
+                          }}
+                        />
+                        Fullscreen proctoring
+                      </label>
+                      <label className="text-xs text-neutral-700">
+                        Allowed switches
+                        <input
+                          type="number"
+                          min={1}
+                          max={50}
+                          defaultValue={t.max_focus_violations ?? 4}
+                          key={`${t.id}-${t.max_focus_violations ?? 4}`}
+                          onBlur={async (e) => {
+                            const next = e.target.value;
+                            if (String(next) === String(t.max_focus_violations ?? 4)) return;
+                            try {
+                              await patchTest(t.id, { max_focus_violations: Number(next) });
+                              setTests((prev) =>
+                                prev.map((row) =>
+                                  row.id === t.id
+                                    ? { ...row, max_focus_violations: Number(next) }
+                                    : row
+                                )
+                              );
+                              toast.success('Switch limit saved');
+                            } catch (err) {
+                              toast.error(err.message);
+                            }
+                          }}
+                          className="mt-1 block w-20 rounded-lg border border-neutral-200 px-2 py-1 text-sm"
+                        />
+                      </label>
+                    </div>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <button

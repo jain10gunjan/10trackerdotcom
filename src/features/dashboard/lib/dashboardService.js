@@ -570,6 +570,7 @@ export async function buildExamHomeFeed(examSlug) {
       excerpt: a.excerpt || '',
       category: a.category || '',
       createdAt: a.created_at,
+      viewCount: a.view_count || 0,
       href: `/articles/${a.slug}`,
       isFeatured: Boolean(a.is_featured),
     }));

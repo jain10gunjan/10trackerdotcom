@@ -109,6 +109,16 @@ export async function resolveVendorAccess(slug, options = {}) {
         activateInvited: !!decision.activateInvited,
         displayName: session?.user?.name || null,
       });
+      if (ensured.error?.code === '23514' && decision.source === 'gmail') {
+        ensured = await ensureVendorMembership(supabase, {
+          vendorId: vendor.id,
+          email,
+          role: decision.role,
+          source: 'allowlist',
+          activateInvited: !!decision.activateInvited,
+          displayName: session?.user?.name || null,
+        });
+      }
       if (ensured.error) {
         console.error('ensureVendorMembership', ensured.error);
       } else {
