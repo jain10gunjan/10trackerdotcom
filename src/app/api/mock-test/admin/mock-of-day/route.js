@@ -12,6 +12,19 @@ import {
   normalizeMotdExamSlug,
 } from '@/features/mock-test/lib/mockOfTheDay';
 import {
+  getMotdSettings,
+  upsertMotdSettings,
+  MOTD_SETTINGS_HINT,
+} from '@/features/mock-test/lib/motdSettings';
+import { runJeeMainMotdCron } from '@/features/mock-test/lib/jeeMainMotdCron';
+import { isJeeMainExamSlug } from '@/features/mock-test/lib/jeeMainBlueprint';
+import { runGateCseMotdCron } from '@/features/mock-test/lib/gateCseMotdCron';
+import { isGateCseExamSlug } from '@/features/mock-test/lib/gateCseBlueprint';
+import { runGateEeMotdCron } from '@/features/mock-test/lib/gateEeMotdCron';
+import { isGateEeExamSlug } from '@/features/mock-test/lib/gateEeBlueprint';
+import { runGateEcMotdCron } from '@/features/mock-test/lib/gateEcMotdCron';
+import { isGateEcExamSlug } from '@/features/mock-test/lib/gateEcBlueprint';
+import {
   formatAdminDbError,
   SUPABASE_ADMIN_SETUP_HINT,
 } from '@/lib/supabaseAdmin';
@@ -50,6 +63,7 @@ export async function GET(request) {
     }
 
     const today = await resolveMockOfTheDay(examCategory);
+    const settingsRes = await getMotdSettings(examCategory);
 
     return NextResponse.json({
       success: true,
@@ -57,6 +71,13 @@ export async function GET(request) {
       defaults: MOTD_DEFAULTS,
       pool: items,
       today,
+      settings: settingsRes.settings,
+      settingsSetupRequired: Boolean(settingsRes.setupRequired),
+      settingsSetupHint: settingsRes.setupRequired ? MOTD_SETTINGS_HINT : null,
+      isJeeMain: isJeeMainExamSlug(examCategory),
+      isGateCse: isGateCseExamSlug(examCategory),
+      isGateEe: isGateEeExamSlug(examCategory),
+      isGateEc: isGateEcExamSlug(examCategory),
       setupRequired: Boolean(setupRequired),
       setupHint: setupRequired ? setupHint || SETUP_HINT : null,
     });
@@ -175,8 +196,109 @@ export async function POST(request) {
       });
     }
 
+    if (action === 'set-auto-daily') {
+      const enabled = Boolean(body.auto_daily_enabled ?? body.enabled);
+      const { settings, error, setupRequired, setupHint } = await upsertMotdSettings(
+        examCategory,
+        { auto_daily_enabled: enabled }
+      );
+      if (setupRequired) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: error?.message || 'Settings table missing',
+            setupHint: setupHint || MOTD_SETTINGS_HINT,
+          },
+          { status: 400 }
+        );
+      }
+      if (error) {
+        return NextResponse.json(
+          { success: false, error: formatAdminDbError(error) },
+          { status: 500 }
+        );
+      }
+      return NextResponse.json({
+        success: true,
+        message: enabled ? 'Auto daily enabled' : 'Auto daily disabled',
+        settings,
+      });
+    }
+
+    if (action === 'run-jee-daily') {
+      if (!isJeeMainExamSlug(examCategory)) {
+        return NextResponse.json(
+          { success: false, error: 'run-jee-daily is only for jee-main' },
+          { status: 400 }
+        );
+      }
+      const result = await runJeeMainMotdCron({
+        force: Boolean(body.force),
+        createdBy: userEmail || 'admin',
+      });
+      return NextResponse.json({
+        success: result.ok || result.skipped,
+        ...result,
+      });
+    }
+
+    if (action === 'run-gate-daily') {
+      if (!isGateCseExamSlug(examCategory)) {
+        return NextResponse.json(
+          { success: false, error: 'run-gate-daily is only for gate-cse' },
+          { status: 400 }
+        );
+      }
+      const result = await runGateCseMotdCron({
+        force: Boolean(body.force),
+        createdBy: userEmail || 'admin',
+      });
+      return NextResponse.json({
+        success: result.ok || result.skipped,
+        ...result,
+      });
+    }
+
+    if (action === 'run-gate-ee-daily') {
+      if (!isGateEeExamSlug(examCategory)) {
+        return NextResponse.json(
+          { success: false, error: 'run-gate-ee-daily is only for gate-ee' },
+          { status: 400 }
+        );
+      }
+      const result = await runGateEeMotdCron({
+        force: Boolean(body.force),
+        createdBy: userEmail || 'admin',
+      });
+      return NextResponse.json({
+        success: result.ok || result.skipped,
+        ...result,
+      });
+    }
+
+    if (action === 'run-gate-ec-daily') {
+      if (!isGateEcExamSlug(examCategory)) {
+        return NextResponse.json(
+          { success: false, error: 'run-gate-ec-daily is only for gate-ec' },
+          { status: 400 }
+        );
+      }
+      const result = await runGateEcMotdCron({
+        force: Boolean(body.force),
+        createdBy: userEmail || 'admin',
+      });
+      return NextResponse.json({
+        success: result.ok || result.skipped,
+        ...result,
+      });
+    }
+
     return NextResponse.json(
-      { success: false, error: 'Unknown action. Use generate or add.' },
+      {
+        success: false,
+        error:
+          'Unknown action. Use generate, add, set-auto-daily, run-jee-daily, run-gate-daily, run-gate-ee-daily, or run-gate-ec-daily.',
+      },
       { status: 400 }
     );
   } catch (err) {

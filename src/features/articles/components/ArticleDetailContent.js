@@ -70,7 +70,7 @@ function RelatedPagination({ slug, page, totalPages, totalCount }) {
   );
 }
 
-function ArticleMeta({ dateLabel, readMinutes, viewNode, className = '' }) {
+function ArticleMeta({ dateLabel, readMinutes, className = '' }) {
   return (
     <div className={`flex flex-wrap items-center gap-x-3 gap-y-1 text-xs sm:text-sm text-neutral-500 ${className}`}>
       <time dateTime={dateLabel}>{dateLabel}</time>
@@ -79,8 +79,6 @@ function ArticleMeta({ dateLabel, readMinutes, viewNode, className = '' }) {
         <Clock className="w-3.5 h-3.5" />
         {readMinutes} min read
       </span>
-      <span className="text-neutral-300" aria-hidden>·</span>
-      {viewNode}
     </div>
   );
 }
@@ -107,8 +105,6 @@ export default async function ArticleDetailContent({
   const bodyHtml = sanitizeArticleHtml(normalizeArticleContent(article.content));
   const featuredSrc = resolveFeaturedImageUrl(article.featured_image_url);
   const useNextImage = isNextImageAllowedSrc(featuredSrc);
-  const views = article.view_count || 0;
-
   return (
     <div className="min-h-screen bg-neutral-50 pt-20 pb-8 sm:pb-12">
       {/* Top bar */}
@@ -172,12 +168,10 @@ export default async function ArticleDetailContent({
                   </p>
                 ) : null}
 
+                <ArticleViewTracker articleId={article.id} />
                 <ArticleMeta
                   dateLabel={dateLabel}
                   readMinutes={readMinutes}
-                  viewNode={
-                    <ArticleViewTracker articleId={article.id} initialCount={views} />
-                  }
                   className="mt-4 sm:mt-5"
                 />
 

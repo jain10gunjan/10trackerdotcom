@@ -1,7 +1,7 @@
 'use client';
 
 import { Clock, Coins, FileQuestion, Target, X, AlertCircle } from 'lucide-react';
-import { usesGateMarking } from '@/features/mock-test/lib/mockTestUtils';
+import { usesGateMarking, usesJeeMainMarking } from '@/features/mock-test/lib/mockTestUtils';
 import { useCredits } from '@/context/CreditsContext';
 import { CREDIT_COST } from '@/features/credits/lib/constants';
 
@@ -11,6 +11,7 @@ export default function PreflightModal({ test, examcategory, open, onClose, onCo
   if (!open || !test) return null;
 
   const gateMarking = usesGateMarking(examcategory);
+  const jeeMarking = !gateMarking && usesJeeMainMarking(examcategory);
   const durationMin = test.duration || 0;
   const totalQ = test.total_questions || 0;
 
@@ -75,8 +76,15 @@ export default function PreflightModal({ test, examcategory, open, onClose, onCo
               <li>Submit before time runs out to save your score.</li>
               {gateMarking ? (
                 <li>
-                  <strong className="text-neutral-800">GATE marking:</strong> +1 correct, −⅓ wrong, 0
-                  unattempted.
+                  <strong className="text-neutral-800">GATE marking:</strong>{' '}
+                  {totalQ === 65
+                    ? '+1 or +2 per question (as marked), −⅓ of marks for wrong MCQ, 0 for wrong NAT / unattempted. Max 100 marks.'
+                    : '+1 correct, −⅓ wrong (MCQ), 0 unattempted.'}
+                </li>
+              ) : jeeMarking ? (
+                <li>
+                  <strong className="text-neutral-800">JEE Main marking:</strong> +4 correct, −1 wrong
+                  (MCQ and numerical), 0 unattempted. Max {totalQ * 4} marks.
                 </li>
               ) : (
                 <li>

@@ -1,0 +1,8 @@
+{
+  "name": "cattracker-judge-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node judge.mjs"
+  }
+}

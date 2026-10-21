@@ -15,7 +15,7 @@ function getSupabase() {
 }
 
 const LISTING_COLUMNS =
-  'id, slug, title, excerpt, category, created_at, view_count, is_featured, featured_image_url';
+  'id, slug, title, excerpt, category, created_at, is_featured, featured_image_url';
 
 function parseCursor(cursor) {
   if (!cursor || typeof cursor !== 'string') return null;

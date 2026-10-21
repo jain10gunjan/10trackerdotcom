@@ -11,7 +11,6 @@ import {
   ClipboardList,
   Clock,
   Coins,
-  Eye,
   Infinity,
   Layers,
   RefreshCw,
@@ -407,11 +406,6 @@ function UpdateCard({ item }) {
       {item.excerpt ? (
         <p className="mt-1.5 text-xs text-neutral-500 line-clamp-2">{item.excerpt}</p>
       ) : null}
-      <p className="mt-2 inline-flex items-center gap-1 text-[11px] text-neutral-500">
-        <Eye className="h-3 w-3" />
-        {Number(item.viewCount || 0).toLocaleString()}{' '}
-        {Number(item.viewCount || 0) === 1 ? 'view' : 'views'}
-      </p>
     </Link>
   );
 }
@@ -571,9 +565,9 @@ function StudentHomeDashboardInner() {
   const topicMocksHref = examSlug
     ? `${mockTestHrefForSlug(examSlug)}?type=topic`
     : mockHref;
-  const articlesHref = examName
-    ? `/articles?q=${encodeURIComponent(examName)}`
-    : '/articles';
+  const articlesHref =
+    examFeed?.updatesHref ||
+    (examSlug ? `/article/${examSlug}` : '/articles');
   const topicMockCount = (examFeed?.topicMocks ?? []).length;
 
   const continueOptions = dashboard?.continueOptions;
@@ -896,7 +890,7 @@ function StudentHomeDashboardInner() {
                   number="07"
                   eyebrow="Stay current"
                   title={examName ? `${examName} updates` : 'Exam updates'}
-                  description="Articles matched to your exam via free search."
+                  description="Articles for this exam."
                   href={articlesHref}
                   linkLabel="All articles"
                 >

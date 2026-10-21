@@ -11,7 +11,7 @@ const MAX_ADMIN_LIMIT = 200;
 const ALLOWED_STATUSES = new Set(['draft', 'published', 'archived']);
 
 const ADMIN_LIST_COLUMNS =
-  'id, slug, title, excerpt, category, tags, featured_image_url, status, is_featured, view_count, social_media_embeds, created_at, updated_at, author_email';
+  'id, slug, title, excerpt, category, tags, featured_image_url, status, is_featured, social_media_embeds, created_at, updated_at, author_email';
 
 async function fetchAdminArticlesList({
   page = 1,

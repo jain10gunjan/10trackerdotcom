@@ -103,6 +103,12 @@ export default async function VendorAdminHomePage({ params }) {
             >
               Tests
             </Link>
+            <Link
+              href={`/practice-tests/${v.slug}/admin/coding-contests`}
+              className="rounded-xl border border-neutral-200 bg-white px-4 py-2.5 text-sm font-semibold text-neutral-800"
+            >
+              Coding contests
+            </Link>
           </>
         ) : (
           <p className="text-sm text-neutral-500">Access settings are admin-only.</p>

@@ -11,7 +11,6 @@ export default function ArticleSEO({
   category, 
   tags = [],
   readingTime,
-  viewCount
 }) {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://10tracker.com';
   const fullUrl = `${siteUrl}${url}`;
@@ -128,7 +127,6 @@ export default function ArticleSEO({
       <meta name="author" content={author || "10tracker Team"} />
       <meta name="publisher" content="10tracker" />
       <meta name="article:reading_time" content={readingTime} />
-      <meta name="article:view_count" content={viewCount} />
 
       {/* JSON-LD Structured Data */}
       <script

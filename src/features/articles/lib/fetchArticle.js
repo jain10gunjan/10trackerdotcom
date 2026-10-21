@@ -123,7 +123,7 @@ export async function fetchRelatedArticles({
   let query = supabase
     .from('published_articles')
     .select(
-      'id, slug, title, excerpt, category, created_at, view_count, is_featured, featured_image_url',
+      'id, slug, title, excerpt, category, created_at, is_featured, featured_image_url',
       { count: 'estimated' }
     )
     .neq('id', excludeId)
@@ -148,20 +148,58 @@ export async function incrementArticleViews() {
   return;
 }
 
+function isGeneratedTitleCard(url) {
+  const value = String(url || '').toLowerCase();
+  return value.includes('/api/text-to-image') || value.includes('text-to-image');
+}
+
+function isSiteLogo(url) {
+  return /\/(?:10tracker\.png|og-image\.(?:jpg|jpeg|png|webp))(?:$|[?#])/i.test(String(url || ''));
+}
+
+function contentImageUrls(html, siteUrl) {
+  const urls = [];
+  const source = String(html || '');
+  const re = /<img\b[^>]*\bsrc=["']([^"']+)["'][^>]*>/gi;
+  for (const match of source.matchAll(re)) {
+    const resolved = resolveFeaturedImageUrl(match[1], { absoluteBase: siteUrl });
+    if (resolved) urls.push(resolved);
+  }
+  return urls;
+}
+
+/**
+ * Image Google should associate with the article.
+ * Prefer a real photo over a generated title card or the site logo.
+ */
+export function resolveArticleShareImage(article, siteUrl) {
+  const featured = resolveFeaturedImageUrl(article?.featured_image_url, { absoluteBase: siteUrl });
+  const candidates = [featured, ...contentImageUrls(article?.content, siteUrl)].filter(Boolean);
+  const photo = candidates.find((url) => !isGeneratedTitleCard(url) && !isSiteLogo(url));
+  return photo || candidates.find((url) => !isSiteLogo(url)) || null;
+}
+
 export function buildArticleJsonLd(article, siteUrl) {
   const fullUrl = `${siteUrl}/articles/${article.slug}`;
-  const ogImage =
-    resolveFeaturedImageUrl(article.featured_image_url, { absoluteBase: siteUrl }) ||
-    `${siteUrl}/10tracker.png`;
+  const shareImage = resolveArticleShareImage(article, siteUrl);
   const meta = getCategoryMeta(article.category);
+  const description =
+    article.excerpt || (article.content ? article.content.replace(/<[^>]+>/g, '').slice(0, 160) : '');
 
   return {
     '@context': 'https://schema.org',
-    '@type': 'Article',
+    '@type': 'NewsArticle',
     headline: article.title,
-    description:
-      article.excerpt || (article.content ? article.content.replace(/<[^>]+>/g, '').slice(0, 160) : ''),
-    image: ogImage,
+    description,
+    image: shareImage
+      ? [
+          {
+            '@type': 'ImageObject',
+            url: shareImage,
+            caption: article.featured_image_caption || article.title,
+          },
+        ]
+      : undefined,
     url: fullUrl,
     datePublished: article.created_at,
     dateModified: article.updated_at || article.created_at,
@@ -203,16 +241,19 @@ export function buildArticleBreadcrumbJsonLd(article, siteUrl) {
 export async function buildArticleMetadata(article) {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://10tracker.com';
   const fullUrl = `${siteUrl}/articles/${article.slug}`;
-  const fallbackOg = `${siteUrl}/10tracker.png`;
-  const fullImage =
-    resolveFeaturedImageUrl(article.featured_image_url, { absoluteBase: siteUrl }) || fallbackOg;
+  const shareImage = resolveArticleShareImage(article, siteUrl);
   const description =
     article.excerpt ||
     (article.content ? article.content.replace(/<[^>]+>/g, '').trim().slice(0, 160) : '');
   const meta = getCategoryMeta(article.category);
+  const images = shareImage
+    ? [{ url: shareImage, alt: article.featured_image_caption || article.title }]
+    : undefined;
 
   return {
-    title: `${article.title} | 10Tracker`,
+    // Absolute so the root "%s | 10tracker" template cannot replace the headline
+    // with the site slogan, and the <title> matches the on-page H1.
+    title: { absolute: article.title },
     description,
     keywords: [
       meta.name.toLowerCase(),
@@ -226,21 +267,31 @@ export async function buildArticleMetadata(article) {
       type: 'article',
       locale: 'en_IN',
       url: fullUrl,
-      title: article.title,
+      title: { absolute: article.title },
       description,
       siteName: '10Tracker',
       publishedTime: article.created_at,
       modifiedTime: article.updated_at || article.created_at,
       section: meta.name,
       tags: article.tags || [],
-      images: [{ url: fullImage, width: 1200, height: 630, alt: article.title }],
+      images,
     },
     twitter: {
-      card: 'summary_large_image',
-      title: article.title,
+      card: shareImage ? 'summary_large_image' : 'summary',
+      title: { absolute: article.title },
       description,
-      images: [fullImage],
+      images: shareImage ? [shareImage] : undefined,
     },
-    robots: { index: true, follow: true },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        'max-image-preview': 'large',
+        'max-snippet': -1,
+        'max-video-preview': -1,
+      },
+    },
   };
 }

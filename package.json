@@ -7,10 +7,15 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test:vendor-domain": "node --test src/features/vendor-tests/lib/vendorDomain.test.mjs"
+    "test:vendor-domain": "node --test src/features/vendor-tests/lib/vendorDomain.test.mjs",
+    "test:coding-contests": "node --test src/features/coding-contests/lib/*.test.mjs src/lib/judge0/*.test.mjs",
+    "worker:judge": "node worker/judge.mjs",
+    "seed:judge0-languages": "node scripts/seed_judge0_languages.mjs",
+    "seed:platform-exams": "node --env-file=.env.local scripts/seed_platform_exams_catalog.mjs"
   },
   "dependencies": {
     "@fontsource/inter": "^5.2.8",
+    "@monaco-editor/react": "^4.7.0",
     "@resvg/resvg-wasm": "^2.6.2",
     "@supabase/supabase-js": "^2.49.3",
     "@tiptap/extension-bullet-list": "^3.7.2",
@@ -38,6 +43,7 @@
     "better-react-mathjax": "^2.3.0",
     "cheerio": "^1.1.2",
     "crypto": "^1.0.1",
+    "dotenv": "^18.0.8",
     "firebase": "^11.4.0",
     "flowbite": "^2.5.2",
     "framer-motion": "^12.5.0",
@@ -67,7 +73,8 @@
     "sanitize-html": "^2.15.0",
     "sharp": "^0.34.5",
     "twitter-api-v2": "^1.29.0",
-    "uuid": "^11.1.0"
+    "uuid": "^11.1.0",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/node": "^26.0.0",

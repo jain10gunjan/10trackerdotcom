@@ -1,1 +1,3 @@
-export { default } from '@/features/articles/components/ArticlesIndexPage';
+export { default, generateMetadata } from '@/features/articles/components/ArticlesIndexPage';
+
+export const revalidate = 300;

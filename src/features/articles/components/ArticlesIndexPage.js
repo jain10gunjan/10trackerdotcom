@@ -24,7 +24,7 @@ export async function generateMetadata({ searchParams }) {
   });
 
   return {
-    title,
+    title: { absolute: title },
     description,
     metadataBase: new URL(siteUrl),
     alternates: { canonical: `${siteUrl}${canonical}` },

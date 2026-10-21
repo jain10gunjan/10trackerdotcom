@@ -107,6 +107,12 @@ export function usesGateMarking(examcategory) {
   return slug === 'gate' || slug.startsWith('gate-');
 }
 
+/** JEE Main style: +4 correct, −1 wrong (MCQ and NVQ), 0 unattempted */
+export function usesJeeMainMarking(examcategory) {
+  const slug = String(examcategory || '').toLowerCase().replace(/_/g, '-');
+  return slug === 'jee-main' || slug === 'jee' || slug === 'jeemain';
+}
+
 export function computeGateNetMarks(correct, incorrect) {
   const c = Number(correct) || 0;
   const w = Number(incorrect) || 0;
@@ -114,8 +120,40 @@ export function computeGateNetMarks(correct, incorrect) {
 }
 
 /**
+ * GATE weighted marks (1m/2m). MCQ wrong = −marks/3; NAT/MSQ wrong = 0.
+ * @param {Array<{ isCorrect?: boolean, marks?: number, isMcq?: boolean, questionId?: string }>} answers
+ * @param {Record<string, number>} [questionMarks]
+ */
+export function computeGateWeightedNetMarks(answers = [], questionMarks = {}) {
+  let net = 0;
+  for (const a of answers) {
+    const id = a?.questionId != null ? String(a.questionId) : '';
+    const marks = Number(a?.marks ?? questionMarks[id] ?? 1) || 1;
+    if (a?.isCorrect === true) {
+      net += marks;
+    } else if (a?.isCorrect === false && a?.isMcq !== false) {
+      // isMcq false = NAT (no negative); unset = legacy MCQ-style −m/3
+      net -= marks / 3;
+    }
+  }
+  return Math.round(net * 100) / 100;
+}
+
+export function sumGateQuestionMarks(questionMarks = {}, fallbackTotal = 0) {
+  const vals = Object.values(questionMarks || {}).map((n) => Number(n) || 0);
+  if (!vals.length) return Math.max(0, Number(fallbackTotal) || 0);
+  return vals.reduce((a, b) => a + b, 0);
+}
+
+export function computeJeeMainNetMarks(correct, incorrect) {
+  const c = Number(correct) || 0;
+  const w = Number(incorrect) || 0;
+  return c * 4 - w * 1;
+}
+
+/**
  * Unified mock-test stats for submit UI and persistence.
- * @param {{ answerHistory: Array, totalQuestions: number, examcategory: string, markedForReview?: Array, timeData?: { totalTimeSpent?: number } }} params
+ * @param {{ answerHistory: Array, totalQuestions: number, examcategory: string, markedForReview?: Array, timeData?: { totalTimeSpent?: number }, questionMarks?: Record<string, number>, maxMarksOverride?: number }} params
  */
 export function calculateMockTestStats({
   answerHistory = [],
@@ -123,10 +161,16 @@ export function calculateMockTestStats({
   examcategory = '',
   markedForReview = [],
   timeData = {},
+  questionMarks = null,
+  maxMarksOverride = null,
 }) {
   const answers = Array.isArray(answerHistory) ? answerHistory : [];
   const marked = Array.isArray(markedForReview) ? markedForReview : [];
   const total = Math.max(0, Number(totalQuestions) || 0);
+  const marksMap = questionMarks && typeof questionMarks === 'object' ? questionMarks : {};
+  const hasWeightedGate =
+    Object.keys(marksMap).length > 0 ||
+    answers.some((a) => a?.marks === 1 || a?.marks === 2);
 
   const attempted = answers.length;
   const correct = answers.filter((a) => a?.isCorrect === true).length;
@@ -134,6 +178,7 @@ export function calculateMockTestStats({
   const skipped = Math.max(0, total - attempted);
   const markedCount = marked.length;
   const gate = usesGateMarking(examcategory);
+  const jee = !gate && usesJeeMainMarking(examcategory);
 
   let score;
   let percentage;
@@ -141,7 +186,27 @@ export function calculateMockTestStats({
   let netMarks = 0;
 
   if (gate) {
-    netMarks = computeGateNetMarks(correct, incorrect);
+    if (hasWeightedGate) {
+      maxMarks =
+        maxMarksOverride != null
+          ? Number(maxMarksOverride) || 100
+          : sumGateQuestionMarks(marksMap, total);
+      if (!maxMarks && answers.length) {
+        maxMarks = answers.reduce(
+          (s, a) => s + (Number(a?.marks) || 1),
+          Math.max(0, total - answers.length)
+        );
+      }
+      if (!maxMarks) maxMarks = 100;
+      netMarks = computeGateWeightedNetMarks(answers, marksMap);
+    } else {
+      netMarks = computeGateNetMarks(correct, incorrect);
+    }
+    score = netMarks;
+    percentage = maxMarks > 0 ? Math.round((netMarks / maxMarks) * 10000) / 100 : 0;
+  } else if (jee) {
+    maxMarks = total * 4;
+    netMarks = computeJeeMainNetMarks(correct, incorrect);
     score = netMarks;
     percentage = maxMarks > 0 ? Math.round((netMarks / maxMarks) * 10000) / 100 : 0;
   } else {
@@ -171,7 +236,17 @@ export function calculateMockTestStats({
     else s.incorrect++;
     s.totalTime += Number(answer.timeSpent) || 0;
     if (gate) {
-      s.netMarks = computeGateNetMarks(s.correct, s.incorrect);
+      if (hasWeightedGate) {
+        const id = answer.questionId != null ? String(answer.questionId) : '';
+        const m = Number(answer.marks ?? marksMap[id] ?? 1) || 1;
+        if (answer.isCorrect) s.netMarks += m;
+        else if (answer.isMcq !== false) s.netMarks -= m / 3;
+        s.netMarks = Math.round(s.netMarks * 100) / 100;
+      } else {
+        s.netMarks = computeGateNetMarks(s.correct, s.incorrect);
+      }
+    } else if (jee) {
+      s.netMarks = computeJeeMainNetMarks(s.correct, s.incorrect);
     }
   });
 
@@ -200,9 +275,9 @@ export function calculateMockTestStats({
     subjectStats,
     timeSpent,
     avgTimePerQuestion: attempted > 0 ? Math.round(timeSpent / attempted) : 0,
-    markingScheme: gate ? 'gate' : 'standard',
-    maxMarks: gate ? maxMarks : total,
-    netMarks: gate ? netMarks : correct,
+    markingScheme: gate ? 'gate' : jee ? 'jee-main' : 'standard',
+    maxMarks: gate || jee ? maxMarks : total,
+    netMarks: gate || jee ? netMarks : correct,
   };
 }
 

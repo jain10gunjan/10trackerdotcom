@@ -1,5 +1,5 @@
 import HomePageRouter from '@/components/layout/HomePageRouter';
-import { fetchActiveExamCatalog } from '@/features/exams/lib/fetchActiveExamCatalog';
+import { fetchExamCatalog } from '@/features/exams/lib/fetchExamCatalog';
 import { pickFeaturedExams } from '@/features/exams/lib/examCatalogUtils';
 import { fetchRoadmapCatalog } from '@/features/roadmaps/lib/fetchRoadmapCatalog';
 import { pickFeaturedRoadmaps } from '@/features/roadmaps/lib/roadmapCatalogUtils';
@@ -42,6 +42,9 @@ export const metadata = {
       'Practice topic-wise MCQs and mock tests, or follow structured day-by-day roadmaps for competitive exam preparation on 10Tracker.',
     images: ['/og-image.jpg'],
   },
+  alternates: {
+    canonical: '/',
+  },
 };
 
 /** ISR: refresh featured exams and roadmaps within 2 minutes */
@@ -49,7 +52,7 @@ export const revalidate = 120;
 
 export default async function Home() {
   const [exams, { roadmaps }] = await Promise.all([
-    fetchActiveExamCatalog(),
+    fetchExamCatalog({ activeOnly: true }),
     fetchRoadmapCatalog(),
   ]);
 

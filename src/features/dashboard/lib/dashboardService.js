@@ -450,6 +450,35 @@ function computeExamCountdown(row) {
   };
 }
 
+function mapFeedUpdate(article) {
+  return {
+    id: article.id,
+    slug: article.slug,
+    title: article.title,
+    excerpt: article.excerpt || '',
+    category: article.category || '',
+    createdAt: article.created_at,
+    href: `/articles/${article.slug}`,
+    isFeatured: Boolean(article.is_featured),
+  };
+}
+
+/** Category matches first, then title/excerpt search. Duplicates dropped. */
+function mergeFeedUpdates(groups, limit = 5) {
+  const seen = new Set();
+  const updates = [];
+  for (const group of groups) {
+    for (const article of group || []) {
+      const key = article?.slug || article?.id;
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      updates.push(mapFeedUpdate(article));
+      if (updates.length >= limit) return updates;
+    }
+  }
+  return updates;
+}
+
 /**
  * Personalized home feed for one exam (mocks, updates, placeholders).
  * Scalable across all exam categories using the same shape.
@@ -483,6 +512,7 @@ export async function buildExamHomeFeed(examSlug) {
         'A fresh daily mock curated for your exam — launching soon. Stay tuned.',
     },
     updates: [],
+    updatesHref: `/article/${slug}`,
     fullMocks: [],
     topicMocks: [],
     topicMocksStatus: 'ready',
@@ -556,24 +586,24 @@ export async function buildExamHomeFeed(examSlug) {
   }
 
   try {
-    // Free-text search articles for the selected exam name / slug tokens.
+    // Articles stored under this exam's category, plus stories that mention the exam.
     const searchQuery = [feed.exam.name, slug.replace(/-/g, ' ')].filter(Boolean).join(' ');
-    const { articles } = await fetchArticlesList({
-      page: 1,
-      pageSize: 5,
-      query: searchQuery,
-    });
-    feed.updates = (articles || []).map((a) => ({
-      id: a.id,
-      slug: a.slug,
-      title: a.title,
-      excerpt: a.excerpt || '',
-      category: a.category || '',
-      createdAt: a.created_at,
-      viewCount: a.view_count || 0,
-      href: `/articles/${a.slug}`,
-      isFeatured: Boolean(a.is_featured),
-    }));
+    const [categoryResult, searchResult] = await Promise.all([
+      fetchArticlesList({ page: 1, pageSize: 5, category: slug }).catch((err) => {
+        console.error('exam home feed category updates', slug, err);
+        return { articles: [] };
+      }),
+      fetchArticlesList({ page: 1, pageSize: 5, query: searchQuery }).catch((err) => {
+        console.error('exam home feed search updates', slug, err);
+        return { articles: [] };
+      }),
+    ]);
+    const categoryArticles = categoryResult.articles || [];
+    feed.updates = mergeFeedUpdates([categoryArticles, searchResult.articles || []]);
+    const updatesQuery = feed.exam.name || slug.replace(/-/g, ' ');
+    feed.updatesHref = categoryArticles.length
+      ? `/article/${slug}`
+      : `/articles?q=${encodeURIComponent(updatesQuery)}`;
   } catch (e) {
     console.error('exam home feed updates', slug, e);
     feed.updates = [];

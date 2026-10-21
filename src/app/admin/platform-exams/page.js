@@ -93,11 +93,23 @@ function ExamRow({ exam, onSave, onToggleActive }) {
             )}
           </div>
           <div className="min-w-0">
-            <p className="font-semibold text-neutral-900">{exam.name}</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="font-semibold text-neutral-900">{exam.name}</p>
+              <span
+                className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                  exam.is_active
+                    ? 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200'
+                    : 'bg-neutral-100 text-neutral-600 ring-1 ring-neutral-200'
+                }`}
+              >
+                {exam.is_active ? 'Active' : 'Inactive'}
+              </span>
+            </div>
             <p className="text-xs text-neutral-500 font-mono">{exam.slug}</p>
-            {exam.category ? (
-              <p className="text-xs text-neutral-500 mt-1">{exam.category}</p>
-            ) : null}
+            <p className="text-xs text-neutral-500 mt-1 tabular-nums">
+              {(Number(exam.question_count) || 0).toLocaleString()} questions
+              {exam.category ? ` · ${exam.category}` : ''}
+            </p>
           </div>
         </div>
         <button
@@ -107,7 +119,11 @@ function ExamRow({ exam, onSave, onToggleActive }) {
             exam.is_active ? 'bg-emerald-600' : 'bg-neutral-300'
           }`}
           aria-pressed={exam.is_active}
-          title={exam.is_active ? 'Active in onboarding' : 'Hidden from onboarding'}
+          title={
+            exam.is_active
+              ? 'Visible on homepage and public catalog'
+              : 'Hidden from homepage and public catalog'
+          }
         >
           <span
             className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow transition-transform ${
@@ -210,6 +226,7 @@ export default function AdminPlatformExamsPage() {
   const [exams, setExams] = useState([]);
   const [loading, setLoading] = useState(true);
   const [setupHint, setSetupHint] = useState(null);
+  const [statusFilter, setStatusFilter] = useState('all');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -316,8 +333,8 @@ export default function AdminPlatformExamsPage() {
         Platform exams
       </h1>
       <p className="text-sm text-neutral-600 mt-2 mb-6">
-        Toggle exams for onboarding, set catalog images, and configure the exam-date countdown
-        on the signed-in homepage.
+        All exams are listed here. Toggle active to show or hide an exam on the homepage and
+        public catalog. Question counts come from the question bank.
       </p>
 
       {setupHint && (
@@ -327,22 +344,64 @@ export default function AdminPlatformExamsPage() {
           <code className="text-xs bg-white px-1 rounded">
             supabase/migrations/add_platform_exam_dates.sql
           </code>
+          . For live question counts run{' '}
+          <code className="text-xs bg-white px-1 rounded">
+            supabase/migrations/add_examtracker_counts_by_slug.sql
+          </code>
           .
         </div>
       )}
+
+      {!loading && exams.length > 0 ? (
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          {[
+            { id: 'all', label: 'All', count: exams.length },
+            {
+              id: 'active',
+              label: 'Active',
+              count: exams.filter((e) => e.is_active).length,
+            },
+            {
+              id: 'inactive',
+              label: 'Inactive',
+              count: exams.filter((e) => !e.is_active).length,
+            },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setStatusFilter(tab.id)}
+              className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
+                statusFilter === tab.id
+                  ? 'bg-neutral-900 text-white'
+                  : 'bg-white text-neutral-700 ring-1 ring-neutral-200 hover:bg-neutral-50'
+              }`}
+            >
+              {tab.label}{' '}
+              <span className="tabular-nums opacity-70">{tab.count}</span>
+            </button>
+          ))}
+        </div>
+      ) : null}
 
       {loading ? (
         <p className="text-neutral-500">Loading…</p>
       ) : (
         <ul className="space-y-4">
-          {exams.map((exam) => (
-            <ExamRow
-              key={exam.slug}
-              exam={exam}
-              onSave={saveExam}
-              onToggleActive={toggleActive}
-            />
-          ))}
+          {exams
+            .filter((exam) => {
+              if (statusFilter === 'active') return !!exam.is_active;
+              if (statusFilter === 'inactive') return !exam.is_active;
+              return true;
+            })
+            .map((exam) => (
+              <ExamRow
+                key={exam.slug}
+                exam={exam}
+                onSave={saveExam}
+                onToggleActive={toggleActive}
+              />
+            ))}
         </ul>
       )}
     </div>

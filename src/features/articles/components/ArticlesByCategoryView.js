@@ -54,7 +54,7 @@ export default async function ArticlesByCategoryView({
     const { data, count } = await supabase
       .from('published_articles')
       .select(
-        'id, slug, title, excerpt, category, created_at, view_count, is_featured, featured_image_url',
+        'id, slug, title, excerpt, category, created_at, is_featured, featured_image_url',
         { count: 'exact' }
       )
       .eq('category', category)

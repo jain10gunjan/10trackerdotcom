@@ -11,7 +11,7 @@ export const examData = [
     description: 'Graduate Aptitude Test in Engineering - Computer Science',
     category: 'Engineering',
     count: 2500, // Hardcoded question count
-    active: false,
+    active: true,
   },
   {
     slug: 'gate-ec',
@@ -19,10 +19,10 @@ export const examData = [
     image: 'https://www.spinoneducation.com/wp-content/uploads/2022/02/Gate.webp',
     icon: '💻',
     color: 'from-gray-500 to-cyan-500',
-    description: 'Graduate Aptitude Test in Engineering - Computer Science',
+    description: 'Graduate Aptitude Test in Engineering - Electronics & Communication',
     category: 'Engineering',
     count: 2550, // Hardcoded question count
-    active: false,
+    active: true,
   },
   {
     slug: 'gate-ee',
@@ -30,10 +30,10 @@ export const examData = [
     image: 'https://www.spinoneducation.com/wp-content/uploads/2022/02/Gate.webp',
     icon: '💻',
     color: 'from-gray-500 to-cyan-500',
-    description: 'Graduate Aptitude Test in Engineering - Computer Science',
+    description: 'Graduate Aptitude Test in Engineering - Electrical Engineering',
     category: 'Engineering',
     count: 2800, // Hardcoded question count
-    active: false,
+    active: true,
   },
   {
     slug: 'jee-main',
@@ -44,7 +44,7 @@ export const examData = [
     description: 'Joint Entrance Examination for Engineering',
     category: 'Engineering',
     count: 3200, // Hardcoded question count
-    active: false,
+    active: true,
   },
   {
     slug: 'mht-cet',

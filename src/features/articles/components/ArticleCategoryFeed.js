@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight, Eye, Star } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Star } from 'lucide-react';
 import { formatArticleDate, formatArticleDateParts } from '@/features/articles/lib/categoryMeta';
 import { resolveFeaturedImageUrl } from '@/lib/resolveFeaturedImageUrl';
 
@@ -175,14 +175,9 @@ export function ArticleFeedCard({ article, accentColor = '#2563eb', compact = fa
             </p>
           ) : null}
 
-          <div className="mt-1.5 flex items-center gap-2 text-[11px] text-neutral-400">
-            <span className="hidden sm:inline tabular-nums">
+          <div className="mt-1.5 hidden sm:flex items-center gap-2 text-[11px] text-neutral-400">
+            <span className="tabular-nums">
               {month} {day}, {year}
-            </span>
-            <span className="hidden sm:inline text-neutral-300">·</span>
-            <span className="inline-flex items-center gap-0.5">
-              <Eye className="w-3 h-3" />
-              {(article.view_count || 0).toLocaleString()}
             </span>
           </div>
         </div>
@@ -216,7 +211,7 @@ export function ArticleFeaturedHero({ article, accentColor = '#171717' }) {
           </p>
         ) : null}
         <p className="mt-4 text-xs text-neutral-500">
-          {formatArticleDate(article.created_at)} · {(article.view_count || 0).toLocaleString()} views
+          {formatArticleDate(article.created_at)}
         </p>
       </div>
     </Link>

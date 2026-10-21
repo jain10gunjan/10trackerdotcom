@@ -49,7 +49,7 @@ export async function generateMetadata({ params, searchParams }) {
       : `${siteUrl}/articles/category/${category}`;
 
   return {
-    title,
+    title: { absolute: title },
     description,
     metadataBase: new URL(siteUrl),
     alternates: { canonical },

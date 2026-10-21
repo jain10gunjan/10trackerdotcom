@@ -66,7 +66,7 @@ export async function generateMetadata({ params }) {
     const article = await fetchArticleBySlug(slug);
     if (!article) {
       return {
-        title: 'Article Not Found | 10Tracker',
+        title: { absolute: 'Article not found' },
         description: 'The article you are looking for could not be found.',
         robots: { index: false, follow: false },
       };
@@ -75,8 +75,9 @@ export async function generateMetadata({ params }) {
   } catch (error) {
     console.error('[article metadata]', slug, error);
     return {
-      title: 'Article Not Found | 10Tracker',
+      title: { absolute: 'Article not found' },
       description: 'The article you are looking for could not be found.',
+      robots: { index: false, follow: false },
     };
   }
 }

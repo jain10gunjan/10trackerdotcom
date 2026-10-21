@@ -104,6 +104,12 @@ export default async function VendorLandingPage({ slug }) {
                 <VendorPrimaryButton as={Link} href={`/practice-tests/${vendor.slug}/tests`}>
                   View tests
                 </VendorPrimaryButton>
+                <VendorSecondaryButton
+                  as={Link}
+                  href={`/practice-tests/${vendor.slug}/coding-contests`}
+                >
+                  Coding contests
+                </VendorSecondaryButton>
                 {result.permissions?.manageTests ? (
                   <VendorSecondaryButton
                     as={Link}

@@ -23,9 +23,16 @@ export default function MockOfTheDayAdminPanel({ examcategory, tests = [], onPoo
   const [pool, setPool] = useState([]);
   const [today, setToday] = useState(null);
   const [setupHint, setSetupHint] = useState(null);
+  const [settings, setSettings] = useState(null);
+  const [settingsHint, setSettingsHint] = useState(null);
+  const [isJeeMain, setIsJeeMain] = useState(false);
+  const [isGateCse, setIsGateCse] = useState(false);
+  const [isGateEe, setIsGateEe] = useState(false);
+  const [isGateEc, setIsGateEc] = useState(false);
   const [busyId, setBusyId] = useState(null);
   const [generating, setGenerating] = useState(false);
   const [addingId, setAddingId] = useState('');
+  const [autoBusy, setAutoBusy] = useState(false);
 
   const [form, setForm] = useState({
     totalQuestions: 30,
@@ -49,6 +56,12 @@ export default function MockOfTheDayAdminPanel({ examcategory, tests = [], onPoo
       setPool(data.pool || []);
       setToday(data.today || null);
       setSetupHint(data.setupRequired ? data.setupHint : null);
+      setSettings(data.settings || null);
+      setSettingsHint(data.settingsSetupRequired ? data.settingsSetupHint : null);
+      setIsJeeMain(Boolean(data.isJeeMain));
+      setIsGateCse(Boolean(data.isGateCse));
+      setIsGateEe(Boolean(data.isGateEe));
+      setIsGateEc(Boolean(data.isGateEc));
       if (data.defaults) {
         setForm((prev) => ({
           totalQuestions: data.defaults.totalQuestions ?? prev.totalQuestions,
@@ -86,6 +99,95 @@ export default function MockOfTheDayAdminPanel({ examcategory, tests = [], onPoo
       ),
     [tests, poolIds]
   );
+
+  const toggleAutoDaily = async () => {
+    setAutoBusy(true);
+    try {
+      await toastPromise(
+        async () => {
+          const res = await fetch('/api/mock-test/admin/mock-of-day', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'set-auto-daily',
+              examCategory: examcategory,
+              auto_daily_enabled: !settings?.auto_daily_enabled,
+            }),
+          });
+          const data = await parseJsonResponse(res);
+          if (!data.success) {
+            throw new Error(
+              data.setupHint ? `${data.error}\n${data.setupHint}` : data.error || 'Update failed'
+            );
+          }
+          setSettings(data.settings);
+          return data.message;
+        },
+        {
+          loading: 'Updating auto daily…',
+          success: (msg) => msg,
+          error: (e) => e.message || 'Update failed',
+        }
+      );
+    } catch {
+      /* toasted */
+    } finally {
+      setAutoBusy(false);
+    }
+  };
+
+  const runBlueprintDailyNow = async () => {
+    const action = isGateEc
+      ? 'run-gate-ec-daily'
+      : isGateEe
+        ? 'run-gate-ee-daily'
+        : isGateCse
+          ? 'run-gate-daily'
+          : 'run-jee-daily';
+    const label = isGateEc
+      ? 'GATE EC'
+      : isGateEe
+        ? 'GATE EE'
+        : isGateCse
+          ? 'GATE CSE'
+          : 'JEE';
+    setAutoBusy(true);
+    try {
+      await toastPromise(
+        async () => {
+          const res = await fetch('/api/mock-test/admin/mock-of-day', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action,
+              examCategory: examcategory,
+              force: true,
+            }),
+          });
+          const data = await parseJsonResponse(res);
+          if (!data.success && !data.skipped) {
+            throw new Error(data.error || 'Cron run failed');
+          }
+          await load();
+          onPoolChange?.();
+          if (data.mode === 'generated') return `Generated today’s ${label} MOTD`;
+          if (data.mode === 'recycled') return `Recycled a prior ${label} mock as MOTD`;
+          return data.reason || data.message || 'Done';
+        },
+        {
+          loading: `Running ${label} daily MOTD…`,
+          success: (msg) => msg,
+          error: (e) => e.message || 'Failed',
+        }
+      );
+    } catch {
+      /* toasted */
+    } finally {
+      setAutoBusy(false);
+    }
+  };
 
   const handleGenerate = async () => {
     setGenerating(true);
@@ -266,6 +368,66 @@ export default function MockOfTheDayAdminPanel({ examcategory, tests = [], onPoo
           <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
             Run <code className="rounded bg-white px-1 text-xs">{setupHint}</code> in
             Supabase SQL Editor.
+          </div>
+        ) : null}
+
+        {settingsHint ? (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+            For auto-daily: run{' '}
+            <code className="rounded bg-white px-1 text-xs">{settingsHint}</code>
+          </div>
+        ) : null}
+
+        {isJeeMain || isGateCse || isGateEe || isGateEc ? (
+          <div className="rounded-xl border border-sky-200 bg-sky-50/70 p-4">
+            <p className="text-sm font-semibold text-neutral-900">
+              {isGateEc
+                ? 'GATE EC'
+                : isGateEe
+                  ? 'GATE EE'
+                  : isGateCse
+                    ? 'GATE CSE'
+                    : 'JEE Main'}{' '}
+              auto daily (IST)
+            </p>
+            <p className="mt-0.5 text-xs text-neutral-600">
+              When enabled, Hostinger cron hits{' '}
+              <code className="rounded bg-white px-1">POST /api/cron/mock-of-day</code> with{' '}
+              <code className="rounded bg-white px-1">CRON_SECRET</code>. Generates a{' '}
+              {isGateEc || isGateEe || isGateCse ? '65Q / 100-mark' : '75Q'} blueprint mock or
+              recycles a prior one, then pins it for the IST day.
+            </p>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                disabled={autoBusy || Boolean(settingsHint)}
+                onClick={toggleAutoDaily}
+                className={`rounded-xl px-3 py-2 text-xs font-semibold ${
+                  settings?.auto_daily_enabled
+                    ? 'bg-emerald-700 text-white'
+                    : 'border border-neutral-200 bg-white text-neutral-800'
+                }`}
+              >
+                {settings?.auto_daily_enabled ? 'Auto daily: ON' : 'Auto daily: OFF'}
+              </button>
+              <button
+                type="button"
+                disabled={autoBusy}
+                onClick={runBlueprintDailyNow}
+                className="rounded-xl border border-sky-300 bg-white px-3 py-2 text-xs font-semibold text-sky-900"
+              >
+                Run today now
+              </button>
+            </div>
+            {settings?.last_cron_at ? (
+              <p className="mt-2 text-[11px] text-neutral-500">
+                Last cron: {settings.last_cron_status} · {settings.last_cron_at}
+                {settings.last_cron_message ? ` · ${settings.last_cron_message}` : ''}
+              </p>
+            ) : null}
+            {today?.pinned ? (
+              <p className="mt-1 text-[11px] font-medium text-sky-800">Today’s mock is cron-pinned</p>
+            ) : null}
           </div>
         ) : null}
 

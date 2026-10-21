@@ -1,25 +1,33 @@
 import { examData } from '@/data/examData';
 import { getStaticExamCatalog } from '@/lib/platformExams';
 import { getSupabaseServer } from '@/lib/supabaseServer';
-import { mapExamCatalogRow } from '@/features/exams/lib/fetchActiveExamCatalog';
+import {
+  mapExamCatalogRow,
+  fetchQuestionCountsBySlug,
+} from '@/features/exams/lib/fetchExamCatalog';
 import { normalizeCategorySlug } from '@/features/exam-hub/lib/categoryKey';
 
-function mapStaticExam(row) {
-  return mapExamCatalogRow({
-    slug: row.slug,
-    name: row.name,
-    description: row.description,
-    category: row.category,
-    image_url: typeof row.image === 'string' ? row.image : null,
-    icon: row.icon,
-    sort_order: 0,
-    is_active: row.active !== false,
-  });
+function mapStaticExam(row, counts) {
+  return mapExamCatalogRow(
+    {
+      slug: row.slug,
+      name: row.name,
+      description: row.description,
+      category: row.category,
+      image_url: typeof row.image === 'string' ? row.image : null,
+      icon: row.icon,
+      sort_order: 0,
+      is_active: row.active !== false,
+    },
+    counts
+  );
 }
 
 export async function fetchExamHubMeta(categorySlug) {
   const slug = normalizeCategorySlug(categorySlug);
   if (!slug) return null;
+
+  const counts = await fetchQuestionCountsBySlug();
 
   try {
     const supabase = getSupabaseServer(false);
@@ -33,7 +41,7 @@ export async function fetchExamHubMeta(categorySlug) {
 
     if (!error && data) {
       if (!data.is_active) return null;
-      return { ...mapExamCatalogRow(data), isActive: true };
+      return { ...mapExamCatalogRow(data, counts), isActive: true };
     }
 
     if (error && error.code !== '42P01') {
@@ -48,5 +56,5 @@ export async function fetchExamHubMeta(categorySlug) {
     examData.find((e) => e.slug === slug && e.active !== false);
 
   if (!staticRow) return null;
-  return { ...mapStaticExam(staticRow), isActive: true };
+  return { ...mapStaticExam(staticRow, counts), isActive: true };
 }

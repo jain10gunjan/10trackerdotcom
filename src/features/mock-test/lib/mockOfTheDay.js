@@ -163,6 +163,7 @@ export async function listMotdPool(examCategory) {
 
 /**
  * Resolve today's Mock of the Day for an exam (deterministic IST rotation).
+ * Prefer pinned_mock_test_id when pinned_date matches today's IST date.
  */
 export async function resolveMockOfTheDay(examCategory, now = new Date()) {
   const slug = normalizeMotdExamSlug(examCategory);
@@ -178,6 +179,51 @@ export async function resolveMockOfTheDay(examCategory, now = new Date()) {
   if (!slug) return comingSoon;
 
   const supabase = getSupabaseAdmin();
+
+  // Optional IST pin from mock_of_day_settings
+  try {
+    const { data: settings } = await supabase
+      .from('mock_of_day_settings')
+      .select('pinned_mock_test_id, pinned_date')
+      .eq('exam_category', slug)
+      .maybeSingle();
+
+    if (
+      settings?.pinned_mock_test_id &&
+      String(settings.pinned_date || '') === date
+    ) {
+      let pinnedRes = await supabase
+        .from('mock_tests')
+        .select(MOCK_EMBED_WITH_MODE)
+        .eq('id', settings.pinned_mock_test_id)
+        .maybeSingle();
+      if (pinnedRes.error && isMissingCreationMode(pinnedRes.error)) {
+        pinnedRes = await supabase
+          .from('mock_tests')
+          .select(MOCK_EMBED_BASE)
+          .eq('id', settings.pinned_mock_test_id)
+          .maybeSingle();
+      }
+      const pinnedTest = pinnedRes.data;
+      if (pinnedTest && pinnedTest.is_active !== false) {
+        const mock = mapPoolMockCard(pinnedTest, slug);
+        return {
+          status: 'ready',
+          title: 'Mock of the day',
+          description:
+            mock?.description || `Today’s curated mock for ${formatExamSlug(slug)}.`,
+          date,
+          mock,
+          poolSize: 1,
+          poolIndex: 0,
+          pinned: true,
+        };
+      }
+    }
+  } catch (e) {
+    // settings table may be missing — fall through to pool rotation
+  }
+
   const { data, error } = await selectPoolWithMocks(supabase, { slug, activeOnly: true });
 
   if (error) {

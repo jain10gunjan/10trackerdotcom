@@ -194,13 +194,87 @@ export default function MockTestCategoryAdmin({ examcategory }) {
             Create, edit, and manage mock tests for this exam category.
           </p>
         </div>
-        <Link
-          href={mockTestAdminCreate(examcategory)}
-          className="inline-flex items-center gap-2 rounded-xl bg-neutral-900 px-4 py-2.5 text-sm font-semibold text-white"
-        >
-          <Plus className="h-4 w-4" />
-          New test
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          {String(examcategory).toLowerCase().replace(/_/g, '-') === 'jee-main' ? (
+            <>
+              <Link
+                href={`${base}/jee-blueprint`}
+                className="inline-flex items-center gap-2 rounded-xl border border-emerald-600 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-900"
+              >
+                <Zap className="h-4 w-4" />
+                JEE blueprint (75Q)
+              </Link>
+              <Link
+                href={`${base}/jee-chapter`}
+                className="inline-flex items-center gap-2 rounded-xl border border-sky-600 bg-sky-50 px-4 py-2.5 text-sm font-semibold text-sky-900"
+              >
+                <BookOpen className="h-4 w-4" />
+                Chapter mock (20Q)
+              </Link>
+            </>
+          ) : null}
+          {String(examcategory).toLowerCase().replace(/_/g, '-') === 'gate-cse' ? (
+            <>
+              <Link
+                href={`${base}/gate-blueprint`}
+                className="inline-flex items-center gap-2 rounded-xl border border-emerald-600 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-900"
+              >
+                <Zap className="h-4 w-4" />
+                GATE blueprint (65Q)
+              </Link>
+              <Link
+                href={`${base}/gate-chapter`}
+                className="inline-flex items-center gap-2 rounded-xl border border-sky-600 bg-sky-50 px-4 py-2.5 text-sm font-semibold text-sky-900"
+              >
+                <BookOpen className="h-4 w-4" />
+                Chapter mock (20Q)
+              </Link>
+            </>
+          ) : null}
+          {String(examcategory).toLowerCase().replace(/_/g, '-') === 'gate-ee' ? (
+            <>
+              <Link
+                href={`${base}/gate-ee-blueprint`}
+                className="inline-flex items-center gap-2 rounded-xl border border-emerald-600 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-900"
+              >
+                <Zap className="h-4 w-4" />
+                GATE EE blueprint (65Q)
+              </Link>
+              <Link
+                href={`${base}/gate-ee-chapter`}
+                className="inline-flex items-center gap-2 rounded-xl border border-sky-600 bg-sky-50 px-4 py-2.5 text-sm font-semibold text-sky-900"
+              >
+                <BookOpen className="h-4 w-4" />
+                Chapter mock (20Q)
+              </Link>
+            </>
+          ) : null}
+          {String(examcategory).toLowerCase().replace(/_/g, '-') === 'gate-ec' ? (
+            <>
+              <Link
+                href={`${base}/gate-ec-blueprint`}
+                className="inline-flex items-center gap-2 rounded-xl border border-emerald-600 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-900"
+              >
+                <Zap className="h-4 w-4" />
+                GATE EC blueprint (65Q)
+              </Link>
+              <Link
+                href={`${base}/gate-ec-chapter`}
+                className="inline-flex items-center gap-2 rounded-xl border border-sky-600 bg-sky-50 px-4 py-2.5 text-sm font-semibold text-sky-900"
+              >
+                <BookOpen className="h-4 w-4" />
+                Chapter mock (20Q)
+              </Link>
+            </>
+          ) : null}
+          <Link
+            href={mockTestAdminCreate(examcategory)}
+            className="inline-flex items-center gap-2 rounded-xl bg-neutral-900 px-4 py-2.5 text-sm font-semibold text-white"
+          >
+            <Plus className="h-4 w-4" />
+            New test
+          </Link>
+        </div>
       </div>
 
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">

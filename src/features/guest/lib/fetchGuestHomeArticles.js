@@ -40,7 +40,6 @@ function mapArticle(a) {
     category: a.category,
     createdAt: a.created_at,
     dateLabel: formatShortDate(a.created_at),
-    viewCount: a.view_count || 0,
     isFeatured: !!a.is_featured,
     featuredImageUrl: resolveFeaturedImageUrl(a.featured_image_url) || '',
   };
@@ -69,7 +68,7 @@ export async function fetchGuestHomeArticles() {
         const { data } = await supabase
           .from('published_articles')
           .select(
-            'id, slug, title, excerpt, category, created_at, view_count, is_featured, featured_image_url'
+            'id, slug, title, excerpt, category, created_at, is_featured, featured_image_url'
           )
           .eq('category', slug)
           .order('is_featured', { ascending: false })

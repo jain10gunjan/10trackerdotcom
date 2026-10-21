@@ -2,6 +2,19 @@ import { NextResponse } from 'next/server';
 import { verifyAdminAuth } from '@/middleware/adminAuth';
 import { getSupabaseServer, isValidServiceRoleKey } from '@/lib/supabaseServer';
 import { getStaticExamCatalog } from '@/lib/platformExams';
+import { fetchQuestionCountsBySlug } from '@/features/exams/lib/fetchExamCatalog';
+import { revalidateExamCatalogCache } from '@/features/exams/lib/examCatalogCache';
+
+function attachQuestionCounts(exams, countsBySlug) {
+  return (exams || []).map((exam) => {
+    const slug = String(exam.slug || '')
+      .trim()
+      .toLowerCase()
+      .replace(/_/g, '-');
+    const question_count = Number(countsBySlug?.[slug]) || 0;
+    return { ...exam, question_count };
+  });
+}
 
 function parseOptionalDate(value) {
   if (value == null || value === '') return null;
@@ -27,17 +40,22 @@ export async function GET() {
 
     if (error) {
       if (error.code === '42P01') {
+        const counts = await fetchQuestionCountsBySlug();
         return NextResponse.json({
           success: true,
-          exams: getStaticExamCatalog(),
+          exams: attachQuestionCounts(getStaticExamCatalog(), counts),
           dbSetupRequired: true,
-          setupHint: 'Run scripts/setup_platform_exams.sql in Supabase SQL Editor',
+          setupHint: 'Run supabase/migrations/setup_platform_exams.sql in Supabase SQL Editor',
         });
       }
       throw error;
     }
 
-    return NextResponse.json({ success: true, exams: data || [] });
+    const counts = await fetchQuestionCountsBySlug();
+    return NextResponse.json({
+      success: true,
+      exams: attachQuestionCounts(data || [], counts),
+    });
   } catch (err) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
@@ -123,7 +141,21 @@ export async function PATCH(request) {
       }
       throw error;
     }
-    return NextResponse.json({ success: true, exam: data });
+
+    revalidateExamCatalogCache();
+
+    const counts = await fetchQuestionCountsBySlug();
+    const countSlug = String(data.slug || slug || '')
+      .trim()
+      .toLowerCase()
+      .replace(/_/g, '-');
+    return NextResponse.json({
+      success: true,
+      exam: {
+        ...data,
+        question_count: Number(counts?.[countSlug]) || 0,
+      },
+    });
   } catch (err) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }

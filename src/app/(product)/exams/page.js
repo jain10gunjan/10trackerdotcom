@@ -1,9 +1,9 @@
 import ExamsCatalogPage from '@/features/exams/components/ExamsCatalogPage';
-import { fetchActiveExamCatalog } from '@/features/exams/lib/fetchActiveExamCatalog';
+import { fetchExamCatalog } from '@/features/exams/lib/fetchExamCatalog';
 
 export const revalidate = 120;
 
 export default async function ExamsPage() {
-  const exams = await fetchActiveExamCatalog();
+  const exams = await fetchExamCatalog({ activeOnly: true });
   return <ExamsCatalogPage initialExams={exams} />;
 }

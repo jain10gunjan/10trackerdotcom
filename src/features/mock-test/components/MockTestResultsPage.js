@@ -7,6 +7,7 @@ import {
   formatDurationShort,
   formatDurationLong,
   usesGateMarking,
+  usesJeeMainMarking,
 } from '@/features/mock-test/lib/mockTestUtils';
 import { useAuth } from '@/context/AuthContext';
 import { createClient } from "@supabase/supabase-js";
@@ -445,6 +446,12 @@ export default function TestResultPage() {
     attempt?.quick_stats?.markingScheme === 'gate' ||
     attempt?.final_stats?.markingScheme === 'gate' ||
     usesGateMarking(examcategory);
+  const jeeMarking =
+    !gateMarking &&
+    (attempt?.quick_stats?.markingScheme === 'jee-main' ||
+      attempt?.final_stats?.markingScheme === 'jee-main' ||
+      usesJeeMainMarking(examcategory));
+  const marksStyle = gateMarking || jeeMarking;
   const netMarks =
     attempt?.quick_stats?.netMarks ??
     attempt?.final_stats?.netMarks ??
@@ -452,7 +459,7 @@ export default function TestResultPage() {
   const maxMarks =
     attempt?.quick_stats?.maxMarks ??
     attempt?.final_stats?.maxMarks ??
-    attempt?.total_questions;
+    (jeeMarking ? (attempt?.total_questions || 0) * 4 : attempt?.total_questions);
 
   return (
     <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-50/70 via-neutral-50 to-neutral-100 pt-24 pb-16">
@@ -480,10 +487,15 @@ export default function TestResultPage() {
                       GATE +1 / −⅓
                     </span>
                   ) : null}
+                  {jeeMarking ? (
+                    <span className="px-2.5 py-1 bg-sky-50 text-sky-800 rounded-full text-xs font-semibold border border-sky-100">
+                      JEE +4 / −1
+                    </span>
+                  ) : null}
                 </div>
                 <div className="mb-4 p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-emerald-700 to-emerald-800 text-white">
                   <p className="text-[11px] text-emerald-100 uppercase tracking-wider font-semibold mb-1">Overall score</p>
-                  {gateMarking ? (
+                  {marksStyle ? (
                     <p className="text-2xl sm:text-3xl font-bold">
                       {netMarks} <span className="text-lg font-medium text-emerald-100/80">/ {maxMarks} marks</span>
                       <span className="block text-sm font-normal text-emerald-100/70 mt-1">
@@ -537,7 +549,7 @@ export default function TestResultPage() {
                   />
                   <ShareResultsCard
                     testName={testName}
-                    scoreLabel={gateMarking ? `${netMarks}/${maxMarks} marks` : `${attempt.percentage}%`}
+                    scoreLabel={marksStyle ? `${netMarks}/${maxMarks} marks` : `${attempt.percentage}%`}
                     percentage={attempt.percentage}
                     examcategory={examcategory}
                     attemptId={attemptId}

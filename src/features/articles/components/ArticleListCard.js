@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowRight, Calendar, Eye, Star } from 'lucide-react';
+import { ArrowRight, Calendar, Star } from 'lucide-react';
 import { resolveFeaturedImageUrl } from '@/lib/resolveFeaturedImageUrl';
 import { isNextImageAllowedSrc } from '@/lib/automationImage';
 
@@ -72,10 +72,6 @@ export default function ArticleListCard({
                 <Calendar className="h-3.5 w-3.5" />
                 {formatDate(article.created_at)}
               </span>
-              <span className="inline-flex items-center gap-1">
-                <Eye className="h-3.5 w-3.5" />
-                {(article.view_count || 0).toLocaleString()}
-              </span>
             </div>
 
             <h2 className="mt-3 text-2xl sm:text-3xl font-bold tracking-tight text-neutral-900 leading-snug line-clamp-3 group-hover:text-neutral-700 transition-colors">
@@ -145,10 +141,6 @@ export default function ArticleListCard({
             <span className="inline-flex items-center gap-1">
               <Calendar className="h-3.5 w-3.5" />
               {formatDate(article.created_at)}
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <Eye className="h-3.5 w-3.5" />
-              {(article.view_count || 0).toLocaleString()}
             </span>
           </div>
 

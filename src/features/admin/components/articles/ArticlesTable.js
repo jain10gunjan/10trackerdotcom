@@ -34,7 +34,6 @@ export default function ArticlesTable({
                   <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Title</th>
                   <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Category</th>
                   <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Status</th>
-                  <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Views</th>
                   <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Created</th>
                   <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Actions</th>
                 </tr>
@@ -80,9 +79,6 @@ export default function ArticlesTable({
                       }`}>
                         {article.status || 'unknown'}
                       </span>
-                    </td>
-                    <td className="px-4 lg:px-6 py-4 text-sm text-neutral-500">
-                      {article.view_count || 0}
                     </td>
                     <td className="px-4 lg:px-6 py-4 text-sm text-neutral-500">
                       {formatArticleDate(article.created_at)}
@@ -164,10 +160,6 @@ export default function ArticlesTable({
                       </span>
                     </div>
                     <div className="flex items-center gap-4 text-xs text-neutral-500 mb-3">
-                      <div className="flex items-center gap-1">
-                        <Eye className="w-3 h-3" />
-                        {article.view_count || 0} views
-                      </div>
                       <div className="flex items-center gap-1">
                         <Calendar className="w-3 h-3" />
                         {formatArticleDate(article.created_at)}

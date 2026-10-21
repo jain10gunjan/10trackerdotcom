@@ -32,10 +32,13 @@ import {
   formatDurationShort,
   calculateMockTestStats,
   usesGateMarking,
+  usesJeeMainMarking,
 } from '@/features/mock-test/lib/mockTestUtils';
+import { parseGateTopic } from '@/features/mock-test/lib/gateCseBlueprint';
 import {
   isInlineAnswerQuestion,
   getVisibleMcqOptions,
+  hasPopulatedOptions,
 } from '@/lib/questionAnswerMode';
 import InlineAnswerInput from '@/features/practice/components/InlineAnswerInput';
 
@@ -532,6 +535,31 @@ export default function EnhancedMobileMockTestPage() {
     return `${minutes}:${secs.toString().padStart(2, '0')}`;
   }, []);
 
+  const gateQuestionMarks = useMemo(() => {
+    const map = {};
+    (state.questionsQueue || []).forEach((q) => {
+      if (!q?.id) return;
+      const fromQ = Number(q.marks);
+      if (fromQ === 1 || fromQ === 2) {
+        map[String(q.id)] = fromQ;
+      } else {
+        const parsed = parseGateTopic(q.topic);
+        map[String(q.id)] = parsed.marks;
+      }
+    });
+    return map;
+  }, [state.questionsQueue]);
+
+  const gateMaxMarksOverride = useMemo(() => {
+    const cfg = testInfo?.weightage_config;
+    if (cfg?.maxMarks) return Number(cfg.maxMarks);
+    const vals = Object.values(gateQuestionMarks);
+    if (vals.length && usesGateMarking(examcategory)) {
+      return vals.reduce((a, b) => a + b, 0);
+    }
+    return null;
+  }, [testInfo, gateQuestionMarks, examcategory]);
+
   // Memoized calculations
   const currentStats = useMemo(
     () =>
@@ -541,8 +569,18 @@ export default function EnhancedMobileMockTestPage() {
         examcategory,
         markedForReview: state.markedForReview,
         timeData: { totalTimeSpent: state.totalTime },
+        questionMarks: usesGateMarking(examcategory) ? gateQuestionMarks : null,
+        maxMarksOverride: gateMaxMarksOverride,
       }),
-    [state.answerHistory, state.questionsQueue, state.markedForReview, state.totalTime, examcategory]
+    [
+      state.answerHistory,
+      state.questionsQueue,
+      state.markedForReview,
+      state.totalTime,
+      examcategory,
+      gateQuestionMarks,
+      gateMaxMarksOverride,
+    ]
   );
 
   // Touch/Swipe handlers for mobile navigation
@@ -703,14 +741,27 @@ export default function EnhancedMobileMockTestPage() {
     try {
       await toastPromise(
         async () => {
-          const { data: testData, error: testError } = await supabase
+          let { data: testData, error: testError } = await supabase
             .from('mock_tests')
             .select(`
-              id, name, description, duration, total_questions, difficulty, category
+              id, name, description, duration, total_questions, difficulty, category, weightage_config
             `)
             .eq('id', testId)
             .eq('is_active', true)
             .single();
+
+          if (testError && /weightage_config/i.test(testError.message || '')) {
+            const retry = await supabase
+              .from('mock_tests')
+              .select(`
+                id, name, description, duration, total_questions, difficulty, category
+              `)
+              .eq('id', testId)
+              .eq('is_active', true)
+              .single();
+            testData = retry.data;
+            testError = retry.error;
+          }
 
           if (testError) throw testError;
 
@@ -771,14 +822,29 @@ export default function EnhancedMobileMockTestPage() {
       const orderedQuestions = questionData.map(orderInfo => {
         const questionDetail = allQuestions.find(q => q._id === orderInfo.question_id);
         if (!questionDetail) return null;
+
+        const storedTopic = orderInfo.topic || '';
+        const parsedGate = parseGateTopic(storedTopic);
+        const displayTopic =
+          parsedGate.topic ||
+          questionDetail.topic ||
+          'General';
+        const cfgMarks =
+          testData?.weightage_config?.gateQuestionMarks?.[String(questionDetail._id)];
+        const marks =
+          Number(cfgMarks) === 2 || Number(cfgMarks) === 1
+            ? Number(cfgMarks)
+            : parsedGate.marks;
         
         return {
           ...questionDetail,
           id: questionDetail._id,
           order: sanitizeData(orderInfo.question_order, 'number', 0),
           subject: sanitizeData(questionDetail.subject || orderInfo.subject, 'string', 'General'),
-          topic: sanitizeData(questionDetail.topic || orderInfo.topic, 'string', 'General'),
-          difficulty: sanitizeData(questionDetail.difficulty || orderInfo.difficulty, 'string', 'medium')
+          topic: sanitizeData(displayTopic, 'string', 'General'),
+          difficulty: sanitizeData(questionDetail.difficulty || orderInfo.difficulty, 'string', 'medium'),
+          marks,
+          isMcq: hasPopulatedOptions(questionDetail),
         };
       }).filter(Boolean);
 
@@ -919,7 +985,12 @@ export default function EnhancedMobileMockTestPage() {
       subject: state.currentQuestion.subject,
       topic: state.currentQuestion.topic,
       difficulty: state.currentQuestion.difficulty,
-      order: state.currentQuestion.order
+      order: state.currentQuestion.order,
+      marks: Number(state.currentQuestion.marks) === 2 ? 2 : 1,
+      isMcq:
+        state.currentQuestion.isMcq != null
+          ? Boolean(state.currentQuestion.isMcq)
+          : hasPopulatedOptions(state.currentQuestion),
     };
 
     const summaryAnswer = {
@@ -1214,7 +1285,7 @@ export default function EnhancedMobileMockTestPage() {
         message = `🎯 Excellent! ${stats.percentage}% score!`;
       } else if (stats.percentage >= 60) {
         message = `👍 Good job! ${stats.percentage}% score!`;
-      } else if (stats.markingScheme === 'gate') {
+      } else if (stats.markingScheme === 'gate' || stats.markingScheme === 'jee-main') {
         message = `📊 Test completed! ${stats.netMarks} / ${stats.maxMarks} marks (${stats.percentage}%)`;
       } else {
         message = `📊 Test completed! ${stats.percentage}% score`;
@@ -1413,15 +1484,27 @@ export default function EnhancedMobileMockTestPage() {
             <Award className="h-5 w-5 text-violet-600 flex-shrink-0" />
             <div>
               <p className="text-[11px] text-neutral-500">
-                {usesGateMarking(examcategory) ? 'Max marks' : 'Max score'}
+                {usesGateMarking(examcategory) || usesJeeMainMarking(examcategory)
+                  ? 'Max marks'
+                  : 'Max score'}
               </p>
               <p className="text-lg font-bold text-neutral-900 tabular-nums">
                 {usesGateMarking(examcategory)
-                  ? testInfo.total_questions
-                  : testInfo.total_questions * 100}
+                  ? testInfo.total_questions === 65
+                    ? 100
+                    : testInfo.total_questions
+                  : usesJeeMainMarking(examcategory)
+                    ? testInfo.total_questions * 4
+                    : testInfo.total_questions * 100}
               </p>
               {usesGateMarking(examcategory) ? (
-                <p className="text-[10px] text-neutral-500">+1 / −⅓ marking</p>
+                <p className="text-[10px] text-neutral-500">
+                  {testInfo.total_questions === 65
+                    ? '+1/+2 · −m/3 MCQ'
+                    : '+1 / −⅓ marking'}
+                </p>
+              ) : usesJeeMainMarking(examcategory) ? (
+                <p className="text-[10px] text-neutral-500">+4 / −1 marking</p>
               ) : null}
             </div>
           </div>

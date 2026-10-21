@@ -8,6 +8,8 @@ Sitemap: https://10tracker.com/sitemap.xml
 Disallow: /admin/
 Disallow: /api/
 Disallow: /_next/
+# Article photos are proxied here. A blanket /api/ block keeps Google from fetching them.
+Allow: /api/images/
 Disallow: /auth-handler/
 Disallow: /auth-success/
 
