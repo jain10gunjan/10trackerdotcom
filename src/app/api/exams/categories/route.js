@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { fetchExamCatalog } from '@/features/exams/lib/fetchExamCatalog';
 
+// Next.js only accepts a literal here. Same interval as EXAM_CATALOG_REVALIDATE_SECONDS.
+export const revalidate = 120;
+
 /**
  * Active exam catalog as "categories" for older clients.
  * Uses platform_exams + cached examtracker counts (no full-table scan).
@@ -19,10 +22,13 @@ export async function GET() {
       description: exam.description,
     }));
 
-    return NextResponse.json({
-      success: true,
-      data,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        data,
+      },
+      { headers: { 'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=300' } }
+    );
   } catch (error) {
     console.error('Error in exam categories API:', error);
     return NextResponse.json(

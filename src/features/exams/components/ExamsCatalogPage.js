@@ -14,7 +14,7 @@ import ExamCatalogCard from '@/features/exams/components/ExamCatalogCard';
 import ExamsFeaturedPanel from '@/features/exams/components/ExamsFeaturedPanel';
 import ExamsFilterBar from '@/features/exams/components/ExamsFilterBar';
 
-export default function ExamsCatalogPage({ initialExams = [] }) {
+export default function ExamsCatalogPage({ initialExams = [], totalQuestions = 0 }) {
   const { user } = useAuth();
   const { profile } = useProfileGate();
   const [searchTerm, setSearchTerm] = useState('');
@@ -61,6 +61,9 @@ export default function ExamsCatalogPage({ initialExams = [] }) {
                   <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-neutral-500">
                     <span className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-neutral-50 px-2.5 py-1 font-semibold text-neutral-800 tabular-nums">
                       {exams.length} active
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-neutral-50 px-2.5 py-1 font-semibold text-neutral-800 tabular-nums">
+                      {Number(totalQuestions || 0).toLocaleString()} questions
                     </span>
                     <Link
                       href="/"

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
+import { canonicalAuthHost, publicRequestHostname } from "@/lib/authCookies";
 import { isAdminEmail } from "@/features/mock-test/lib/mockTestUtils";
 
 const ARTICLE_CATEGORY_SLUGS = new Set([
@@ -26,7 +27,22 @@ function redirectToSignIn(req, pathname) {
   return NextResponse.redirect(url);
 }
 
-export default auth((req) => {
+function canonicalHostRedirect(req) {
+  if (req.method !== "GET" && req.method !== "HEAD") return null;
+  const hostname = publicRequestHostname(
+    req.headers.get("x-forwarded-host") || req.headers.get("host")
+  );
+  if (hostname !== "10tracker.com" && hostname !== "www.10tracker.com") return null;
+  const target = canonicalAuthHost();
+  if (!target || hostname === target) return null;
+  const dest = new URL(
+    `${req.nextUrl.pathname}${req.nextUrl.search}`,
+    `https://${target}`
+  );
+  return NextResponse.redirect(dest, 307);
+}
+
+const withAuth = auth((req) => {
   const { pathname } = req.nextUrl;
 
   // Legacy broken login path → NextAuth sign-in
@@ -116,6 +132,19 @@ export default auth((req) => {
 
   return NextResponse.next();
 });
+
+export default function middleware(req, event) {
+  const { pathname } = req.nextUrl;
+  // The Auth.js wrapper reads the session on every matched request and merges
+  // Set-Cookie onto the response. On /api/auth that overwrites the PKCE cookie
+  // written by the Google callback.
+  if (pathname.startsWith("/api/auth")) {
+    return NextResponse.next();
+  }
+  const redirected = canonicalHostRedirect(req);
+  if (redirected) return redirected;
+  return withAuth(req, event);
+}
 
 export const config = {
   matcher: ["/((?!.+\\.[\\w]+$|_next).*)", "/(api|trpc)(.*)"],

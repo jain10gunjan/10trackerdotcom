@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import MetaDataJobs from '@/components/ui/Seo';
-import { ArrowLeft, AlertCircle, GraduationCap, Save } from 'lucide-react';
+import { ArrowLeft, AlertCircle, GraduationCap, Plus, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { parseJsonResponse, toastPromise } from '@/lib/toastAsync';
 
@@ -21,12 +21,13 @@ function daysUntil(dateStr) {
   return Math.round((exam.getTime() - today.getTime()) / 86400000);
 }
 
-function ExamRow({ exam, onSave, onToggleActive }) {
+function ExamRow({ exam, categories, onSave, onToggleActive }) {
   const [examDate, setExamDate] = useState(exam.exam_date || '');
   const [label, setLabel] = useState(exam.exam_date_label || '');
   const [visible, setVisible] = useState(exam.exam_date_visible !== false);
   const [imageUrl, setImageUrl] = useState(exam.image_url || '');
   const [icon, setIcon] = useState(exam.icon || '');
+  const [category, setCategory] = useState(exam.category || '');
   const [imageFailed, setImageFailed] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -36,6 +37,7 @@ function ExamRow({ exam, onSave, onToggleActive }) {
     setVisible(exam.exam_date_visible !== false);
     setImageUrl(exam.image_url || '');
     setIcon(exam.icon || '');
+    setCategory(exam.category || '');
     setImageFailed(false);
   }, [
     exam.exam_date,
@@ -43,6 +45,7 @@ function ExamRow({ exam, onSave, onToggleActive }) {
     exam.exam_date_visible,
     exam.image_url,
     exam.icon,
+    exam.category,
   ]);
 
   useEffect(() => {
@@ -55,7 +58,8 @@ function ExamRow({ exam, onSave, onToggleActive }) {
     (label || '') !== (exam.exam_date_label || '') ||
     visible !== (exam.exam_date_visible !== false) ||
     (imageUrl || '') !== (exam.image_url || '') ||
-    (icon || '') !== (exam.icon || '');
+    (icon || '') !== (exam.icon || '') ||
+    (category || '') !== (exam.category || '');
 
   const handleSave = async () => {
     setSaving(true);
@@ -66,6 +70,7 @@ function ExamRow({ exam, onSave, onToggleActive }) {
         exam_date_visible: visible,
         image_url: imageUrl.trim() || null,
         icon: icon.trim() || null,
+        category: category.trim() || null,
       });
     } finally {
       setSaving(false);
@@ -132,6 +137,17 @@ function ExamRow({ exam, onSave, onToggleActive }) {
           />
         </button>
       </div>
+
+      <label className="block text-xs text-neutral-600">
+        Category
+        <input
+          list="platform-exam-categories"
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+          placeholder="Engineering, Civil Services…"
+          className="mt-1 w-full rounded-xl border border-neutral-200 px-3 py-2 text-sm text-neutral-900"
+        />
+      </label>
 
       <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3">
         <label className="block min-w-0">
@@ -224,9 +240,20 @@ export default function AdminPlatformExamsPage() {
   const router = useRouter();
   const { user, isAdmin, loading: authLoading } = useAuth();
   const [exams, setExams] = useState([]);
+  const [bankCategories, setBankCategories] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [setupHint, setSetupHint] = useState(null);
   const [statusFilter, setStatusFilter] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [creating, setCreating] = useState(false);
+  const [draft, setDraft] = useState({
+    slug: '',
+    name: '',
+    category: '',
+    description: '',
+    icon: '',
+  });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -235,6 +262,8 @@ export default function AdminPlatformExamsPage() {
       const data = await parseJsonResponse(res);
       if (!data.success) throw new Error(data.error || 'Failed to load');
       setExams(data.exams || []);
+      setBankCategories(data.bankCategories || []);
+      setCategories(data.categories || []);
       setSetupHint(data.dbSetupRequired ? data.setupHint : null);
     } catch (e) {
       toast.error(e.message || 'Failed to load exams');
@@ -250,6 +279,72 @@ export default function AdminPlatformExamsPage() {
   useEffect(() => {
     if (isAdmin) load();
   }, [isAdmin, load]);
+
+  const createExam = async (payload) => {
+    await toastPromise(
+      async () => {
+        const res = await fetch('/api/admin/platform-exams', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(payload),
+        });
+        const data = await parseJsonResponse(res);
+        if (!data.success) throw new Error(data.error);
+        setExams((prev) => [...prev, data.exam].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)));
+        setBankCategories((prev) =>
+          prev.map((row) => (row.slug === data.exam.slug ? { ...row, onPlatform: true } : row))
+        );
+        if (data.exam.category) {
+          setCategories((prev) =>
+            prev.includes(data.exam.category)
+              ? prev
+              : [...prev, data.exam.category].sort((a, b) => a.localeCompare(b))
+          );
+        }
+        return `${data.exam.name} added`;
+      },
+      {
+        loading: 'Adding exam…',
+        success: (msg) => msg,
+        error: (e) => e.message || 'Could not add exam',
+      }
+    );
+  };
+
+  const submitDraft = async (event) => {
+    event.preventDefault();
+    setCreating(true);
+    try {
+      await createExam({
+        slug: draft.slug,
+        name: draft.name,
+        category: draft.category,
+        description: draft.description,
+        icon: draft.icon,
+        is_active: false,
+      });
+      setDraft({ slug: '', name: '', category: '', description: '', icon: '' });
+    } catch {
+      /* toast */
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const addFromBank = async (row) => {
+    try {
+      await createExam({
+        slug: row.slug,
+        name: row.name,
+        category: '',
+        description: 'Topic-wise practice with solutions',
+        is_active: false,
+      });
+    } catch {
+      /* toast */
+    }
+  };
 
   const toggleActive = async (slug, is_active) => {
     try {
@@ -291,6 +386,13 @@ export default function AdminPlatformExamsPage() {
         const data = await parseJsonResponse(res);
         if (!data.success) throw new Error(data.error);
         setExams((prev) => prev.map((e) => (e.slug === slug ? { ...e, ...data.exam } : e)));
+        if (data.exam.category) {
+          setCategories((prev) =>
+            prev.includes(data.exam.category)
+              ? prev
+              : [...prev, data.exam.category].sort((a, b) => a.localeCompare(b))
+          );
+        }
         if (data.dbSetupRequired) {
           setSetupHint(
             'Run supabase/migrations/add_platform_exam_dates.sql in Supabase SQL Editor'
@@ -333,9 +435,120 @@ export default function AdminPlatformExamsPage() {
         Platform exams
       </h1>
       <p className="text-sm text-neutral-600 mt-2 mb-6">
-        All exams are listed here. Toggle active to show or hide an exam on the homepage and
-        public catalog. Question counts come from the question bank.
+        Add exams from the question bank or by hand. Toggle active to show or hide an exam on
+        the homepage and public catalog. Group them with a category so the catalog stays organized.
       </p>
+
+      <datalist id="platform-exam-categories">
+        {categories.map((item) => (
+          <option key={item} value={item} />
+        ))}
+      </datalist>
+
+      {!loading ? (
+        <section className="mb-6 rounded-2xl border border-neutral-200 bg-white p-4 sm:p-5 shadow-sm">
+          <h2 className="text-sm font-semibold text-neutral-900">Question bank categories</h2>
+          <p className="mt-1 text-xs text-neutral-500">
+            Categories that already have questions. Add any that are not on the catalog yet.
+          </p>
+          {bankCategories.length === 0 ? (
+            <p className="mt-3 text-sm text-neutral-500">
+              No question-bank categories yet. Run the counts migration, or add an exam manually.
+            </p>
+          ) : (
+            <ul className="mt-3 flex flex-wrap gap-2">
+              {bankCategories.map((row) => (
+                <li key={row.slug}>
+                  {row.onPlatform ? (
+                    <span className="inline-flex items-center gap-2 rounded-full bg-neutral-100 px-3 py-1.5 text-xs text-neutral-600">
+                      <span className="font-medium text-neutral-800">{row.name}</span>
+                      <span className="tabular-nums">{row.question_count.toLocaleString()}</span>
+                      <span>On catalog</span>
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => addFromBank(row)}
+                      className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-900 ring-1 ring-emerald-200 hover:bg-emerald-100"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      <span>{row.name}</span>
+                      <span className="tabular-nums text-emerald-700">
+                        {row.question_count.toLocaleString()}
+                      </span>
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      ) : null}
+
+      <form
+        onSubmit={submitDraft}
+        className="mb-6 rounded-2xl border border-neutral-200 bg-white p-4 sm:p-5 shadow-sm space-y-3"
+      >
+        <h2 className="text-sm font-semibold text-neutral-900">Add platform exam</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <label className="block text-xs text-neutral-600">
+            Name
+            <input
+              required
+              value={draft.name}
+              onChange={(e) => setDraft((prev) => ({ ...prev, name: e.target.value }))}
+              className="mt-1 w-full rounded-xl border border-neutral-200 px-3 py-2 text-sm"
+              placeholder="GATE CSE"
+            />
+          </label>
+          <label className="block text-xs text-neutral-600">
+            Slug
+            <input
+              required
+              value={draft.slug}
+              onChange={(e) => setDraft((prev) => ({ ...prev, slug: e.target.value }))}
+              className="mt-1 w-full rounded-xl border border-neutral-200 px-3 py-2 text-sm font-mono"
+              placeholder="gate-cse"
+            />
+          </label>
+          <label className="block text-xs text-neutral-600">
+            Category
+            <input
+              list="platform-exam-categories"
+              value={draft.category}
+              onChange={(e) => setDraft((prev) => ({ ...prev, category: e.target.value }))}
+              className="mt-1 w-full rounded-xl border border-neutral-200 px-3 py-2 text-sm"
+              placeholder="Engineering"
+            />
+          </label>
+          <label className="block text-xs text-neutral-600">
+            Icon
+            <input
+              value={draft.icon}
+              onChange={(e) => setDraft((prev) => ({ ...prev, icon: e.target.value }))}
+              className="mt-1 w-full rounded-xl border border-neutral-200 px-3 py-2 text-sm"
+              placeholder="💻"
+            />
+          </label>
+        </div>
+        <label className="block text-xs text-neutral-600">
+          Description
+          <input
+            value={draft.description}
+            onChange={(e) => setDraft((prev) => ({ ...prev, description: e.target.value }))}
+            className="mt-1 w-full rounded-xl border border-neutral-200 px-3 py-2 text-sm"
+            placeholder="Topic-wise practice with solutions"
+          />
+        </label>
+        <button
+          type="submit"
+          disabled={creating}
+          className="inline-flex items-center gap-1.5 rounded-xl bg-neutral-900 px-3 py-2 text-xs font-semibold text-white hover:bg-neutral-800 disabled:opacity-40"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          Add exam
+        </button>
+      </form>
 
       {setupHint && (
         <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
@@ -351,6 +564,36 @@ export default function AdminPlatformExamsPage() {
           .
         </div>
       )}
+
+      {!loading && categories.length > 0 ? (
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setCategoryFilter('all')}
+            className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
+              categoryFilter === 'all'
+                ? 'bg-neutral-900 text-white'
+                : 'bg-white text-neutral-700 ring-1 ring-neutral-200'
+            }`}
+          >
+            All categories
+          </button>
+          {categories.map((item) => (
+            <button
+              key={item}
+              type="button"
+              onClick={() => setCategoryFilter(item)}
+              className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
+                categoryFilter === item
+                  ? 'bg-neutral-900 text-white'
+                  : 'bg-white text-neutral-700 ring-1 ring-neutral-200'
+              }`}
+            >
+              {item}
+            </button>
+          ))}
+        </div>
+      ) : null}
 
       {!loading && exams.length > 0 ? (
         <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -390,14 +633,16 @@ export default function AdminPlatformExamsPage() {
         <ul className="space-y-4">
           {exams
             .filter((exam) => {
-              if (statusFilter === 'active') return !!exam.is_active;
-              if (statusFilter === 'inactive') return !exam.is_active;
+              if (statusFilter === 'active' && !exam.is_active) return false;
+              if (statusFilter === 'inactive' && exam.is_active) return false;
+              if (categoryFilter !== 'all' && (exam.category || '') !== categoryFilter) return false;
               return true;
             })
             .map((exam) => (
               <ExamRow
                 key={exam.slug}
                 exam={exam}
+                categories={categories}
                 onSave={saveExam}
                 onToggleActive={toggleActive}
               />

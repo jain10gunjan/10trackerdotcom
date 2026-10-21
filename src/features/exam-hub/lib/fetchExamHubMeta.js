@@ -27,7 +27,7 @@ export async function fetchExamHubMeta(categorySlug) {
   const slug = normalizeCategorySlug(categorySlug);
   if (!slug) return null;
 
-  const counts = await fetchQuestionCountsBySlug();
+  const counts = await fetchQuestionCountsBySlug([slug]);
 
   try {
     const supabase = getSupabaseServer(false);

@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { fetchExamCatalog } from '@/features/exams/lib/fetchExamCatalog';
 
+// Next.js only accepts a literal here. Same interval as EXAM_CATALOG_REVALIDATE_SECONDS.
+export const revalidate = 120;
+
 export async function GET() {
   try {
     const exams = await fetchExamCatalog({ activeOnly: true });

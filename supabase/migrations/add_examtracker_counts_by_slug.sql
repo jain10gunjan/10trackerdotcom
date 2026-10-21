@@ -5,6 +5,8 @@ CREATE OR REPLACE FUNCTION public.examtracker_counts_by_slug()
 RETURNS TABLE (slug text, question_count bigint)
 LANGUAGE sql
 STABLE
+SECURITY DEFINER
+SET search_path = public
 AS $$
   SELECT
     lower(replace(trim(category), '_', '-')) AS slug,
