@@ -8,7 +8,15 @@ import {
   formatDurationLong,
   usesGateMarking,
   usesJeeMainMarking,
+  usesMhtCetMarking,
+  usesViteeeMarking,
+  usesWbjeeMarking,
+  usesKcetMarking,
+  usesCatMarking,
+  computeMhtCetPacing,
+  computeKcetPacing,
 } from '@/features/mock-test/lib/mockTestUtils';
+import { CAT_SECTIONS } from '@/features/mock-test/lib/catBlueprint';
 import { useAuth } from '@/context/AuthContext';
 import { createClient } from "@supabase/supabase-js";
 import { MathJax, MathJaxContext } from "better-react-mathjax";
@@ -451,7 +459,61 @@ export default function TestResultPage() {
     (attempt?.quick_stats?.markingScheme === 'jee-main' ||
       attempt?.final_stats?.markingScheme === 'jee-main' ||
       usesJeeMainMarking(examcategory));
-  const marksStyle = gateMarking || jeeMarking;
+  const mhtMarking =
+    !gateMarking &&
+    !jeeMarking &&
+    (attempt?.quick_stats?.markingScheme === 'mht-cet' ||
+      attempt?.final_stats?.markingScheme === 'mht-cet' ||
+      usesMhtCetMarking(examcategory));
+  const viteeeMarking =
+    !gateMarking &&
+    !jeeMarking &&
+    !mhtMarking &&
+    (attempt?.quick_stats?.markingScheme === 'viteee' ||
+      attempt?.final_stats?.markingScheme === 'viteee' ||
+      usesViteeeMarking(examcategory));
+  const wbjeeMarking =
+    !gateMarking &&
+    !jeeMarking &&
+    !mhtMarking &&
+    !viteeeMarking &&
+    (attempt?.quick_stats?.markingScheme === 'wbjee' ||
+      attempt?.final_stats?.markingScheme === 'wbjee' ||
+      usesWbjeeMarking(examcategory));
+  const kcetMarking =
+    !gateMarking &&
+    !jeeMarking &&
+    !mhtMarking &&
+    !viteeeMarking &&
+    !wbjeeMarking &&
+    (attempt?.quick_stats?.markingScheme === 'kcet' ||
+      attempt?.final_stats?.markingScheme === 'kcet' ||
+      usesKcetMarking(examcategory));
+  const catMarking =
+    !gateMarking &&
+    !jeeMarking &&
+    !mhtMarking &&
+    !viteeeMarking &&
+    !wbjeeMarking &&
+    !kcetMarking &&
+    (attempt?.quick_stats?.markingScheme === 'cat' ||
+      attempt?.final_stats?.markingScheme === 'cat' ||
+      usesCatMarking(examcategory));
+  const marksStyle = gateMarking || jeeMarking || mhtMarking || viteeeMarking || wbjeeMarking || kcetMarking || catMarking;
+  const pacing =
+    attempt?.final_stats?.pacing ||
+    attempt?.quick_stats?.pacing ||
+    (mhtMarking
+      ? computeMhtCetPacing({
+          questions: attempt?.all_questions || [],
+          answers: attempt?.answers || [],
+        })
+      : kcetMarking
+        ? computeKcetPacing({
+            questions: attempt?.all_questions || [],
+            answers: attempt?.answers || [],
+          })
+        : null);
   const netMarks =
     attempt?.quick_stats?.netMarks ??
     attempt?.final_stats?.netMarks ??
@@ -459,7 +521,21 @@ export default function TestResultPage() {
   const maxMarks =
     attempt?.quick_stats?.maxMarks ??
     attempt?.final_stats?.maxMarks ??
-    (jeeMarking ? (attempt?.total_questions || 0) * 4 : attempt?.total_questions);
+    (jeeMarking
+      ? (attempt?.total_questions || 0) * 4
+      : mhtMarking && (attempt?.total_questions || 0) === 150
+        ? 200
+        : viteeeMarking
+          ? (attempt?.total_questions || 0) * 4
+          : wbjeeMarking && (attempt?.total_questions || 0) === 155
+            ? 200
+            : kcetMarking
+              ? attempt?.total_questions
+              : catMarking
+                ? (attempt?.total_questions || 0) === 68
+                  ? 204
+                  : (attempt?.total_questions || 0) * 3
+              : attempt?.total_questions);
 
   return (
     <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-50/70 via-neutral-50 to-neutral-100 pt-24 pb-16">
@@ -490,6 +566,31 @@ export default function TestResultPage() {
                   {jeeMarking ? (
                     <span className="px-2.5 py-1 bg-sky-50 text-sky-800 rounded-full text-xs font-semibold border border-sky-100">
                       JEE +4 / −1
+                    </span>
+                  ) : null}
+                  {mhtMarking ? (
+                    <span className="px-2.5 py-1 bg-teal-50 text-teal-800 rounded-full text-xs font-semibold border border-teal-100">
+                      MHT-CET · no negative
+                    </span>
+                  ) : null}
+                  {viteeeMarking ? (
+                    <span className="px-2.5 py-1 bg-indigo-50 text-indigo-800 rounded-full text-xs font-semibold border border-indigo-100">
+                      VITEEE +4 / −1
+                    </span>
+                  ) : null}
+                  {wbjeeMarking ? (
+                    <span className="px-2.5 py-1 bg-sky-50 text-sky-900 rounded-full text-xs font-semibold border border-sky-100">
+                      WBJEE · Cat 1 −0.25 · Cat 2 −0.5 · Cat 3 none
+                    </span>
+                  ) : null}
+                  {kcetMarking ? (
+                    <span className="px-2.5 py-1 bg-amber-50 text-amber-900 rounded-full text-xs font-semibold border border-amber-100">
+                      KCET · +1 · no negative
+                    </span>
+                  ) : null}
+                  {catMarking ? (
+                    <span className="px-2.5 py-1 bg-violet-50 text-violet-900 rounded-full text-xs font-semibold border border-violet-100">
+                      CAT · +3 · −1 MCQ · 0 TITA
                     </span>
                   ) : null}
                 </div>
@@ -539,6 +640,81 @@ export default function TestResultPage() {
                     <div className="text-xs sm:text-sm font-medium text-neutral-700">Time</div>
                   </div>
                 </div>
+
+                {viteeeMarking ? (
+                  <p className="mt-3 rounded-xl border border-indigo-100 bg-indigo-50 px-3 py-2 text-xs text-indigo-900">
+                    Wrong answers: <strong>{attempt.wrong_answers ?? 0}</strong> (−1 each,{' '}
+                    {attempt.final_stats?.guessing?.penalty ?? attempt.wrong_answers ?? 0} marks lost).
+                    Left blank: <strong>{attempt.unanswered ?? 0}</strong> (0 marks). Guess only after
+                    eliminating two options.
+                  </p>
+                ) : null}
+
+                {wbjeeMarking ? (
+                  <p className="mt-3 rounded-xl border border-sky-100 bg-sky-50 px-3 py-2 text-xs text-sky-950">
+                    Penalty lost: <strong>{attempt.final_stats?.wbjee?.penalty ?? attempt.quick_stats?.wbjee?.penalty ?? 0}</strong> marks
+                    (Category 1 wrong × 0.25, Category 2 wrong × 0.5). Category 2 wrong:{' '}
+                    <strong>{attempt.final_stats?.wbjee?.cat2Wrong ?? attempt.quick_stats?.wbjee?.cat2Wrong ?? 0}</strong>.
+                    Each of those costs 2.5 versus a correct answer (0.5 lost plus the 2 not gained). Leave Category 2 numericals until the end.
+                  </p>
+                ) : null}
+
+                {catMarking ? (
+                  <div className="mt-3 rounded-xl border border-violet-100 bg-violet-50 px-3 py-2 text-xs text-violet-950">
+                    <p>
+                      Raw score <strong>{netMarks}</strong> / {maxMarks}. CAT percentiles are normalised across slots, so this raw score is only a rough guide next to a past-year slot table.
+                    </p>
+                    <ul className="mt-2 space-y-1">
+                      {(attempt?.total_questions === 68
+                        ? CAT_SECTIONS.map((section) => section.label)
+                        : Object.keys(
+                            attempt?.final_stats?.subjectStats || attempt?.quick_stats?.subjectStats || {}
+                          )
+                      ).map((label) => {
+                        const stats =
+                          attempt?.final_stats?.subjectStats?.[label] ||
+                          attempt?.quick_stats?.subjectStats?.[label] ||
+                          {};
+                        const sectionSize =
+                          attempt?.total_questions === 68
+                            ? CAT_SECTIONS.find((section) => section.label === label)
+                            : null;
+                        const attempted = stats.attempted || 0;
+                        const correct = stats.correct || 0;
+                        const accuracy = attempted > 0 ? Math.round((correct / attempted) * 1000) / 10 : 0;
+                        const sectionCount = sectionSize ? sectionSize.end - sectionSize.start : null;
+                        return (
+                          <li key={label}>
+                            <strong>{label}</strong>: {attempted}
+                            {sectionCount ? ` of ${sectionCount}` : ''} attempted, {correct} correct, {accuracy}% accuracy, net {stats.netMarks || 0}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                ) : null}
+
+                {(mhtMarking || kcetMarking) && pacing ? (
+                  <div className="mt-3 grid grid-cols-2 gap-2.5">
+                    <div className="rounded-xl border border-violet-100 bg-violet-50 p-3">
+                      <p className="text-lg font-bold text-violet-900 tabular-nums">{pacing.guessed ?? 0}</p>
+                      <p className="text-xs font-medium text-violet-800">Guessed</p>
+                      <p className="mt-1 text-[11px] text-violet-700/80">
+                        {kcetMarking
+                          ? 'Answered in under 15s (Physics/Chemistry) or 20s (Mathematics). A high guess count means those chapters need more study.'
+                          : 'Answered in under 12s (Physics/Chemistry) or 20s (Mathematics).'}
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-3">
+                      <p className="text-lg font-bold text-neutral-900 tabular-nums">{pacing.unseen ?? 0}</p>
+                      <p className="text-xs font-medium text-neutral-700">Left unseen</p>
+                      <p className="mt-1 text-[11px] text-neutral-500">
+                        Never opened. With no negative marking, these should be zero.
+                        {pacing.seenBlank ? ` ${pacing.seenBlank} opened and left blank.` : ''}
+                      </p>
+                    </div>
+                  </div>
+                ) : null}
 
                 <div className="mt-4 sm:mt-6 grid gap-4 sm:grid-cols-1 lg:grid-cols-2">
                   <TestRankSummary

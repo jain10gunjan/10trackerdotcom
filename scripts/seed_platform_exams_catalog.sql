@@ -101,6 +101,54 @@ VALUES
     NOW()
   ),
   (
+    'viteee',
+    'VITEEE',
+    'VIT Engineering Entrance Examination',
+    'Engineering',
+    NULL,
+    '🎯',
+    'from-indigo-500 to-violet-500',
+    55,
+    false,
+    NOW()
+  ),
+  (
+    'wbjee',
+    'WBJEE',
+    'West Bengal Joint Entrance Examination',
+    'Engineering',
+    NULL,
+    '🎯',
+    'from-sky-500 to-blue-600',
+    56,
+    false,
+    NOW()
+  ),
+  (
+    'kcet',
+    'KCET',
+    'Karnataka Common Entrance Test',
+    'Engineering',
+    NULL,
+    '🎯',
+    'from-amber-500 to-orange-600',
+    57,
+    false,
+    NOW()
+  ),
+  (
+    'cat',
+    'CAT',
+    'Common Admission Test',
+    'Management',
+    NULL,
+    '🎓',
+    'from-violet-600 to-indigo-700',
+    58,
+    false,
+    NOW()
+  ),
+  (
     'general-aptitude',
     'General Aptitude',
     'General Aptitude and Reasoning Practice. Quantitative Aptitude and Verbal Ability.',

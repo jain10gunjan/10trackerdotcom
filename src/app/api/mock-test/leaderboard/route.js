@@ -7,6 +7,7 @@ import {
   findUserRank,
 } from '@/features/mock-test/lib/mockTestLeaderboard';
 import { fetchLeaderboardData } from '@/features/mock-test/lib/mockTestLeaderboardFetch';
+import { mergeWithSyntheticRanks } from '@/features/mock-test/lib/syntheticLeaderboard';
 import { getSupabaseServer, isValidServiceRoleKey } from '@/lib/supabaseServer';
 
 export async function GET(request) {
@@ -49,36 +50,21 @@ export async function GET(request) {
       profilesMap = Object.fromEntries((profiles || []).map((p) => [p.user_email, p]));
     }
 
-    let entries;
-    if (scope === 'test') {
-      entries = buildPerTestLeaderboard(filtered, profilesMap, limit);
-    } else {
-      entries = buildOverallLeaderboard(filtered, testIds, profilesMap, limit);
-    }
+    const realEntries =
+      scope === 'test'
+        ? buildPerTestLeaderboard(filtered, profilesMap, 5000)
+        : buildOverallLeaderboard(filtered, testIds, profilesMap, 5000);
 
-    const yourRank = userEmail ? findUserRank(entries, userEmail) : null;
+    const merged = mergeWithSyntheticRanks(realEntries, {
+      scope,
+      examCategory,
+      testIds,
+      testId,
+      limit,
+    });
 
-    if (userEmail && !yourRank) {
-      const full =
-        scope === 'test'
-          ? buildPerTestLeaderboard(filtered, profilesMap, 5000)
-          : buildOverallLeaderboard(filtered, testIds, profilesMap, 5000);
-      const fullRank = findUserRank(full, userEmail);
-      if (fullRank) {
-        return NextResponse.json({
-          success: true,
-          scope,
-          period,
-          testId: testId || null,
-          testName: testId ? testNameById[testId] : null,
-          entries,
-          yourRank: fullRank.rank > limit ? { ...fullRank, outsideTop: true } : fullRank,
-          totalParticipants: full.length,
-          tests,
-          meta: { ...meta, periodAttempts: filtered.length },
-        });
-      }
-    }
+    const found = userEmail ? findUserRank(merged.ranked, userEmail) : null;
+    const yourRank = found && found.rank > limit ? { ...found, outsideTop: true } : found;
 
     return NextResponse.json({
       success: true,
@@ -86,12 +72,9 @@ export async function GET(request) {
       period,
       testId: testId || null,
       testName: testId ? testNameById[testId] : null,
-      entries,
+      entries: merged.entries,
       yourRank,
-      totalParticipants:
-        scope === 'test'
-          ? new Set(filtered.map((a) => a.user_email)).size
-          : entries.length,
+      totalParticipants: merged.totalParticipants,
       tests,
       meta: { ...meta, periodAttempts: filtered.length },
     });

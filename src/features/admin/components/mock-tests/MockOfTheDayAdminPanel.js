@@ -29,6 +29,11 @@ export default function MockOfTheDayAdminPanel({ examcategory, tests = [], onPoo
   const [isGateCse, setIsGateCse] = useState(false);
   const [isGateEe, setIsGateEe] = useState(false);
   const [isGateEc, setIsGateEc] = useState(false);
+  const [isMhtCet, setIsMhtCet] = useState(false);
+  const [isViteee, setIsViteee] = useState(false);
+  const [isWbjee, setIsWbjee] = useState(false);
+  const [isKcet, setIsKcet] = useState(false);
+  const [isCat, setIsCat] = useState(false);
   const [busyId, setBusyId] = useState(null);
   const [generating, setGenerating] = useState(false);
   const [addingId, setAddingId] = useState('');
@@ -62,6 +67,11 @@ export default function MockOfTheDayAdminPanel({ examcategory, tests = [], onPoo
       setIsGateCse(Boolean(data.isGateCse));
       setIsGateEe(Boolean(data.isGateEe));
       setIsGateEc(Boolean(data.isGateEc));
+      setIsMhtCet(Boolean(data.isMhtCet));
+      setIsViteee(Boolean(data.isViteee));
+      setIsWbjee(Boolean(data.isWbjee));
+      setIsKcet(Boolean(data.isKcet));
+      setIsCat(Boolean(data.isCat));
       if (data.defaults) {
         setForm((prev) => ({
           totalQuestions: data.defaults.totalQuestions ?? prev.totalQuestions,
@@ -138,20 +148,40 @@ export default function MockOfTheDayAdminPanel({ examcategory, tests = [], onPoo
   };
 
   const runBlueprintDailyNow = async () => {
-    const action = isGateEc
-      ? 'run-gate-ec-daily'
-      : isGateEe
-        ? 'run-gate-ee-daily'
-        : isGateCse
-          ? 'run-gate-daily'
-          : 'run-jee-daily';
-    const label = isGateEc
-      ? 'GATE EC'
-      : isGateEe
-        ? 'GATE EE'
-        : isGateCse
-          ? 'GATE CSE'
-          : 'JEE';
+    const action = isCat
+      ? 'run-cat-daily'
+      : isKcet
+      ? 'run-kcet-daily'
+      : isWbjee
+      ? 'run-wbjee-daily'
+      : isViteee
+      ? 'run-viteee-daily'
+      : isMhtCet
+        ? 'run-mht-cet-daily'
+        : isGateEc
+          ? 'run-gate-ec-daily'
+          : isGateEe
+            ? 'run-gate-ee-daily'
+            : isGateCse
+              ? 'run-gate-daily'
+              : 'run-jee-daily';
+    const label = isCat
+      ? 'CAT'
+      : isKcet
+      ? 'KCET'
+      : isWbjee
+      ? 'WBJEE'
+      : isViteee
+      ? 'VITEEE'
+      : isMhtCet
+        ? 'MHT-CET'
+        : isGateEc
+          ? 'GATE EC'
+          : isGateEe
+            ? 'GATE EE'
+            : isGateCse
+              ? 'GATE CSE'
+              : 'JEE';
     setAutoBusy(true);
     try {
       await toastPromise(
@@ -378,23 +408,46 @@ export default function MockOfTheDayAdminPanel({ examcategory, tests = [], onPoo
           </div>
         ) : null}
 
-        {isJeeMain || isGateCse || isGateEe || isGateEc ? (
+        {isJeeMain || isGateCse || isGateEe || isGateEc || isMhtCet || isViteee || isWbjee || isKcet || isCat ? (
           <div className="rounded-xl border border-sky-200 bg-sky-50/70 p-4">
             <p className="text-sm font-semibold text-neutral-900">
-              {isGateEc
-                ? 'GATE EC'
-                : isGateEe
-                  ? 'GATE EE'
-                  : isGateCse
-                    ? 'GATE CSE'
-                    : 'JEE Main'}{' '}
+              {isCat
+                ? 'CAT'
+                : isKcet
+                ? 'KCET'
+                : isWbjee
+                ? 'WBJEE'
+                : isViteee
+                ? 'VITEEE'
+                : isMhtCet
+                  ? 'MHT-CET'
+                  : isGateEc
+                    ? 'GATE EC'
+                    : isGateEe
+                      ? 'GATE EE'
+                      : isGateCse
+                        ? 'GATE CSE'
+                        : 'JEE Main'}{' '}
               auto daily (IST)
             </p>
             <p className="mt-0.5 text-xs text-neutral-600">
               When enabled, Hostinger cron hits{' '}
               <code className="rounded bg-white px-1">POST /api/cron/mock-of-day</code> with{' '}
               <code className="rounded bg-white px-1">CRON_SECRET</code>. Generates a{' '}
-              {isGateEc || isGateEe || isGateCse ? '65Q / 100-mark' : '75Q'} blueprint mock or
+              {isCat
+                ? '68Q / 204-mark'
+                : isKcet
+                ? '180Q / 180-mark'
+                : isWbjee
+                ? '155Q / 200-mark'
+                : isViteee
+                ? '125Q / 500-mark'
+                : isMhtCet
+                  ? '150Q / 200-mark'
+                  : isGateEc || isGateEe || isGateCse
+                    ? '65Q / 100-mark'
+                    : '75Q'}{' '}
+              blueprint mock or
               recycles a prior one, then pins it for the IST day.
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-2">

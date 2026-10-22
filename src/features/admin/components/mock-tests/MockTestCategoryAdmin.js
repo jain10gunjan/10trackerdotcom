@@ -249,6 +249,98 @@ export default function MockTestCategoryAdmin({ examcategory }) {
               </Link>
             </>
           ) : null}
+          {['mht-cet', 'mhcet', 'mhtcet'].includes(
+            String(examcategory).toLowerCase().replace(/_/g, '-')
+          ) ? (
+            <>
+              <Link
+                href={`${base}/mht-cet-blueprint`}
+                className="inline-flex items-center gap-2 rounded-xl border border-emerald-600 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-900"
+              >
+                <Zap className="h-4 w-4" />
+                MHT-CET blueprint (150Q)
+              </Link>
+              <Link
+                href={`${base}/mht-cet-chapter`}
+                className="inline-flex items-center gap-2 rounded-xl border border-sky-600 bg-sky-50 px-4 py-2.5 text-sm font-semibold text-sky-900"
+              >
+                <BookOpen className="h-4 w-4" />
+                Chapter mock (20Q)
+              </Link>
+            </>
+          ) : null}
+          {['viteee', 'vit-eee'].includes(String(examcategory).toLowerCase().replace(/_/g, '-')) ? (
+            <>
+              <Link
+                href={`${base}/viteee-blueprint`}
+                className="inline-flex items-center gap-2 rounded-xl border border-emerald-600 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-900"
+              >
+                <Zap className="h-4 w-4" />
+                VITEEE blueprint (125Q)
+              </Link>
+              <Link
+                href={`${base}/viteee-chapter`}
+                className="inline-flex items-center gap-2 rounded-xl border border-sky-600 bg-sky-50 px-4 py-2.5 text-sm font-semibold text-sky-900"
+              >
+                <BookOpen className="h-4 w-4" />
+                Chapter mock (20Q)
+              </Link>
+            </>
+          ) : null}
+          {['wbjee', 'wb-jee'].includes(String(examcategory).toLowerCase().replace(/_/g, '-')) ? (
+            <>
+              <Link
+                href={`${base}/wbjee-blueprint`}
+                className="inline-flex items-center gap-2 rounded-xl border border-emerald-600 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-900"
+              >
+                <Zap className="h-4 w-4" />
+                WBJEE blueprint (155Q)
+              </Link>
+              <Link
+                href={`${base}/wbjee-chapter`}
+                className="inline-flex items-center gap-2 rounded-xl border border-sky-600 bg-sky-50 px-4 py-2.5 text-sm font-semibold text-sky-900"
+              >
+                <BookOpen className="h-4 w-4" />
+                Chapter mock (20Q)
+              </Link>
+            </>
+          ) : null}
+          {['kcet', 'k-cet'].includes(String(examcategory).toLowerCase().replace(/_/g, '-')) ? (
+            <>
+              <Link
+                href={`${base}/kcet-blueprint`}
+                className="inline-flex items-center gap-2 rounded-xl border border-emerald-600 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-900"
+              >
+                <Zap className="h-4 w-4" />
+                KCET blueprint (180Q)
+              </Link>
+              <Link
+                href={`${base}/kcet-chapter`}
+                className="inline-flex items-center gap-2 rounded-xl border border-sky-600 bg-sky-50 px-4 py-2.5 text-sm font-semibold text-sky-900"
+              >
+                <BookOpen className="h-4 w-4" />
+                Chapter mock (20Q)
+              </Link>
+            </>
+          ) : null}
+          {String(examcategory).toLowerCase().replace(/_/g, '-') === 'cat' ? (
+            <>
+              <Link
+                href={`${base}/cat-blueprint`}
+                className="inline-flex items-center gap-2 rounded-xl border border-emerald-600 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-900"
+              >
+                <Zap className="h-4 w-4" />
+                CAT blueprint (68Q)
+              </Link>
+              <Link
+                href={`${base}/cat-topic`}
+                className="inline-flex items-center gap-2 rounded-xl border border-sky-600 bg-sky-50 px-4 py-2.5 text-sm font-semibold text-sky-900"
+              >
+                <BookOpen className="h-4 w-4" />
+                Topic mock (20Q)
+              </Link>
+            </>
+          ) : null}
           {String(examcategory).toLowerCase().replace(/_/g, '-') === 'gate-ec' ? (
             <>
               <Link

@@ -140,9 +140,15 @@ export async function GET() {
       const profile = emailKey ? profilesByEmail[emailKey] || null : null;
       const billing = summarizeBilling(user.email, billingIndexes);
       const signedUpAt = resolveSignedUpAt(user, profile);
+      const profileName =
+        profile?.displayName ||
+        [profile?.firstName, profile?.lastName].filter(Boolean).join(' ') ||
+        null;
 
       return {
         ...user,
+        name: profileName || user.name,
+        imageUrl: profile?.avatarUrl || user.imageUrl,
         activity: {
           practiceTopics: rawActivity.practiceTopics,
           mockAttempts: rawActivity.mockAttempts,

@@ -33,8 +33,23 @@ import {
   calculateMockTestStats,
   usesGateMarking,
   usesJeeMainMarking,
+  usesMhtCetMarking,
+  usesViteeeMarking,
+  usesWbjeeMarking,
+  usesKcetMarking,
+  usesCatMarking,
+  computeMhtCetPacing,
+  computeKcetPacing,
 } from '@/features/mock-test/lib/mockTestUtils';
+import { CAT_SECTIONS, CAT_SECTION_SECONDS } from '@/features/mock-test/lib/catBlueprint';
+import { mhtCetMarksForSubject } from '@/features/mock-test/lib/mhtCetBlueprint';
 import { parseGateTopic } from '@/features/mock-test/lib/gateCseBlueprint';
+import {
+  parseWbjeeTopic,
+  scoreWbjeeAnswer,
+  summarizeWbjeeAttempt,
+  wbjeeOptionLetters,
+} from '@/features/mock-test/lib/wbjeeBlueprint';
 import {
   isInlineAnswerQuestion,
   getVisibleMcqOptions,
@@ -80,11 +95,15 @@ const initialState = {
   answerSummary: {},
   answeredQuestionIds: [],
   markedForReview: [],
+  visitedQuestionIds: [],
   
   // Test state
   testStarted: false,
   testDuration: 0,
   testStartTime: null,
+  catSectionLock: false,
+  catSectionIndex: 0,
+  catSectionStartedAt: null,
 
   // Time tracking (seconds)
   timeRemaining: 0,
@@ -123,15 +142,22 @@ const reducer = (state, action) => {
     case "LOAD_TEST":
       return { ...newState, ...action.payload };
       
-      case "START_TEST":
-        return { 
-          ...newState, 
-          ...action.payload, 
+      case "START_TEST": {
+        const startId = state.currentQuestion?.id;
+        const startVisited = [...(state.visitedQuestionIds || [])];
+        if (startId != null && !startVisited.includes(startId)) startVisited.push(startId);
+        return {
+          ...newState,
+          ...action.payload,
           testStarted: true,
-          testStartTime: Date.now(), // Add this
+          testStartTime: Date.now(),
+          catSectionIndex: 0,
+          catSectionStartedAt: Date.now(),
           questionStartTime: Date.now(),
-          sidebarOpen: false
+          sidebarOpen: false,
+          visitedQuestionIds: startVisited,
         };
+      }
       
       
     case "ANSWER_QUESTION":
@@ -159,6 +185,9 @@ const reducer = (state, action) => {
         timestamp: Date.now()
       }];
       
+      const nextId = action.payload.currentQuestion?.id;
+      const nextVisited = [...(state.visitedQuestionIds || [])];
+      if (nextId != null && !nextVisited.includes(nextId)) nextVisited.push(nextId);
       return { 
         ...newState, 
         ...action.payload, 
@@ -166,18 +195,45 @@ const reducer = (state, action) => {
         questionStartTime: Date.now(),
         navigationHistory: navigationLog.slice(-50),
         showQuestionGrid: false,
-        sidebarOpen: false
+        sidebarOpen: false,
+        visitedQuestionIds: nextVisited,
       };
       
     case "UPDATE_TIME": {
       const nowMs = action.payload?.nowMs ?? Date.now();
       const questionStart = sanitizeData(state.questionStartTime, "number", nowMs);
       const timeSpent = Math.max(0, Math.floor((nowMs - questionStart) / 1000));
+      const sectionElapsed = sanitizeData(action.payload?.totalTime, "number", state.totalTime);
+      const overall = state.catSectionLock
+        ? (state.catSectionIndex || 0) * CAT_SECTION_SECONDS + sectionElapsed
+        : sectionElapsed;
       return {
         ...newState,
-        totalTime: sanitizeData(action.payload?.totalTime, "number", state.totalTime),
+        totalTime: overall,
         timeRemaining: sanitizeData(action.payload?.timeRemaining, "number", state.timeRemaining),
         timeSpent,
+      };
+    }
+
+    case "CAT_NEXT_SECTION": {
+      const questionIndex = action.payload.questionIndex;
+      const nextQuestion = state.questionsQueue[questionIndex];
+      const existing = state.answerHistory.find((a) => a.questionId === nextQuestion?.id);
+      const nextVisited = [...(state.visitedQuestionIds || [])];
+      if (nextQuestion?.id != null && !nextVisited.includes(nextQuestion.id)) {
+        nextVisited.push(nextQuestion.id);
+      }
+      return {
+        ...newState,
+        catSectionIndex: action.payload.sectionIndex,
+        catSectionStartedAt: Date.now(),
+        currentQuestionIndex: questionIndex,
+        currentQuestion: nextQuestion || state.currentQuestion,
+        userAnswer: existing?.userAnswer || "",
+        timeRemaining: CAT_SECTION_SECONDS,
+        timeSpent: 0,
+        questionStartTime: Date.now(),
+        visitedQuestionIds: nextVisited,
       };
     }
       
@@ -374,7 +430,9 @@ const QuestionGrid = memo(({
   answeredIds, 
   markedIds, 
   onNavigate, 
-  onClose 
+  onClose,
+  sectionStart = 0,
+  sectionEnd = null,
 }) => {
   const getQuestionStatus = useCallback((questionId, index) => {
     const isAnswered = answeredIds.includes(questionId);
@@ -406,11 +464,15 @@ const QuestionGrid = memo(({
         </div>
         <div className="p-4 overflow-y-auto max-h-96">
           <div className="grid grid-cols-5 gap-2 mb-4">
-            {questions.map((q, index) => (
+            {questions.map((q, index) => {
+              const locked = index < sectionStart || index >= (sectionEnd ?? questions.length);
+              return (
               <button
                 key={q.id || index}
-                className={`relative p-3 text-sm font-semibold rounded-xl transition-all duration-200 touch-manipulation active:scale-95 ${getQuestionStatus(q.id, index)}`}
+                disabled={locked}
+                className={`relative p-3 text-sm font-semibold rounded-xl transition-all duration-200 touch-manipulation active:scale-95 ${getQuestionStatus(q.id, index)} ${locked ? 'opacity-40 cursor-not-allowed' : ''}`}
                 onClick={() => {
+                  if (locked) return;
                   onNavigate(index);
                   onClose();
                 }}
@@ -421,7 +483,8 @@ const QuestionGrid = memo(({
                   <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-amber-400 rounded-full ring-1 ring-white" />
                 )}
               </button>
-            ))}
+              );
+            })}
           </div>
           <div className="bg-neutral-50 rounded-xl p-3 border border-neutral-200">
             <h5 className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 mb-2">Legend</h5>
@@ -509,6 +572,7 @@ export default function EnhancedMobileMockTestPage() {
   const [networkError, setNetworkError] = useState(false);
   const [previousAttempt, setPreviousAttempt] = useState(null);
   const autoSubmitOnceRef = useRef(false);
+  const catSectionAdvancedRef = useRef(0);
 
  // Optimized MathJax config
  const config = useMemo(() => ({
@@ -554,7 +618,7 @@ export default function EnhancedMobileMockTestPage() {
     const cfg = testInfo?.weightage_config;
     if (cfg?.maxMarks) return Number(cfg.maxMarks);
     const vals = Object.values(gateQuestionMarks);
-    if (vals.length && usesGateMarking(examcategory)) {
+    if (vals.length && (usesGateMarking(examcategory) || usesMhtCetMarking(examcategory) || usesKcetMarking(examcategory))) {
       return vals.reduce((a, b) => a + b, 0);
     }
     return null;
@@ -569,7 +633,13 @@ export default function EnhancedMobileMockTestPage() {
         examcategory,
         markedForReview: state.markedForReview,
         timeData: { totalTimeSpent: state.totalTime },
-        questionMarks: usesGateMarking(examcategory) ? gateQuestionMarks : null,
+        questionMarks:
+          usesGateMarking(examcategory) ||
+          usesMhtCetMarking(examcategory) ||
+          usesWbjeeMarking(examcategory) ||
+          usesKcetMarking(examcategory)
+            ? gateQuestionMarks
+            : null,
         maxMarksOverride: gateMaxMarksOverride,
       }),
     [
@@ -709,11 +779,26 @@ export default function EnhancedMobileMockTestPage() {
   }, [state.testStarted, state.autoSaveEnabled, state.isOnline, attemptId, performAutoSave]);
 
   const handleTimeEnd = useCallback(async () => {
+    const total = state.questionsQueue?.length || 0;
+    const full = Boolean(state.catSectionLock) && total === 68;
+    const section = state.catSectionIndex || 0;
+    if (full && section < CAT_SECTIONS.length - 1) {
+      if ((state.timeRemaining || 0) > 0) return;
+      if (catSectionAdvancedRef.current !== section) return;
+      catSectionAdvancedRef.current = section + 1;
+      const next = CAT_SECTIONS[section + 1];
+      dispatch({
+        type: 'CAT_NEXT_SECTION',
+        payload: { sectionIndex: section + 1, questionIndex: next.start },
+      });
+      toast(`${next.label} has started. The previous section is locked.`, { duration: 5000 });
+      return;
+    }
     if (autoSubmitOnceRef.current) return;
     autoSubmitOnceRef.current = true;
     toast.error('⏰ Time up! Auto-submitting...', { duration: 5000 });
     await submitTest(true);
-  }, [submitTest]);
+  }, [submitTest, state.questionsQueue, state.catSectionLock, state.catSectionIndex, state.timeRemaining]);
   
   const handleTimeWarning = useCallback((timeRemaining, message) => {
     toast.error(message, { 
@@ -816,35 +901,87 @@ export default function EnhancedMobileMockTestPage() {
           .in('_id', batch);
 
         if (batchError) throw batchError;
-        allQuestions = [...allQuestions, ...batchQuestions];
+        allQuestions = [...allQuestions, ...(batchQuestions || [])];
+      }
+
+      if (usesMhtCetMarking(examcategory)) {
+        const found = new Set(allQuestions.map((q) => String(q._id)));
+        const missing = questionIds.filter((id) => !found.has(String(id)));
+        for (let i = 0; i < missing.length; i += batchSize) {
+          const batch = missing.slice(i, i + batchSize);
+          const lookup = batch.map((id) => (/^\d+$/.test(String(id)) ? Number(id) : id));
+          const { data: cetQuestions, error: cetError } = await supabase
+            .from('mhcetquestions')
+            .select(
+              'id, question, options_A, options_B, options_C, options_D, correct_option, solution, subject, topic, difficulty'
+            )
+            .in('id', lookup);
+          if (cetError) throw cetError;
+          allQuestions = [
+            ...allQuestions,
+            ...(cetQuestions || []).map((row) => ({ ...row, _id: String(row.id) })),
+          ];
+        }
       }
 
       const orderedQuestions = questionData.map(orderInfo => {
-        const questionDetail = allQuestions.find(q => q._id === orderInfo.question_id);
+        const questionDetail = allQuestions.find(
+          (q) => String(q._id) === String(orderInfo.question_id)
+        );
         if (!questionDetail) return null;
 
         const storedTopic = orderInfo.topic || '';
-        const parsedGate = parseGateTopic(storedTopic);
+        const parsedWb = parseWbjeeTopic(storedTopic);
+        const parsedGate = parseGateTopic(parsedWb.category ? parsedWb.topic : storedTopic);
         const displayTopic =
-          parsedGate.topic ||
+          (parsedWb.category ? parsedWb.topic : parsedGate.topic) ||
           questionDetail.topic ||
           'General';
+        const cetMarks =
+          testData?.weightage_config?.mhtCetQuestionMarks?.[String(questionDetail._id)];
         const cfgMarks =
           testData?.weightage_config?.gateQuestionMarks?.[String(questionDetail._id)];
-        const marks =
-          Number(cfgMarks) === 2 || Number(cfgMarks) === 1
+        const wbMeta =
+          testData?.weightage_config?.wbjeeQuestions?.[String(questionDetail._id)];
+        const wbjeeCategory = usesWbjeeMarking(examcategory)
+          ? Number(wbMeta?.category) || parsedWb.category || 1
+          : null;
+        const marks = usesCatMarking(examcategory)
+          ? 3
+          : usesKcetMarking(examcategory)
+          ? 1
+          : usesWbjeeMarking(examcategory)
+          ? Number(wbMeta?.marks) === 2 || Number(wbMeta?.marks) === 1
+            ? Number(wbMeta.marks)
+            : parsedWb.marks || (wbjeeCategory === 1 ? 1 : 2)
+          : usesMhtCetMarking(examcategory)
+          ? Number(cetMarks) === 2 || Number(cetMarks) === 1
+            ? Number(cetMarks)
+            : parsedGate.marks === 2
+              ? 2
+              : mhtCetMarksForSubject(questionDetail.subject || orderInfo.subject)
+          : Number(cfgMarks) === 2 || Number(cfgMarks) === 1
             ? Number(cfgMarks)
             : parsedGate.marks;
+        const tita = usesCatMarking(examcategory) && isInlineAnswerQuestion(questionDetail);
         
         return {
           ...questionDetail,
           id: questionDetail._id,
           order: sanitizeData(orderInfo.question_order, 'number', 0),
-          subject: sanitizeData(questionDetail.subject || orderInfo.subject, 'string', 'General'),
+          subject: sanitizeData(
+            usesCatMarking(examcategory)
+              ? orderInfo.subject || questionDetail.subject
+              : questionDetail.subject || orderInfo.subject,
+            'string',
+            'General'
+          ),
           topic: sanitizeData(displayTopic, 'string', 'General'),
           difficulty: sanitizeData(questionDetail.difficulty || orderInfo.difficulty, 'string', 'medium'),
           marks,
-          isMcq: hasPopulatedOptions(questionDetail),
+          wbjeeCategory,
+          isTita: tita,
+          isMcq: tita ? false : hasPopulatedOptions(questionDetail),
         };
       }).filter(Boolean);
 
@@ -865,6 +1002,9 @@ export default function EnhancedMobileMockTestPage() {
           timeRemaining: testDurationInSeconds,
           totalTime: 0,
           timeSpent: 0,
+          catSectionLock: usesCatMarking(examcategory) && orderedQuestions.length === 68,
+          catSectionIndex: 0,
+          catSectionStartedAt: null,
           answerHistory: [],
           answerSummary: {},
           answeredQuestionIds: [],
@@ -901,6 +1041,7 @@ export default function EnhancedMobileMockTestPage() {
             setAttemptId(existingInProgress.id);
             dispatch({ type: "START_TEST", payload: { testStarted: true } });
             autoSubmitOnceRef.current = false;
+            catSectionAdvancedRef.current = 0;
             return 'Resuming your in-progress attempt';
           }
 
@@ -937,6 +1078,7 @@ export default function EnhancedMobileMockTestPage() {
           setAttemptId(attemptData.id);
           dispatch({ type: "START_TEST", payload: { testStarted: true } });
           autoSubmitOnceRef.current = false;
+          catSectionAdvancedRef.current = 0;
           return '🚀 Test started!';
         },
         {
@@ -954,11 +1096,33 @@ export default function EnhancedMobileMockTestPage() {
     if (!state.currentQuestion || !selectedAnswer) return;
 
     const questionId = state.currentQuestion.id;
-    const isCorrect = isAnswerCorrect(
-      selectedAnswer,
+    const wbjeeCategory = usesWbjeeMarking(examcategory)
+      ? Number(state.currentQuestion.wbjeeCategory) || 1
+      : null;
+    const cat3 = wbjeeCategory === 3;
+    let answerValue = selectedAnswer;
+    if (cat3) {
+      const current = wbjeeOptionLetters(state.userAnswer);
+      const letter = String(selectedAnswer).toUpperCase();
+      const next = current.includes(letter)
+        ? current.filter((item) => item !== letter)
+        : [...current, letter].sort();
+      answerValue = next.join(',');
+    }
+    const letterCorrect = isAnswerCorrect(
+      answerValue,
       state.currentQuestion.correct_option,
       state.currentQuestion
     );
+    const wbjeeScore = wbjeeCategory
+      ? scoreWbjeeAnswer({
+          category: wbjeeCategory,
+          isCorrect: letterCorrect,
+          userAnswer: answerValue,
+          correctOption: state.currentQuestion.correct_option,
+        })
+      : null;
+    const isCorrect = cat3 ? wbjeeScore === 2 : letterCorrect;
     const timeSpent = state.timeSpent;
     const currentTime = Date.now();
 
@@ -974,10 +1138,38 @@ export default function EnhancedMobileMockTestPage() {
       points: state.points
     };
 
+    if (cat3 && !answerValue) {
+      if (existingIndex >= 0) {
+        const oldAnswer = newAnswerHistory[existingIndex];
+        newAnswerHistory.splice(existingIndex, 1);
+        delete newAnswerSummary[questionId];
+        newAnsweredIds = newAnsweredIds.filter((id) => id !== questionId);
+        statsUpdate.questionsAnswered = Math.max(0, statsUpdate.questionsAnswered - 1);
+        if (oldAnswer.isCorrect) {
+          statsUpdate.correctAnswers = Math.max(0, statsUpdate.correctAnswers - 1);
+          statsUpdate.points = Math.max(0, statsUpdate.points - 100);
+        } else {
+          statsUpdate.incorrectAnswers = Math.max(0, statsUpdate.incorrectAnswers - 1);
+        }
+      }
+      dispatch({
+        type: "ANSWER_QUESTION",
+        payload: {
+          userAnswer: "",
+          answerHistory: newAnswerHistory,
+          answerSummary: newAnswerSummary,
+          answeredQuestionIds: newAnsweredIds,
+          timeSpent,
+          ...statsUpdate,
+        },
+      });
+      return;
+    }
+
     const detailedAnswer = {
       questionId,
       question: state.currentQuestion.question,
-      userAnswer: selectedAnswer,
+      userAnswer: answerValue,
       correctAnswer: state.currentQuestion.correct_option,
       isCorrect,
       timeSpent,
@@ -986,16 +1178,19 @@ export default function EnhancedMobileMockTestPage() {
       topic: state.currentQuestion.topic,
       difficulty: state.currentQuestion.difficulty,
       order: state.currentQuestion.order,
-      marks: Number(state.currentQuestion.marks) === 2 ? 2 : 1,
-      isMcq:
-        state.currentQuestion.isMcq != null
+      marks: usesCatMarking(examcategory) ? 3 : Number(state.currentQuestion.marks) === 2 ? 2 : 1,
+      wbjeeCategory,
+      wbjeeScore,
+      isMcq: state.currentQuestion.isTita
+        ? false
+        : state.currentQuestion.isMcq != null
           ? Boolean(state.currentQuestion.isMcq)
           : hasPopulatedOptions(state.currentQuestion),
     };
 
     const summaryAnswer = {
       q: questionId,
-      a: selectedAnswer,
+      a: answerValue,
       c: state.currentQuestion.correct_option,
       r: isCorrect ? 1 : 0,
       t: timeSpent,
@@ -1042,7 +1237,7 @@ export default function EnhancedMobileMockTestPage() {
     dispatch({
       type: "ANSWER_QUESTION",
       payload: {
-        userAnswer: selectedAnswer,
+        userAnswer: answerValue,
         answerHistory: newAnswerHistory,
         answerSummary: newAnswerSummary,
         answeredQuestionIds: newAnsweredIds,
@@ -1057,17 +1252,23 @@ export default function EnhancedMobileMockTestPage() {
     }
     
     toast.success('✓ Saved', { duration: 1000 });
-  }, [state]);
+  }, [state, examcategory]);
 
   const handleNavigation = useCallback((direction) => {
+    const total = state.questionsQueue.length;
+    const locked = Boolean(state.catSectionLock) && total === 68;
+    const section = CAT_SECTIONS[Math.min(CAT_SECTIONS.length - 1, state.catSectionIndex || 0)];
+    const lo = locked ? section.start : 0;
+    const hi = locked ? section.end - 1 : total - 1;
     let newIndex;
     if (direction === 'next') {
-      newIndex = Math.min(state.currentQuestionIndex + 1, state.questionsQueue.length - 1);
+      newIndex = Math.min(state.currentQuestionIndex + 1, hi);
     } else if (direction === 'prev') {
-      newIndex = Math.max(state.currentQuestionIndex - 1, 0);
+      newIndex = Math.max(state.currentQuestionIndex - 1, lo);
     } else {
       newIndex = direction;
     }
+    if (newIndex < lo || newIndex > hi) return;
 
     if (newIndex !== state.currentQuestionIndex && state.questionsQueue[newIndex]) {
       const newQuestion = state.questionsQueue[newIndex];
@@ -1082,7 +1283,7 @@ export default function EnhancedMobileMockTestPage() {
         },
       });
     }
-  }, [state.currentQuestionIndex, state.questionsQueue, state.answerHistory]);
+  }, [state.currentQuestionIndex, state.questionsQueue, state.answerHistory, state.catSectionLock, state.catSectionIndex]);
 
   const handleMarkForReview = useCallback(() => {
     if (!state.currentQuestion?.id) return;
@@ -1160,9 +1361,37 @@ export default function EnhancedMobileMockTestPage() {
           timeSpent: userResponse?.timeSpent || 0,
           isAttempted: !!userResponse,
           isMarkedForReview: state.markedForReview.includes(q.id),
+          seen: (state.visitedQuestionIds || []).includes(q.id) || !!userResponse,
+          marks: q.marks,
+          wbjeeCategory: q.wbjeeCategory,
           hasContent: true
         };
       });
+
+      const pacing = usesKcetMarking(examcategory)
+        ? computeKcetPacing({
+            questions: allQuestions,
+            answers: state.answerHistory,
+            visitedIds: state.visitedQuestionIds,
+          })
+        : usesMhtCetMarking(examcategory)
+        ? computeMhtCetPacing({
+            questions: allQuestions,
+            answers: state.answerHistory,
+            visitedIds: state.visitedQuestionIds,
+          })
+        : null;
+
+      const guessing = usesViteeeMarking(examcategory)
+        ? { wrong: stats.incorrect, blank: stats.skipped, penalty: stats.incorrect }
+        : null;
+
+      const wbjee = usesWbjeeMarking(examcategory)
+        ? summarizeWbjeeAttempt({
+            questions: allQuestions,
+            answers: state.answerHistory,
+          })
+        : null;
 
       // Prepare comprehensive stats
       const finalStats = {
@@ -1177,6 +1406,9 @@ export default function EnhancedMobileMockTestPage() {
         markingScheme: stats.markingScheme,
         maxMarks: stats.maxMarks,
         netMarks: stats.netMarks,
+        pacing,
+        guessing,
+        wbjee,
         timeMetrics: {
           totalTime: state.totalTime,
           avgTimePerQuestion: stats.avgTimePerQuestion
@@ -1211,6 +1443,9 @@ export default function EnhancedMobileMockTestPage() {
           markingScheme: stats.markingScheme,
           maxMarks: stats.maxMarks,
           netMarks: stats.netMarks,
+          pacing,
+          guessing,
+          wbjee,
           subjects: Object.keys(stats.subjectStats),
           topSubject: Object.entries(stats.subjectStats)
             .sort((a, b) => b[1].percentage - a[1].percentage)[0]?.[0] || 'None'
@@ -1285,7 +1520,14 @@ export default function EnhancedMobileMockTestPage() {
         message = `🎯 Excellent! ${stats.percentage}% score!`;
       } else if (stats.percentage >= 60) {
         message = `👍 Good job! ${stats.percentage}% score!`;
-      } else if (stats.markingScheme === 'gate' || stats.markingScheme === 'jee-main') {
+      } else if (
+        stats.markingScheme === 'gate' ||
+        stats.markingScheme === 'jee-main' ||
+        stats.markingScheme === 'mht-cet' ||
+        stats.markingScheme === 'viteee' ||
+        stats.markingScheme === 'wbjee' ||
+        stats.markingScheme === 'kcet'
+      ) {
         message = `📊 Test completed! ${stats.netMarks} / ${stats.maxMarks} marks (${stats.percentage}%)`;
       } else {
         message = `📊 Test completed! ${stats.percentage}% score`;
@@ -1484,7 +1726,13 @@ export default function EnhancedMobileMockTestPage() {
             <Award className="h-5 w-5 text-violet-600 flex-shrink-0" />
             <div>
               <p className="text-[11px] text-neutral-500">
-                {usesGateMarking(examcategory) || usesJeeMainMarking(examcategory)
+                {usesGateMarking(examcategory) ||
+                usesJeeMainMarking(examcategory) ||
+                usesViteeeMarking(examcategory) ||
+                usesMhtCetMarking(examcategory) ||
+                usesWbjeeMarking(examcategory) ||
+                usesKcetMarking(examcategory) ||
+                usesCatMarking(examcategory)
                   ? 'Max marks'
                   : 'Max score'}
               </p>
@@ -1493,9 +1741,20 @@ export default function EnhancedMobileMockTestPage() {
                   ? testInfo.total_questions === 65
                     ? 100
                     : testInfo.total_questions
-                  : usesJeeMainMarking(examcategory)
+                  : usesJeeMainMarking(examcategory) || usesViteeeMarking(examcategory)
                     ? testInfo.total_questions * 4
-                    : testInfo.total_questions * 100}
+                    : usesMhtCetMarking(examcategory)
+                      ? testInfo.weightage_config?.maxMarks ||
+                        (testInfo.total_questions === 150 ? 200 : testInfo.total_questions)
+                      : usesWbjeeMarking(examcategory)
+                        ? testInfo.weightage_config?.maxMarks ||
+                          (testInfo.total_questions === 155 ? 200 : testInfo.total_questions)
+                        : usesKcetMarking(examcategory)
+                          ? testInfo.weightage_config?.maxMarks || testInfo.total_questions
+                          : usesCatMarking(examcategory)
+                            ? testInfo.weightage_config?.maxMarks ||
+                              (testInfo.total_questions === 68 ? 204 : testInfo.total_questions * 3)
+                          : testInfo.total_questions * 100}
               </p>
               {usesGateMarking(examcategory) ? (
                 <p className="text-[10px] text-neutral-500">
@@ -1503,8 +1762,16 @@ export default function EnhancedMobileMockTestPage() {
                     ? '+1/+2 · −m/3 MCQ'
                     : '+1 / −⅓ marking'}
                 </p>
-              ) : usesJeeMainMarking(examcategory) ? (
+              ) : usesJeeMainMarking(examcategory) || usesViteeeMarking(examcategory) ? (
                 <p className="text-[10px] text-neutral-500">+4 / −1 marking</p>
+              ) : usesMhtCetMarking(examcategory) ? (
+                <p className="text-[10px] text-neutral-500">No negative marking</p>
+              ) : usesWbjeeMarking(examcategory) ? (
+                <p className="text-[10px] text-neutral-500">Cat 1 −0.25 · Cat 2 −0.5 · Cat 3 none</p>
+              ) : usesKcetMarking(examcategory) ? (
+                <p className="text-[10px] text-neutral-500">+1 · no negative marking</p>
+              ) : usesCatMarking(examcategory) ? (
+                <p className="text-[10px] text-neutral-500">+3 · −1 MCQ · 0 TITA</p>
               ) : null}
             </div>
           </div>
@@ -1576,6 +1843,12 @@ export default function EnhancedMobileMockTestPage() {
   const totalQ = state.questionsQueue.length;
   const currentQ = state.currentQuestionIndex + 1;
   const progressPct = totalQ > 0 ? (currentQ / totalQ) * 100 : 0;
+  const catLocked = Boolean(state.catSectionLock) && totalQ === 68;
+  const catSection = CAT_SECTIONS[Math.min(CAT_SECTIONS.length - 1, state.catSectionIndex || 0)];
+  const sectionStart = catLocked ? catSection.start : 0;
+  const sectionEnd = catLocked ? catSection.end : totalQ;
+  const canGoPrev = state.currentQuestionIndex > sectionStart;
+  const canGoNext = state.currentQuestionIndex < sectionEnd - 1;
 
   return (
     <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-50/70 via-neutral-50 to-neutral-100 pt-24 pb-20 md:pb-16">
@@ -1605,16 +1878,18 @@ export default function EnhancedMobileMockTestPage() {
                       {testInfo.name}
                     </h2>
                     <p className="text-xs text-neutral-500 tabular-nums">
-                      Question {currentQ} of {totalQ}
+                      {catLocked
+                        ? `${catSection.label} · ${state.currentQuestionIndex - catSection.start + 1} of ${catSection.end - catSection.start}`
+                        : `Question ${currentQ} of ${totalQ}`}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
                   <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-2.5 py-1.5">
                     <TimerDisplay
-                      testDuration={state.testDuration}
+                      testDuration={catLocked ? catSection.seconds : state.testDuration}
                       testStarted={state.testStarted}
-                      testStartTime={state.testStartTime}
+                      testStartTime={catLocked ? (state.catSectionStartedAt || state.testStartTime) : state.testStartTime}
                       onTimeEnd={handleTimeEnd}
                       onTimeWarning={handleTimeWarning}
                       onTick={(tick) => dispatch({ type: "UPDATE_TIME", payload: tick })}
@@ -1682,17 +1957,24 @@ export default function EnhancedMobileMockTestPage() {
                 </div>
                 <h4 className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 mb-2">Questions</h4>
                 <div className="grid grid-cols-5 gap-1.5 max-h-52 overflow-y-auto">
-                  {state.questionsQueue.map((q, index) => (
+                  {state.questionsQueue.map((q, index) => {
+                    const locked = catLocked && (index < sectionStart || index >= sectionEnd);
+                    return (
                     <button
                       key={q.id || index}
-                      className={`relative p-2 text-xs font-semibold rounded-lg transition-all duration-200 ${getQuestionStatus(q.id, index)}`}
-                      onClick={() => handleNavigation(index)}
+                      disabled={locked}
+                      className={`relative p-2 text-xs font-semibold rounded-lg transition-all duration-200 ${getQuestionStatus(q.id, index)} ${locked ? 'opacity-40 cursor-not-allowed' : ''}`}
+                      onClick={() => {
+                        if (locked) return;
+                        handleNavigation(index);
+                      }}
                       title={`Question ${index + 1}`}
                     >
                       {index + 1}
                       {state.markedForReview.includes(q.id) && <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-amber-400 rounded-full ring-1 ring-white" />}
                     </button>
-                  ))}
+                    );
+                  })}
                 </div>
                 <div className="mt-3 bg-neutral-50 rounded-xl p-2.5 border border-neutral-200">
                   <div className="grid grid-cols-2 gap-1.5 text-[11px] text-neutral-600">
@@ -1722,6 +2004,24 @@ export default function EnhancedMobileMockTestPage() {
                     <span className="border border-neutral-200 bg-neutral-50 text-neutral-600 px-2.5 py-1 rounded-full text-xs capitalize">
                       {state.currentQuestion.difficulty}
                     </span>
+                    {usesCatMarking(examcategory) && isInlineAnswerQuestion(state.currentQuestion) ? (
+                      <span className="border border-violet-100 bg-violet-50 text-violet-800 px-2.5 py-1 rounded-full text-xs font-semibold">
+                        TITA · +3 / 0
+                      </span>
+                    ) : usesCatMarking(examcategory) ? (
+                      <span className="border border-emerald-100 bg-emerald-50 text-emerald-800 px-2.5 py-1 rounded-full text-xs font-semibold">
+                        MCQ · +3 / −1
+                      </span>
+                    ) : null}
+                    {usesWbjeeMarking(examcategory) && state.currentQuestion.wbjeeCategory ? (
+                      <span className="border border-sky-100 bg-sky-50 text-sky-800 px-2.5 py-1 rounded-full text-xs font-semibold">
+                        {state.currentQuestion.wbjeeCategory === 1
+                          ? 'Category 1 · +1 / −0.25'
+                          : state.currentQuestion.wbjeeCategory === 2
+                            ? 'Category 2 · +2 / −0.5'
+                            : 'Category 3 · +2 · no negative'}
+                      </span>
+                    ) : null}
                   </div>
                   <button
                     onClick={handleMarkForReview}
@@ -1743,6 +2043,11 @@ export default function EnhancedMobileMockTestPage() {
                   />
                   
                   <div className="space-y-2.5 md:space-y-3">
+                    {usesWbjeeMarking(examcategory) && Number(state.currentQuestion.wbjeeCategory) === 3 ? (
+                      <p className="text-xs text-neutral-600">
+                        One or more options may be correct. A wrong option scores 0. Partial credit when every marked option is correct.
+                      </p>
+                    ) : null}
                     {isInlineAnswerQuestion(state.currentQuestion) ? (
                       <InlineAnswerInput
                         value={state.userAnswer || ""}
@@ -1762,25 +2067,31 @@ export default function EnhancedMobileMockTestPage() {
                         correctOption={state.currentQuestion.correct_option}
                       />
                     ) : (
-                      getVisibleMcqOptions(state.currentQuestion).map((option) => (
+                      getVisibleMcqOptions(state.currentQuestion).map((option) => {
+                      const wbjeeCat3 =
+                        usesWbjeeMarking(examcategory) && Number(state.currentQuestion.wbjeeCategory) === 3;
+                      const optionSelected = wbjeeCat3
+                        ? wbjeeOptionLetters(state.userAnswer).includes(option)
+                        : state.userAnswer === option;
+                      return (
                       <label
                         key={option}
                         className={`flex items-start p-3 md:p-3.5 border rounded-xl cursor-pointer transition-all ${
-                          state.userAnswer === option
+                          optionSelected
                             ? "bg-emerald-50/80 border-emerald-300 shadow-sm shadow-emerald-100/50"
                             : "border-neutral-200 hover:border-neutral-300 hover:bg-neutral-50/80 bg-white"
                         }`}
                       >
                         <input
-                          type="radio"
+                          type={wbjeeCat3 ? "checkbox" : "radio"}
                           name="answer"
                           value={option}
-                          checked={state.userAnswer === option}
+                          checked={optionSelected}
                           onChange={() => handleAnswerSelect(option)}
                           className="sr-only"
                         />
                         <div className={`w-7 h-7 md:w-8 md:h-8 rounded-lg flex items-center justify-center text-xs md:text-sm font-bold mr-3 flex-shrink-0 ${
-                          state.userAnswer === option
+                          optionSelected
                             ? "bg-emerald-700 text-white"
                             : "bg-neutral-100 text-neutral-600 border border-neutral-200"
                         }`}>
@@ -1791,7 +2102,8 @@ export default function EnhancedMobileMockTestPage() {
                           className="flex-1 text-sm md:text-base leading-relaxed pt-0.5 text-neutral-800"
                         />
                       </label>
-                    ))
+                      );
+                    })
                     )}
                   </div>
                 </MathJax>
@@ -1800,7 +2112,7 @@ export default function EnhancedMobileMockTestPage() {
                   <div className="flex justify-between items-center mb-3 md:hidden">
                   <button
                     onClick={() => handleNavigation('prev')}
-                    disabled={state.currentQuestionIndex === 0}
+                    disabled={!canGoPrev}
                     className="bg-white border border-neutral-200 text-neutral-700 px-3.5 py-2 rounded-xl flex items-center hover:bg-neutral-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-semibold"
                   >
                     <ChevronLeft className="h-4 w-4 mr-0.5" /> Prev
@@ -1814,7 +2126,7 @@ export default function EnhancedMobileMockTestPage() {
                   </button>
                   <button
                     onClick={() => handleNavigation('next')}
-                    disabled={currentQ >= totalQ}
+                    disabled={!canGoNext}
                     className="bg-white border border-neutral-200 text-neutral-700 px-3.5 py-2 rounded-xl flex items-center hover:bg-neutral-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-semibold"
                   >
                     Next <ChevronRight className="h-4 w-4 ml-0.5" />
@@ -1825,13 +2137,19 @@ export default function EnhancedMobileMockTestPage() {
                   {state.userAnswer && (
                     <button
                       onClick={() => {
-                        if (currentQ < totalQ) handleNavigation('next');
-                        else setShowConfirmSubmit(true);
+                        if (canGoNext) handleNavigation('next');
+                        else if (!catLocked || (state.catSectionIndex || 0) >= CAT_SECTIONS.length - 1) {
+                          setShowConfirmSubmit(true);
+                        }
                       }}
                       className="w-full bg-emerald-700 text-white py-2.5 px-4 rounded-xl hover:bg-emerald-800 transition-colors flex items-center justify-center font-semibold text-sm"
                     >
                       <Save className="h-4 w-4 mr-2" />
-                      {state.currentQuestionIndex + 1 < state.questionsQueue.length ? 'Save & Next' : 'Save & Finish'}
+                      {canGoNext
+                        ? 'Save & Next'
+                        : catLocked && (state.catSectionIndex || 0) < CAT_SECTIONS.length - 1
+                          ? 'Section stays until the clock ends'
+                          : 'Save & Finish'}
                     </button>
                   )}
                   <div className="grid grid-cols-2 gap-2.5">
@@ -1843,7 +2161,7 @@ export default function EnhancedMobileMockTestPage() {
                         <XCircle className="h-4 w-4 mr-1.5" /> Clear
                       </button>
                     )}
-                    {currentQ < totalQ && (
+                    {canGoNext && (
                       <button
                         onClick={() => handleNavigation('next')}
                         className="bg-neutral-900 text-white py-2.5 px-4 rounded-xl hover:bg-neutral-800 transition-colors flex items-center justify-center font-semibold text-sm"
@@ -1857,7 +2175,7 @@ export default function EnhancedMobileMockTestPage() {
                 <div className="hidden md:flex flex-wrap justify-between items-center gap-3">
                   <button
                     onClick={() => handleNavigation('prev')}
-                    disabled={state.currentQuestionIndex === 0}
+                    disabled={!canGoPrev}
                     className="bg-white border border-neutral-200 text-neutral-700 px-5 py-2.5 rounded-xl flex items-center hover:bg-neutral-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-semibold text-sm"
                   >
                     <ChevronLeft className="h-4 w-4 mr-1.5" /> Previous
@@ -1866,13 +2184,19 @@ export default function EnhancedMobileMockTestPage() {
                     {state.userAnswer && (
                       <button
                         onClick={() => {
-                          if (state.currentQuestionIndex + 1 < state.questionsQueue.length) handleNavigation('next');
-                          else setShowConfirmSubmit(true);
+                          if (canGoNext) handleNavigation('next');
+                          else if (!catLocked || (state.catSectionIndex || 0) >= CAT_SECTIONS.length - 1) {
+                            setShowConfirmSubmit(true);
+                          }
                         }}
                         className="bg-emerald-700 text-white px-5 py-2.5 rounded-xl flex items-center hover:bg-emerald-800 transition-colors font-semibold text-sm"
                       >
                         <Save className="h-4 w-4 mr-1.5" />
-                        {state.currentQuestionIndex + 1 < state.questionsQueue.length ? 'Save & Next' : 'Save & Finish'}
+                        {canGoNext
+                          ? 'Save & Next'
+                          : catLocked && (state.catSectionIndex || 0) < CAT_SECTIONS.length - 1
+                            ? 'Section stays until the clock ends'
+                            : 'Save & Finish'}
                       </button>
                     )}
                     {state.userAnswer && (
@@ -1883,7 +2207,7 @@ export default function EnhancedMobileMockTestPage() {
                         <XCircle className="h-4 w-4 mr-1.5" /> Clear
                       </button>
                     )}
-                    {currentQ < totalQ && (
+                    {canGoNext && (
                       <button
                         onClick={() => handleNavigation('next')}
                         className="bg-neutral-900 text-white px-5 py-2.5 rounded-xl flex items-center hover:bg-neutral-800 font-semibold text-sm"
@@ -1906,6 +2230,8 @@ export default function EnhancedMobileMockTestPage() {
               markedIds={state.markedForReview}
               onNavigate={handleNavigation}
               onClose={() => dispatch({ type: "TOGGLE_QUESTION_GRID" })}
+              sectionStart={sectionStart}
+              sectionEnd={sectionEnd}
             />
           )}
           </div>
@@ -1948,6 +2274,31 @@ export default function EnhancedMobileMockTestPage() {
               <div className="flex justify-between"><span>Skipped</span><span className="font-semibold text-neutral-900 tabular-nums">{state.questionsQueue.length - state.questionsAnswered}</span></div>
               <div className="flex justify-between"><span>Marked</span><span className="font-semibold text-amber-700 tabular-nums">{state.markedForReview.length}</span></div>
               <div className="flex justify-between"><span>Time left</span><span className="font-semibold tabular-nums">{formatTime(state.timeRemaining)}</span></div>
+              {usesMhtCetMarking(examcategory) ? (
+                <p className="text-xs text-neutral-500 pt-1">
+                  No negative marking. Unanswered questions score 0, so attempt every question you open.
+                </p>
+              ) : null}
+              {usesKcetMarking(examcategory) ? (
+                <p className="text-xs text-neutral-500 pt-1">
+                  No negative marking. Attempt every question. Chemistry first, then Physics, then Mathematics.
+                </p>
+              ) : null}
+              {usesCatMarking(examcategory) ? (
+                <p className="text-xs text-neutral-500 pt-1">
+                  +3 correct, −1 for a wrong MCQ, 0 for a wrong TITA. On a full paper each section is 40 minutes and locks when the clock ends. Guess an MCQ only after two options are gone.
+                </p>
+              ) : null}
+              {usesViteeeMarking(examcategory) ? (
+                <p className="text-xs text-neutral-500 pt-1">
+                  Wrong answers cost 1 mark. Blank answers cost 0. Guess only when two options can be eliminated.
+                </p>
+              ) : null}
+              {usesWbjeeMarking(examcategory) ? (
+                <p className="text-xs text-neutral-500 pt-1">
+                  Category 3 has no negative marking. A wrong Category 2 answer costs 0.5 and gives up the 2 marks. Leave Category 2 numericals until the end.
+                </p>
+              ) : null}
             </div>
             <div className="flex flex-col sm:flex-row gap-2.5">
               <button

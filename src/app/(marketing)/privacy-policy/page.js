@@ -66,9 +66,11 @@ export default function PrivacyPolicyPage() {
             </p>
             <p>
               When you sign in with Google, we receive information from your Google account such as
-              your <strong>name</strong>, <strong>email address</strong>, and{' '}
-              <strong>profile picture</strong>. You may also provide optional profile details (for
-              example display name, target exams, location fields) stored in our database.
+              your <strong>name</strong>, <strong>email address</strong>,{' '}
+              <strong>profile picture</strong>, and, when your Google account has one, your{' '}
+              <strong>phone number</strong>. You may also provide optional profile details (for
+              example display name, target exams, location fields) stored in our database. Phone
+              numbers are visible to site administrators and are not shown on leaderboards.
             </p>
             <p>
               <strong>Learning & usage data</strong>

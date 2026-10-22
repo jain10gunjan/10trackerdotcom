@@ -2,6 +2,8 @@
  * Shared helpers for mock-test category matching, scoring, and duration display.
  */
 
+import { scoreWbjeeAnswer } from '@/features/mock-test/lib/wbjeeBlueprint';
+
 export function parseAdminEmails() {
   const raw =
     process.env.ADMIN_EMAILS ||
@@ -113,6 +115,120 @@ export function usesJeeMainMarking(examcategory) {
   return slug === 'jee-main' || slug === 'jee' || slug === 'jeemain';
 }
 
+/** MHT-CET: Physics/Chemistry +1, Mathematics +2, wrong and blank score 0 */
+export function usesMhtCetMarking(examcategory) {
+  const slug = String(examcategory || '').toLowerCase().replace(/_/g, '-');
+  return slug === 'mht-cet' || slug === 'mhcet' || slug === 'mhtcet';
+}
+
+/** VITEEE: +4 correct, −1 wrong, 0 blank. Every question is worth 4. */
+export function usesViteeeMarking(examcategory) {
+  const slug = String(examcategory || '').toLowerCase().replace(/_/g, '-');
+  return slug === 'viteee' || slug === 'vit-eee';
+}
+
+/** WBJEE: Cat 1 +1/−0.25, Cat 2 +2/−0.5, Cat 3 +2 with no negative and partial credit. */
+export function usesWbjeeMarking(examcategory) {
+  const slug = String(examcategory || '').toLowerCase().replace(/_/g, '-');
+  return slug === 'wbjee' || slug === 'wb-jee';
+}
+
+/** KCET: +1 correct, 0 wrong, 0 blank. Every question is worth 1. */
+export function usesKcetMarking(examcategory) {
+  const slug = String(examcategory || '').toLowerCase().replace(/_/g, '-');
+  return slug === 'kcet' || slug === 'k-cet';
+}
+
+/** CAT: +3 correct, −1 wrong MCQ, 0 wrong TITA, 0 blank. Slug is exactly cat. */
+export function usesCatMarking(examcategory) {
+  const slug = String(examcategory || '').toLowerCase().replace(/_/g, '-');
+  return slug === 'cat';
+}
+
+export function computeCatAnswerMarks(answer) {
+  if (answer?.isCorrect === true) return 3;
+  if (answer?.isCorrect === false && answer?.isMcq === false) return 0;
+  if (answer?.isCorrect === false) return -1;
+  return 0;
+}
+
+/** Answered faster than a worked solution counts as a guess. */
+export function mhtCetGuessThresholdSeconds(subject, marks) {
+  const m = Number(marks);
+  if (m === 2 || String(subject || '').toLowerCase().includes('math')) return 20;
+  return 12;
+}
+
+/**
+ * Pacing for no-negative papers.
+ * Guessed: answered under the subject time floor.
+ * Unseen: never opened and not answered.
+ */
+export function computeMhtCetPacing({ questions = [], answers = [], visitedIds = [] } = {}) {
+  const visited = new Set((visitedIds || []).map(String));
+  const byId = new Map();
+  (answers || []).forEach((answer) => {
+    const id = answer?.questionId ?? answer?.id;
+    if (id != null) byId.set(String(id), answer);
+  });
+
+  let guessed = 0;
+  let unseen = 0;
+  let seenBlank = 0;
+  const list = Array.isArray(questions) && questions.length ? questions : [];
+
+  for (const question of list) {
+    const id = String(question.id ?? question.questionId ?? '');
+    const answer = byId.get(id);
+    const attempted = Boolean(
+      question.isAttempted ||
+        question.attempted ||
+        (answer && (answer.userAnswer || answer.isAttempted || answer.attempted))
+    );
+    const time = Number(answer?.timeSpent ?? question.timeSpent) || 0;
+    const seen = visited.has(id) || question.seen === true || time > 0 || attempted;
+    const marks = question.marks ?? answer?.marks;
+    const subject = question.subject || answer?.subject;
+
+    if (!attempted && !seen) unseen += 1;
+    else if (!attempted) seenBlank += 1;
+    else if (time < mhtCetGuessThresholdSeconds(subject, marks)) guessed += 1;
+  }
+
+  return { guessed, unseen, seenBlank, total: list.length };
+}
+
+/** KCET guess floor: 15s Physics/Chemistry, 20s Mathematics. */
+export function computeKcetPacing(args = {}) {
+  const visited = new Set((args.visitedIds || []).map(String));
+  const byId = new Map();
+  (args.answers || []).forEach((answer) => {
+    const id = answer?.questionId ?? answer?.id;
+    if (id != null) byId.set(String(id), answer);
+  });
+  let guessed = 0;
+  let unseen = 0;
+  let seenBlank = 0;
+  const list = Array.isArray(args.questions) && args.questions.length ? args.questions : [];
+  for (const question of list) {
+    const id = String(question.id ?? question.questionId ?? '');
+    const answer = byId.get(id);
+    const attempted = Boolean(
+      question.isAttempted ||
+        question.attempted ||
+        (answer && (answer.userAnswer || answer.isAttempted || answer.attempted))
+    );
+    const time = Number(answer?.timeSpent ?? question.timeSpent) || 0;
+    const seen = visited.has(id) || question.seen === true || time > 0 || attempted;
+    const subject = String(question.subject || answer?.subject || '').toLowerCase();
+    const floor = subject.includes('math') ? 20 : 15;
+    if (!attempted && !seen) unseen += 1;
+    else if (!attempted) seenBlank += 1;
+    else if (time < floor) guessed += 1;
+  }
+  return { guessed, unseen, seenBlank, total: list.length };
+}
+
 export function computeGateNetMarks(correct, incorrect) {
   const c = Number(correct) || 0;
   const w = Number(incorrect) || 0;
@@ -179,6 +295,11 @@ export function calculateMockTestStats({
   const markedCount = marked.length;
   const gate = usesGateMarking(examcategory);
   const jee = !gate && usesJeeMainMarking(examcategory);
+  const viteee = !gate && !jee && usesViteeeMarking(examcategory);
+  const mht = !gate && !jee && !viteee && usesMhtCetMarking(examcategory);
+  const wbjee = !gate && !jee && !viteee && !mht && usesWbjeeMarking(examcategory);
+  const kcet = !gate && !jee && !viteee && !mht && !wbjee && usesKcetMarking(examcategory);
+  const cat = !gate && !jee && !viteee && !mht && !wbjee && !kcet && usesCatMarking(examcategory);
 
   let score;
   let percentage;
@@ -204,9 +325,76 @@ export function calculateMockTestStats({
     }
     score = netMarks;
     percentage = maxMarks > 0 ? Math.round((netMarks / maxMarks) * 10000) / 100 : 0;
-  } else if (jee) {
+  } else if (jee || viteee) {
     maxMarks = total * 4;
     netMarks = computeJeeMainNetMarks(correct, incorrect);
+    score = netMarks;
+    percentage = maxMarks > 0 ? Math.round((netMarks / maxMarks) * 10000) / 100 : 0;
+  } else if (mht || kcet) {
+    const mappedMax = Object.keys(marksMap).length ? sumGateQuestionMarks(marksMap, 0) : 0;
+    if (maxMarksOverride != null && Number(maxMarksOverride) > 0) {
+      maxMarks = Number(maxMarksOverride);
+    } else if (mappedMax > 0) {
+      maxMarks = mappedMax;
+    } else if (mht && total === 150) {
+      maxMarks = 200;
+    } else if (kcet) {
+      maxMarks = total;
+    } else {
+      maxMarks = answers.reduce((sum, answer) => {
+        const id = answer?.questionId != null ? String(answer.questionId) : '';
+        return sum + (Number(answer?.marks ?? marksMap[id]) || 1);
+      }, 0);
+      maxMarks += Math.max(0, total - answers.length);
+    }
+    netMarks = answers.reduce((sum, answer) => {
+      if (answer?.isCorrect !== true) return sum;
+      const id = answer?.questionId != null ? String(answer.questionId) : '';
+      const questionMarksValue = Number(answer?.marks ?? marksMap[id]) || 1;
+      return sum + questionMarksValue;
+    }, 0);
+    score = netMarks;
+    percentage = maxMarks > 0 ? Math.round((netMarks / maxMarks) * 10000) / 100 : 0;
+  } else if (wbjee) {
+    const mappedMax = Object.keys(marksMap).length
+      ? Object.values(marksMap).reduce((sum, value) => sum + (Number(value) || 0), 0)
+      : 0;
+    if (maxMarksOverride != null && Number(maxMarksOverride) > 0) {
+      maxMarks = Number(maxMarksOverride);
+    } else if (mappedMax > 0) {
+      maxMarks = mappedMax;
+    } else if (total === 155) {
+      maxMarks = 200;
+    } else {
+      maxMarks = total;
+    }
+    netMarks = Math.round(
+      answers.reduce((sum, answer) => {
+        if (Number.isFinite(Number(answer?.wbjeeScore))) return sum + Number(answer.wbjeeScore);
+        const id = answer?.questionId != null ? String(answer.questionId) : '';
+        const category = Number(answer?.wbjeeCategory) || (Number(answer?.marks ?? marksMap[id]) === 2 ? 2 : 1);
+        return (
+          sum +
+          scoreWbjeeAnswer({
+            category,
+            isCorrect: answer?.isCorrect === true,
+            userAnswer: answer?.userAnswer,
+            correctOption: answer?.correctAnswer,
+          })
+        );
+      }, 0) * 100
+    ) / 100;
+    score = netMarks;
+    percentage = maxMarks > 0 ? Math.round((netMarks / maxMarks) * 10000) / 100 : 0;
+  } else if (cat) {
+    if (maxMarksOverride != null && Number(maxMarksOverride) > 0) {
+      maxMarks = Number(maxMarksOverride);
+    } else if (total === 68) {
+      maxMarks = 204;
+    } else {
+      maxMarks = total * 3;
+    }
+    netMarks = answers.reduce((sum, answer) => sum + computeCatAnswerMarks(answer), 0);
     score = netMarks;
     percentage = maxMarks > 0 ? Math.round((netMarks / maxMarks) * 10000) / 100 : 0;
   } else {
@@ -245,8 +433,23 @@ export function calculateMockTestStats({
       } else {
         s.netMarks = computeGateNetMarks(s.correct, s.incorrect);
       }
-    } else if (jee) {
+    } else if (jee || viteee) {
       s.netMarks = computeJeeMainNetMarks(s.correct, s.incorrect);
+    } else if ((mht || kcet) && answer.isCorrect) {
+      const id = answer.questionId != null ? String(answer.questionId) : '';
+      s.netMarks += Number(answer.marks ?? marksMap[id]) || 1;
+    } else if (wbjee) {
+      const earned = Number.isFinite(Number(answer.wbjeeScore))
+        ? Number(answer.wbjeeScore)
+        : scoreWbjeeAnswer({
+            category: Number(answer.wbjeeCategory) || 1,
+            isCorrect: answer.isCorrect === true,
+            userAnswer: answer.userAnswer,
+            correctOption: answer.correctAnswer,
+          });
+      s.netMarks = Math.round((s.netMarks + earned) * 100) / 100;
+    } else if (cat) {
+      s.netMarks += computeCatAnswerMarks(answer);
     }
   });
 
@@ -275,9 +478,23 @@ export function calculateMockTestStats({
     subjectStats,
     timeSpent,
     avgTimePerQuestion: attempted > 0 ? Math.round(timeSpent / attempted) : 0,
-    markingScheme: gate ? 'gate' : jee ? 'jee-main' : 'standard',
-    maxMarks: gate || jee ? maxMarks : total,
-    netMarks: gate || jee ? netMarks : correct,
+    markingScheme: gate
+      ? 'gate'
+      : jee
+        ? 'jee-main'
+        : viteee
+          ? 'viteee'
+          : mht
+            ? 'mht-cet'
+            : wbjee
+              ? 'wbjee'
+              : kcet
+                ? 'kcet'
+                : cat
+                  ? 'cat'
+                  : 'standard',
+    maxMarks: gate || jee || viteee || mht || wbjee || kcet || cat ? maxMarks : total,
+    netMarks: gate || jee || viteee || mht || wbjee || kcet || cat ? netMarks : correct,
   };
 }
 

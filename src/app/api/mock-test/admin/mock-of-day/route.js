@@ -24,6 +24,16 @@ import { runGateEeMotdCron } from '@/features/mock-test/lib/gateEeMotdCron';
 import { isGateEeExamSlug } from '@/features/mock-test/lib/gateEeBlueprint';
 import { runGateEcMotdCron } from '@/features/mock-test/lib/gateEcMotdCron';
 import { isGateEcExamSlug } from '@/features/mock-test/lib/gateEcBlueprint';
+import { runMhtCetMotdCron } from '@/features/mock-test/lib/mhtCetMotdCron';
+import { isMhtCetExamSlug } from '@/features/mock-test/lib/mhtCetBlueprint';
+import { runViteeeMotdCron } from '@/features/mock-test/lib/viteeeMotdCron';
+import { isViteeeExamSlug } from '@/features/mock-test/lib/viteeeBlueprint';
+import { runWbjeeMotdCron } from '@/features/mock-test/lib/wbjeeMotdCron';
+import { isWbjeeExamSlug } from '@/features/mock-test/lib/wbjeeBlueprint';
+import { runKcetMotdCron } from '@/features/mock-test/lib/kcetMotdCron';
+import { isKcetExamSlug } from '@/features/mock-test/lib/kcetBlueprint';
+import { runCatMotdCron } from '@/features/mock-test/lib/catMotdCron';
+import { isCatExamSlug } from '@/features/mock-test/lib/catBlueprint';
 import {
   formatAdminDbError,
   SUPABASE_ADMIN_SETUP_HINT,
@@ -78,6 +88,11 @@ export async function GET(request) {
       isGateCse: isGateCseExamSlug(examCategory),
       isGateEe: isGateEeExamSlug(examCategory),
       isGateEc: isGateEcExamSlug(examCategory),
+      isMhtCet: isMhtCetExamSlug(examCategory),
+      isViteee: isViteeeExamSlug(examCategory),
+      isWbjee: isWbjeeExamSlug(examCategory),
+      isKcet: isKcetExamSlug(examCategory),
+      isCat: isCatExamSlug(examCategory),
       setupRequired: Boolean(setupRequired),
       setupHint: setupRequired ? setupHint || SETUP_HINT : null,
     });
@@ -276,6 +291,91 @@ export async function POST(request) {
       });
     }
 
+    if (action === 'run-cat-daily') {
+      if (!isCatExamSlug(examCategory)) {
+        return NextResponse.json(
+          { success: false, error: 'run-cat-daily is only for cat' },
+          { status: 400 }
+        );
+      }
+      const result = await runCatMotdCron({
+        force: Boolean(body.force),
+        createdBy: userEmail || 'admin',
+      });
+      return NextResponse.json({
+        success: result.ok || result.skipped,
+        ...result,
+      });
+    }
+
+    if (action === 'run-kcet-daily') {
+      if (!isKcetExamSlug(examCategory)) {
+        return NextResponse.json(
+          { success: false, error: 'run-kcet-daily is only for kcet' },
+          { status: 400 }
+        );
+      }
+      const result = await runKcetMotdCron({
+        force: Boolean(body.force),
+        createdBy: userEmail || 'admin',
+      });
+      return NextResponse.json({
+        success: result.ok || result.skipped,
+        ...result,
+      });
+    }
+
+    if (action === 'run-wbjee-daily') {
+      if (!isWbjeeExamSlug(examCategory)) {
+        return NextResponse.json(
+          { success: false, error: 'run-wbjee-daily is only for wbjee' },
+          { status: 400 }
+        );
+      }
+      const result = await runWbjeeMotdCron({
+        force: Boolean(body.force),
+        createdBy: userEmail || 'admin',
+      });
+      return NextResponse.json({
+        success: result.ok || result.skipped,
+        ...result,
+      });
+    }
+
+    if (action === 'run-viteee-daily') {
+      if (!isViteeeExamSlug(examCategory)) {
+        return NextResponse.json(
+          { success: false, error: 'run-viteee-daily is only for viteee' },
+          { status: 400 }
+        );
+      }
+      const result = await runViteeeMotdCron({
+        force: Boolean(body.force),
+        createdBy: userEmail || 'admin',
+      });
+      return NextResponse.json({
+        success: result.ok || result.skipped,
+        ...result,
+      });
+    }
+
+    if (action === 'run-mht-cet-daily') {
+      if (!isMhtCetExamSlug(examCategory)) {
+        return NextResponse.json(
+          { success: false, error: 'run-mht-cet-daily is only for mht-cet' },
+          { status: 400 }
+        );
+      }
+      const result = await runMhtCetMotdCron({
+        force: Boolean(body.force),
+        createdBy: userEmail || 'admin',
+      });
+      return NextResponse.json({
+        success: result.ok || result.skipped,
+        ...result,
+      });
+    }
+
     if (action === 'run-gate-ec-daily') {
       if (!isGateEcExamSlug(examCategory)) {
         return NextResponse.json(
@@ -297,7 +397,7 @@ export async function POST(request) {
       {
         success: false,
         error:
-          'Unknown action. Use generate, add, set-auto-daily, run-jee-daily, run-gate-daily, run-gate-ee-daily, or run-gate-ec-daily.',
+          'Unknown action. Use generate, add, set-auto-daily, run-jee-daily, run-gate-daily, run-gate-ee-daily, run-gate-ec-daily, run-mht-cet-daily, or run-viteee-daily.',
       },
       { status: 400 }
     );

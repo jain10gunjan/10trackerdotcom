@@ -20,11 +20,26 @@ function sharedCookie(extra = {}) {
   return { options: { domain: sharedCookieDomain, ...extra } };
 }
 
+const GOOGLE_SCOPES = [
+  "openid",
+  "email",
+  "profile",
+  // People API phone numbers. Enable People API in Google Cloud and add this
+  // scope on the OAuth consent screen. Google returns a number only if the
+  // account has one.
+  "https://www.googleapis.com/auth/user.phonenumbers.read",
+].join(" ");
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     Google({
       clientId: getGoogleClientId(),
       clientSecret: getGoogleClientSecret(),
+      authorization: {
+        params: {
+          scope: GOOGLE_SCOPES,
+        },
+      },
     }),
   ],
   secret: getAuthSecret(),
@@ -47,7 +62,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     signIn: "/sign-in",
   },
   callbacks: {
-    jwt({ token, user, profile }) {
+    async jwt({ token, user, profile, account }) {
       if (user?.id) {
         token.id = user.id;
       }
@@ -59,6 +74,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           typeof profile.hd === "string" && profile.hd.trim()
             ? profile.hd.trim().toLowerCase()
             : null;
+        if (profile.name) token.name = profile.name;
+        if (profile.picture) token.picture = profile.picture;
+        if (profile.email) token.email = profile.email;
+      }
+      if (account?.provider === "google" && account.access_token && profile) {
+        try {
+          const { syncGoogleSignInProfile } = await import("@/lib/googleProfileSync");
+          const { phone } = await syncGoogleSignInProfile({
+            email: profile.email || token.email,
+            profile,
+            accessToken: account.access_token,
+          });
+          if (phone) token.phoneNumber = phone;
+        } catch (error) {
+          console.error("[auth] Google profile sync failed", error);
+        }
       }
       return token;
     },

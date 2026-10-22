@@ -1,7 +1,7 @@
 'use client';
 
 import { Clock, Coins, FileQuestion, Target, X, AlertCircle } from 'lucide-react';
-import { usesGateMarking, usesJeeMainMarking } from '@/features/mock-test/lib/mockTestUtils';
+import { usesGateMarking, usesJeeMainMarking, usesMhtCetMarking, usesViteeeMarking, usesWbjeeMarking, usesKcetMarking, usesCatMarking } from '@/features/mock-test/lib/mockTestUtils';
 import { useCredits } from '@/context/CreditsContext';
 import { CREDIT_COST } from '@/features/credits/lib/constants';
 
@@ -12,6 +12,11 @@ export default function PreflightModal({ test, examcategory, open, onClose, onCo
 
   const gateMarking = usesGateMarking(examcategory);
   const jeeMarking = !gateMarking && usesJeeMainMarking(examcategory);
+  const mhtMarking = !gateMarking && !jeeMarking && usesMhtCetMarking(examcategory);
+  const viteeeMarking = !gateMarking && !jeeMarking && !mhtMarking && usesViteeeMarking(examcategory);
+  const wbjeeMarking = !gateMarking && !jeeMarking && !mhtMarking && !viteeeMarking && usesWbjeeMarking(examcategory);
+  const kcetMarking = !gateMarking && !jeeMarking && !mhtMarking && !viteeeMarking && !wbjeeMarking && usesKcetMarking(examcategory);
+  const catMarking = !gateMarking && !jeeMarking && !mhtMarking && !viteeeMarking && !wbjeeMarking && !kcetMarking && usesCatMarking(examcategory);
   const durationMin = test.duration || 0;
   const totalQ = test.total_questions || 0;
 
@@ -85,6 +90,45 @@ export default function PreflightModal({ test, examcategory, open, onClose, onCo
                 <li>
                   <strong className="text-neutral-800">JEE Main marking:</strong> +4 correct, −1 wrong
                   (MCQ and numerical), 0 unattempted. Max {totalQ * 4} marks.
+                </li>
+              ) : mhtMarking ? (
+                <li>
+                  <strong className="text-neutral-800">MHT-CET marking:</strong> no negative marking.
+                  Physics and Chemistry +1, Mathematics +2, wrong or blank scores 0. Attempt every
+                  question. Max {test.weightage_config?.maxMarks || (totalQ === 150 ? 200 : 'paper')} marks.
+                  One {durationMin}-minute timer covers both papers.
+                </li>
+              ) : viteeeMarking ? (
+                <li>
+                  <strong className="text-neutral-800">VITEEE marking:</strong> +4 correct, −1 wrong, 0
+                  blank. Max {totalQ * 4} marks. Guess only when two options can be eliminated. Suggested
+                  order: English and Aptitude, then Chemistry, Physics, Mathematics.
+                </li>
+              ) : wbjeeMarking ? (
+                <li>
+                  <strong className="text-neutral-800">WBJEE marking:</strong> Category 1 +1 / −0.25,
+                  Category 2 +2 / −0.5, Category 3 +2 with no negative marking. One or more options may
+                  be correct on Category 3; a wrong option scores 0. Max{' '}
+                  {test.weightage_config?.maxMarks || (totalQ === 155 ? 200 : 'paper')} marks. Attempt
+                  Category 3 first, then Category 1. Leave Category 2 numericals until the end. One{' '}
+                  {durationMin}-minute timer covers both papers.
+                </li>
+              ) : kcetMarking ? (
+                <li>
+                  <strong className="text-neutral-800">KCET marking:</strong> +1 correct, 0 wrong, 0
+                  blank. There is no negative marking, so attempt every question. Max{' '}
+                  {test.weightage_config?.maxMarks || totalQ} marks. One {durationMin}-minute timer
+                  covers the three 80-minute papers. Suggested order: Chemistry, then Physics, then
+                  Mathematics.
+                </li>
+              ) : catMarking ? (
+                <li>
+                  <strong className="text-neutral-800">CAT marking:</strong> +3 correct, −1 for a wrong
+                  MCQ, 0 for a wrong TITA, 0 if blank. Max {test.weightage_config?.maxMarks || (totalQ === 68 ? 204 : totalQ * 3)} marks.
+                  {totalQ === 68
+                    ? ' VARC, DILR, and QA are 40 minutes each. When a section clock ends, that section locks and the next one starts. Unused time does not carry over.'
+                    : ` One ${durationMin}-minute timer.`}
+                  {' '}VARC: two easier RC passages, then verbal ability. DILR: choose 2–3 sets and leave the hardest. QA: easy Arithmetic and Algebra first. Guess an MCQ only after two options are gone.
                 </li>
               ) : (
                 <li>
