@@ -99,7 +99,7 @@ export const examData = [
     description: 'Common Admission Test',
     category: 'Management',
     count: 0,
-    active: false,
+    active: true,
   },
   {
     slug: 'upsc-prelims',

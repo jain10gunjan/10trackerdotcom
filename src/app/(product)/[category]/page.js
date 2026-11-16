@@ -20,6 +20,7 @@ export default async function CategoryHubPage({ params }) {
       categorySlug={slug}
       initialSubjects={data.subjects}
       mockTestCount={data.mockTestCount}
+      topicMockCount={data.topicMockCount}
       dailyPracticeCount={data.dailyPracticeCount}
     />
   );

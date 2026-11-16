@@ -2,11 +2,10 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { Instagram, Mail, MapPin, Twitter } from 'lucide-react';
 import ReactGA from 'react-ga4';
-import logo from '@/assets/10tracker.png';
+import BrandLogo from '@/components/ui/BrandLogo';
 import {
   FOOTER_COMPANY_LINKS,
   FOOTER_LEARN_LINKS,
@@ -51,7 +50,7 @@ function SocialLinks({ compact = false }) {
 function FooterColumn({ title, links }) {
   return (
     <div>
-      <h3 className="text-[11px] font-semibold uppercase tracking-wider text-emerald-700">
+      <h3 className="text-[11px] font-semibold uppercase tracking-wider text-[#3F5EB9]">
         {title}
       </h3>
       <ul className="mt-3 space-y-2">
@@ -98,15 +97,7 @@ export default function Footer() {
       <div className="md:hidden px-4 pt-6 pb-24">
         <div className="mx-auto max-w-lg">
           <div className="rounded-2xl border border-neutral-200/90 bg-white/90 p-4 shadow-sm">
-            <Link href="/" className="inline-flex items-center">
-              <Image
-                src={logo}
-                alt="10tracker.com"
-                width={852}
-                height={205}
-                className="h-8 w-auto object-contain"
-              />
-            </Link>
+            <BrandLogo compact />
             <p className="mt-2 text-xs leading-relaxed text-neutral-500">
               Exam practice, mock tests &amp; daily updates — in one place.
             </p>
@@ -141,7 +132,7 @@ export default function Footer() {
             </div>
           </div>
 
-          <p className="mt-3 text-center text-[11px] text-neutral-400">
+          <p className="mt-3 text-center text-[11px] text-neutral-400" suppressHydrationWarning>
             &copy; {year} 10tracker. All rights reserved.
           </p>
         </div>
@@ -152,15 +143,7 @@ export default function Footer() {
         <div className="mx-auto max-w-7xl px-6 lg:px-8 py-10 lg:py-12">
           <div className="grid grid-cols-12 gap-8 lg:gap-10">
             <div className="col-span-12 lg:col-span-4">
-              <Link href="/" className="inline-flex">
-                <Image
-                  src={logo}
-                  alt="10tracker.com"
-                  width={853}
-                  height={205}
-                  className="h-10 w-auto object-contain object-left"
-                />
-              </Link>
+              <BrandLogo />
               <p className="mt-3 max-w-sm text-sm leading-relaxed text-neutral-600">
                 Topic-wise MCQs, mock tests, jobs, and exam updates — built for competitive prep
                 in India.
@@ -189,7 +172,7 @@ export default function Footer() {
           </div>
 
           <div className="mt-8 flex flex-col gap-3 border-t border-neutral-200/90 pt-6 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-neutral-500">
+            <p className="text-sm text-neutral-500" suppressHydrationWarning>
               &copy; {year} 10tracker. All rights reserved.
             </p>
             <p className="text-xs text-neutral-400">

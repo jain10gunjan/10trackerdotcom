@@ -51,7 +51,9 @@ export default function DashboardHero({
       <div className="relative p-6 sm:p-8">
         <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
           <div className="min-w-0">
-            <p className="text-sm font-medium text-emerald-700">{greetingForHour()}</p>
+            <p className="text-sm font-medium text-[#3F5EB9]" suppressHydrationWarning>
+              {greetingForHour()}
+            </p>
             <h1 className="mt-1 text-2xl sm:text-3xl font-bold tracking-tight text-neutral-900">
               Welcome back, {firstName}
             </h1>

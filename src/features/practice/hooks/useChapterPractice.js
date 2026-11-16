@@ -866,6 +866,32 @@ export function useChapterPractice(options = {}) {
     toast.success(`Exam started — ${n * EXAM_MINUTES_PER_QUESTION} minutes`, { duration: 2500 });
   }, [listFilter, questions, filteredQuestions, counts, activeDifficulty]);
 
+  // OG Tracker module drill: /practice?mode=exam auto-starts timed session once.
+  const examBootstrappedRef = useRef(false);
+  useEffect(() => {
+    if (examBootstrappedRef.current) return;
+    if (searchParams.get('mode') !== 'exam') return;
+    if (loading || loadingQ) return;
+    const pool = listFilter === 'all' ? questions : filteredQuestions;
+    if (!pool.length) return;
+    examBootstrappedRef.current = true;
+    startExam();
+    const p = new URLSearchParams(searchParams.toString());
+    p.delete('mode');
+    const qs = p.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }, [
+    searchParams,
+    loading,
+    loadingQ,
+    listFilter,
+    questions,
+    filteredQuestions,
+    startExam,
+    router,
+    pathname,
+  ]);
+
   const endExam = useCallback(() => {
     const pool = listFilter === 'all' ? questions : filteredQuestions;
     let correct = 0;

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Loader2, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import ExtensionStatus from '@/features/extension-auth/components/ExtensionStatus';
 
 export default function OgTrackersSettingsPage() {
   const { user } = useAuth();
@@ -113,6 +114,8 @@ export default function OgTrackersSettingsPage() {
       <p className="mt-2 text-sm text-neutral-600">
         Premium members can sync LeetCode, HackerRank, and CodeStudio progress.
       </p>
+
+      <ExtensionStatus variant="both" enabled={Boolean(user)} className="mt-5" />
 
       {loading ? (
         <div className="flex items-center gap-2 mt-8 text-neutral-600">

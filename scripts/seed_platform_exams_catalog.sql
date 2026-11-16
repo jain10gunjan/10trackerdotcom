@@ -145,7 +145,7 @@ VALUES
     '🎓',
     'from-violet-600 to-indigo-700',
     58,
-    false,
+    true,
     NOW()
   ),
   (

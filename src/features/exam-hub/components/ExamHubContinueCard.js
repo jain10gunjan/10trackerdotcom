@@ -5,14 +5,14 @@ import { ArrowRight, Play } from 'lucide-react';
 
 const VARIANT_STYLES = {
   practice: {
-    shell: 'border-emerald-200 bg-gradient-to-br from-emerald-50/80 to-white',
-    label: 'text-emerald-800',
-    button: 'bg-emerald-600 hover:bg-emerald-700',
+    shell: 'border-[#3F5EB9]/25 bg-gradient-to-br from-[#E8EDF8]/90 to-white',
+    label: 'text-[#1e2f6b]',
+    button: 'bg-[#3F5EB9] hover:bg-[#3550a3]',
   },
   mock: {
-    shell: 'border-indigo-200 bg-gradient-to-br from-indigo-50/80 to-white',
-    label: 'text-indigo-800',
-    button: 'bg-indigo-600 hover:bg-indigo-700',
+    shell: 'border-[#3F5EB9]/20 bg-gradient-to-br from-[#E8EDF8]/70 to-white',
+    label: 'text-[#1e2f6b]',
+    button: 'bg-[#3550a3] hover:bg-[#2d4490]',
   },
   default: {
     shell: 'border-neutral-200 bg-gradient-to-br from-neutral-50/80 to-white',

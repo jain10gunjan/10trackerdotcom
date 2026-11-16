@@ -46,18 +46,20 @@ export default function AppChrome({ children }) {
       return showMobileBottomMenu ? 'pb-16 lg:pb-0' : '';
     }
     if (onProfilePage) {
-      return showMobileBottomMenu ? 'pt-24 pb-16 md:pb-0' : 'pt-24';
+      return showMobileBottomMenu
+        ? 'pt-[4.25rem] pb-16 lg:pb-0'
+        : 'pt-[4.25rem]';
     }
     if (onAuthPage) {
       return '';
     }
     if (termsDockActive) {
-      return 'pb-36 md:pb-28';
+      return 'pb-36 lg:pb-28';
     }
     if (onHome || onBrowsePage) {
-      return 'pb-16 md:pb-0';
+      return 'pb-16 lg:pb-0';
     }
-    return 'pb-16 md:pb-0';
+    return 'pb-16 lg:pb-0';
   })();
 
   return (

@@ -12,7 +12,7 @@ import {
 export const metadata = {
   title: 'Privacy Policy - 10tracker',
   description:
-    'How 10Tracker.com collects, uses, and protects your data — accounts, practice progress, payments.',
+    'How 10Tracker.com collects, uses, and protects your data — accounts, practice progress, payments, and the YouTube Progress browser extension.',
   openGraph: {
     title: 'Privacy Policy - 10tracker',
     description: 'Privacy practices for 10Tracker.com operated by Manish Kumar Patni HUF.',
@@ -55,7 +55,18 @@ export default function PrivacyPolicyPage() {
             {LEGAL_ENTITY_NAME} (&quot;we,&quot; &quot;us&quot;) operates{' '}
             <strong className="text-neutral-800">{PLATFORM_BRAND}</strong>. This Policy explains
             what personal data we collect, how we use it, and your choices. It applies when you
-            sign in, practice questions, take mock tests, or purchase plans on the Platform.
+            sign in, practice questions, take mock tests, purchase plans on the Platform, or use the{' '}
+            <strong className="text-neutral-800">10tracker YouTube Progress</strong> browser
+            extension.
+          </p>
+          <p className="text-sm text-neutral-500 mt-3">
+            Jump to:{' '}
+            <a
+              href="#youtube-progress-extension"
+              className="underline text-neutral-800 hover:text-neutral-950"
+            >
+              YouTube Progress extension
+            </a>
           </p>
         </header>
 
@@ -237,9 +248,137 @@ export default function PrivacyPolicyPage() {
             </p>
           </Section>
 
-          <Section title="13. Contact">
+          <section id="youtube-progress-extension">
+            <h2 className="text-xl font-semibold text-neutral-900 mb-3">
+              13. 10tracker YouTube Progress browser extension
+            </h2>
+            <div className="space-y-3 text-neutral-600 leading-relaxed text-[15px]">
+              <p className="text-sm text-neutral-500">
+                Extension privacy section last clarified: 16 November 2026
+              </p>
+              <p>
+                The <strong className="text-neutral-800">10tracker YouTube Progress</strong> Chrome
+                / Edge extension helps you sync YouTube watch progress for videos that appear in
+                your active <strong className="text-neutral-800">OG Tracker</strong> paths on{' '}
+                {PLATFORM_BRAND}. This section describes data handled by that extension in addition
+                to the rest of this Policy.
+              </p>
+
+              <p>
+                <strong className="text-neutral-800">Single purpose</strong>
+              </p>
+              <p>
+                Sync watch progress for YouTube videos that appear in the user&apos;s 10tracker OG
+                Tracker paths.
+              </p>
+
+              <p>
+                <strong className="text-neutral-800">Data the extension processes</strong>
+              </p>
+              <ul className="list-disc pl-5 space-y-1">
+                <li>
+                  <strong>Account email</strong> associated with your {PLATFORM_BRAND} account
+                  (shown in the extension popup after you authorize; stored locally in the browser)
+                </li>
+                <li>
+                  <strong>Extension API authentication token</strong> stored locally so the
+                  extension can call {PLATFORM_BRAND} APIs without re-authorizing every session
+                </li>
+                <li>
+                  <strong>YouTube video IDs</strong> and <strong>watch percentage</strong> only for
+                  videos that exist in your active OG Tracker catalog
+                </li>
+                <li>
+                  Optional <strong>device / extension label</strong> for connected devices you can
+                  manage at{' '}
+                  <Link href="/extension/devices" className="underline text-neutral-800">
+                    /extension/devices
+                  </Link>
+                </li>
+                <li>
+                  Local settings such as pause-sync and battery saver, plus a short-lived offline
+                  progress queue and negative catalog lookup cache
+                </li>
+              </ul>
+
+              <p>
+                <strong className="text-neutral-800">What we do not do</strong>
+              </p>
+              <ul className="list-disc pl-5 space-y-1">
+                <li>
+                  We do <strong>not</strong> track arbitrary YouTube watching outside your OG
+                  Tracker catalog
+                </li>
+                <li>We do not sell extension data to advertisers or data brokers</li>
+                <li>
+                  The extension does not load third-party advertising or analytics SDKs, and does
+                  not execute remotely hosted code
+                </li>
+              </ul>
+
+              <p>
+                <strong className="text-neutral-800">How data is used and where it goes</strong>
+              </p>
+              <p>
+                After you authorize, the extension sends catalog lookup and progress updates only to{' '}
+                {PLATFORM_BRAND} (default API origin{' '}
+                <strong className="text-neutral-800">https://www.10tracker.com</strong>, or the
+                origin you authorize during connect). On YouTube watch pages, the extension may
+                read the HTML5 video player&apos;s current time and duration solely to compute watch
+                percentage for catalogued path videos and to show an on-page progress card.
+              </p>
+
+              <p>
+                <strong className="text-neutral-800">Permissions (why they exist)</strong>
+              </p>
+              <ul className="list-disc pl-5 space-y-1">
+                <li>
+                  <strong>storage</strong> — keep your auth token, email, settings, and offline
+                  queue on this device
+                </li>
+                <li>
+                  <strong>alarms</strong> — periodically flush queued progress if you were offline
+                </li>
+                <li>
+                  <strong>tabs</strong> — open the connect page, finish authorization from an open
+                  connect tab, and sync from the active YouTube tab
+                </li>
+                <li>
+                  <strong>scripting</strong> — read/seek the YouTube player to measure watch %
+                </li>
+                <li>
+                  <strong>youtube.com / www.youtube.com</strong> — run only on YouTube to show the
+                  progress card and measure catalogued videos
+                </li>
+                <li>
+                  <strong>10tracker.com / *.10tracker.com</strong> — authorize, look up catalog
+                  membership, sync progress, and revoke devices
+                </li>
+              </ul>
+
+              <p>
+                <strong className="text-neutral-800">Your choices</strong>
+              </p>
+              <ul className="list-disc pl-5 space-y-1">
+                <li>Pause sync or disconnect from the extension popup</li>
+                <li>
+                  Revoke devices anytime at{' '}
+                  <Link href="/extension/devices" className="underline text-neutral-800">
+                    /extension/devices
+                  </Link>
+                </li>
+                <li>Uninstall the extension to remove local extension storage on that browser</li>
+                <li>
+                  Request account-related deletion as described in &quot;Your rights and
+                  choices&quot; above
+                </li>
+              </ul>
+            </div>
+          </section>
+
+          <Section title="14. Contact">
             <p>
-              Privacy questions and data requests:
+              Privacy questions and data requests (including extension-related requests):
               <br />
               <strong>{LEGAL_ENTITY_NAME}</strong> ({PLATFORM_BRAND})
               <br />

@@ -22,7 +22,21 @@ function completedCount(row) {
   return parseProgressIdArray(row?.completedquestions).length;
 }
 
-async function fetchProgressRowsWithClient(supabase, user) {
+function progressAreaVariants(examSlug) {
+  const slug = normalizeCategorySlug(examSlug);
+  if (!slug) return [];
+  const variants = new Set([slug]);
+  for (const v of getCategoryVariants(slug) || []) {
+    const n = normalizeCategorySlug(v);
+    if (n) variants.add(n);
+    if (v) variants.add(String(v).trim());
+  }
+  return [...variants].filter(Boolean);
+}
+
+async function fetchProgressRowsWithClient(supabase, user, { examSlug = '', limit = 0 } = {}) {
+  const areaVariants = progressAreaVariants(examSlug);
+
   let query = supabase
     .from('user_progress')
     .select(
@@ -31,6 +45,12 @@ async function fetchProgressRowsWithClient(supabase, user) {
     .not('area', 'is', null);
 
   query = applyProgressUserFilter(query, user);
+  if (areaVariants.length) {
+    query = query.in('area', areaVariants);
+  }
+  if (limit > 0) {
+    query = query.limit(limit);
+  }
 
   const { data, error } = await query;
   if (!error) return data || [];
@@ -41,6 +61,12 @@ async function fetchProgressRowsWithClient(supabase, user) {
       .select('area, topic, completedquestions, correctanswers, points')
       .not('area', 'is', null);
     fallbackQuery = applyProgressUserFilter(fallbackQuery, user);
+    if (areaVariants.length) {
+      fallbackQuery = fallbackQuery.in('area', areaVariants);
+    }
+    if (limit > 0) {
+      fallbackQuery = fallbackQuery.limit(limit);
+    }
     const fallback = await fallbackQuery;
     if (fallback.error) throw fallback.error;
     return fallback.data || [];
@@ -49,14 +75,20 @@ async function fetchProgressRowsWithClient(supabase, user) {
   throw error;
 }
 
-/** Fetch user_progress — service role first, then anon (same as /api/exam-hub). */
-export async function fetchUserProgressRowsForDashboard(user) {
+/**
+ * Fetch user_progress — service role first, then anon (same as /api/exam-hub).
+ * Pass examSlug to scope rows to the selected exam (home dashboard path).
+ */
+export async function fetchUserProgressRowsForDashboard(
+  user,
+  { examSlug = '', limit = 80, serviceOnly = false } = {}
+) {
   const serviceClient = getSupabaseServer(isValidServiceRoleKey());
-  let rows = await fetchProgressRowsWithClient(serviceClient, user);
+  let rows = await fetchProgressRowsWithClient(serviceClient, user, { examSlug, limit });
 
-  if (!rows.length) {
+  if (!rows.length && !serviceOnly) {
     const anonClient = getSupabaseServer(false);
-    rows = await fetchProgressRowsWithClient(anonClient, user);
+    rows = await fetchProgressRowsWithClient(anonClient, user, { examSlug, limit });
   }
 
   return rows.sort((a, b) => {
@@ -103,22 +135,27 @@ export function resolveExamHubContinue(progressRows, slug, catalogSubjects = [])
     if (completed === 0) continue;
 
     const subjectKey = subjectForTopic(row.topic, catalogSubjects);
-    if (!subjectKey || !subjectMap[subjectKey]) continue;
+    const updatedAt = row.updated_at ? new Date(row.updated_at).getTime() : 0;
 
-    subjectMap[subjectKey].completedQuestions += completed;
-
-    const topicTotal = topicTotals[row.topic] || 0;
-    if (topicTotal > 0 && completed >= topicTotal) {
-      subjectMap[subjectKey].topicsCompleted += 1;
+    if (subjectKey && subjectMap[subjectKey]) {
+      subjectMap[subjectKey].completedQuestions += completed;
+      const topicTotal = topicTotals[row.topic] || 0;
+      if (topicTotal > 0 && completed >= topicTotal) {
+        subjectMap[subjectKey].topicsCompleted += 1;
+      }
     }
 
-    const updatedAt = row.updated_at ? new Date(row.updated_at).getTime() : 0;
+    // Prefer chapter href when catalog is warm; otherwise topic practice URL (no scan required).
+    const href = catalogSubjects.length
+      ? resolveChapterPracticeHref(normalizedSlug, row.topic, catalogSubjects)
+      : `/${normalizedSlug}/practice/${encodeURIComponent(row.topic)}`;
+
     if (!continueCandidate || updatedAt > continueCandidate.updatedAt) {
       continueCandidate = {
-        subject: subjectKey,
-        subjectSlug: slugifySubject(subjectKey),
+        subject: subjectKey || row.topic,
+        subjectSlug: subjectKey ? slugifySubject(subjectKey) : null,
         topic: row.topic,
-        href: resolveChapterPracticeHref(normalizedSlug, row.topic, catalogSubjects),
+        href,
         updatedAt,
       };
     }
@@ -143,7 +180,12 @@ export function resolveExamHubContinue(progressRows, slug, catalogSubjects = [])
     };
   }
 
-  return null;
+  return {
+    subject: null,
+    topic: null,
+    href: `/${normalizedSlug}`,
+    hasProgress: false,
+  };
 }
 
 export function examHubContinueToPracticeCard(continuePayload) {

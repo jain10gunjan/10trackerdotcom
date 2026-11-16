@@ -49,15 +49,23 @@ export default function GoogleAuthButton({
   label = 'Continue with Google',
   loadingLabel = 'Continuing…',
   variant = 'outline',
+  size = 'default',
   className = '',
 }) {
-  const base =
-    'flex items-center justify-center w-full gap-3 px-4 py-3.5 rounded-2xl text-sm font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/30 disabled:opacity-60 disabled:cursor-not-allowed';
+  const sizes = {
+    default: 'w-full gap-3 px-4 py-3.5 rounded-2xl',
+    hero: 'w-full gap-2.5 px-5 py-3 rounded-xl sm:w-auto',
+    compact: 'w-auto max-w-full gap-2 px-2.5 sm:px-3 py-2 rounded-lg text-[13px] sm:text-sm',
+  };
+
+  const base = `inline-flex items-center justify-center text-sm font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-[#3F5EB9]/30 disabled:opacity-60 disabled:cursor-not-allowed ${
+    sizes[size] || sizes.default
+  }`;
 
   const variants = {
     outline:
-      'bg-white border border-neutral-200 text-neutral-800 hover:border-emerald-300 hover:bg-emerald-50/50 shadow-sm',
-    primary: 'bg-emerald-600 border border-emerald-600 text-white hover:bg-emerald-700 shadow-sm',
+      'bg-white border border-neutral-200 text-neutral-800 hover:border-[#3F5EB9]/40 hover:bg-[#E8EDF8]/50 shadow-sm',
+    primary: 'bg-[#3F5EB9] border border-[#3F5EB9] text-white hover:bg-[#3550a3] shadow-sm',
   };
 
   return (
@@ -67,7 +75,7 @@ export default function GoogleAuthButton({
       disabled={disabled || loading}
       className={`${base} ${variants[variant] || variants.outline} ${className}`}
     >
-      {loading ? <Spinner /> : <GoogleIcon />}
+      {loading ? <Spinner className="w-4 h-4" /> : <GoogleIcon className="w-4 h-4" />}
       <span>{loading ? loadingLabel : label}</span>
     </button>
   );

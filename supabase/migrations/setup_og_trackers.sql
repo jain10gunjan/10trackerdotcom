@@ -28,6 +28,9 @@ CREATE TABLE IF NOT EXISTS public.og_paths (
   sort_order INTEGER NOT NULL DEFAULT 0,
   is_premium BOOLEAN NOT NULL DEFAULT false,
   is_active BOOLEAN NOT NULL DEFAULT true,
+  sequential_unlock BOOLEAN NOT NULL DEFAULT false,
+  weekly_goal INTEGER NOT NULL DEFAULT 3 CHECK (weekly_goal >= 1 AND weekly_goal <= 50),
+  unlock_threshold INTEGER NOT NULL DEFAULT 70 CHECK (unlock_threshold >= 1 AND unlock_threshold <= 100),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -43,7 +46,14 @@ CREATE INDEX IF NOT EXISTS idx_og_paths_tags
 CREATE TABLE IF NOT EXISTS public.og_resources (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   path_id UUID NOT NULL REFERENCES public.og_paths(id) ON DELETE CASCADE,
-  type TEXT NOT NULL CHECK (type IN ('VIDEO', 'LEETCODE_PROBLEM', 'CODESTUDIO_PROBLEM', 'HACKERRANK_PROBLEM')),
+  type TEXT NOT NULL CHECK (type IN (
+    'VIDEO',
+    'LEETCODE_PROBLEM',
+    'CODESTUDIO_PROBLEM',
+    'HACKERRANK_PROBLEM',
+    'PRACTICE_CHAPTER',
+    'MOCK_TEST'
+  )),
   sort_order INTEGER NOT NULL DEFAULT 0,
   title TEXT NOT NULL,
   youtube_video_id TEXT,
@@ -52,6 +62,8 @@ CREATE TABLE IF NOT EXISTS public.og_resources (
   difficulty TEXT,
   external_url TEXT,
   is_premium BOOLEAN,
+  section_label TEXT,
+  meta JSONB NOT NULL DEFAULT '{}'::jsonb,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

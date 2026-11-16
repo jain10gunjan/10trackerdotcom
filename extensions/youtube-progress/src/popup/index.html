@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>10tracker · YouTube Progress</title>
+    <link rel="stylesheet" href="./popup.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="header">
+        <img
+          class="brand-logo"
+          src="../../public/brand/logo-trim.png"
+          alt="10tracker.com"
+          width="168"
+          height="40"
+        />
+        <div class="sub">YouTube Progress · OG Trackers</div>
+      </header>
+
+      <section id="sync-banner" class="banner hidden"></section>
+
+      <section id="auth-unsigned" class="card hidden">
+        <div class="pill">Account link needed</div>
+        <p class="body">
+          Connect your 10tracker account to sync watch % for videos in your OG Tracker paths —
+          nothing else on YouTube.
+        </p>
+        <button id="btn-connect" type="button" class="btn primary">Connect 10tracker</button>
+        <button id="btn-finish" type="button" class="btn secondary" style="margin-top:8px">
+          Finish connect from open tab
+        </button>
+        <p id="auth-error" class="body hidden" style="color:#b91c1c;margin-top:8px"></p>
+      </section>
+
+      <section id="auth-signed" class="card hidden">
+        <p class="meta">Signed in</p>
+        <p id="auth-email" class="email"></p>
+        <div class="row">
+          <button id="btn-disconnect" type="button" class="btn ghost">Disconnect</button>
+          <a id="link-devices" class="btn ghost" href="#" target="_blank" rel="noreferrer">Devices</a>
+        </div>
+      </section>
+
+      <section id="goal-card" class="card hidden">
+        <p class="meta">Weekly goal</p>
+        <div id="goal-status" class="status">—</div>
+      </section>
+
+      <section class="card">
+        <p class="meta">Current video</p>
+        <div id="video-status" class="status">Open a YouTube watch page…</div>
+        <button id="btn-sync" type="button" class="btn primary" style="margin-top:8px;width:100%">
+          Sync now from this tab
+        </button>
+        <a
+          id="link-path"
+          class="btn secondary hidden"
+          href="#"
+          target="_blank"
+          rel="noreferrer"
+          style="margin-top:8px"
+        >
+          Open path on 10tracker
+        </a>
+      </section>
+
+      <section class="card">
+        <p class="meta">Sync settings</p>
+        <label class="toggle">
+          <input type="checkbox" id="set-pause" />
+          <span>Pause sync</span>
+        </label>
+        <label class="toggle">
+          <input type="checkbox" id="set-battery" checked />
+          <span>Battery saver</span>
+        </label>
+        <p class="hint">
+          Tracker videos only — random YouTube is never synced. Highest progress wins across
+          devices.
+        </p>
+        <div class="row" style="margin-top:8px">
+          <button id="btn-retry" type="button" class="btn secondary">Retry queue</button>
+          <button id="btn-share" type="button" class="btn ghost">Share</button>
+        </div>
+      </section>
+
+      <p class="foot">
+        Only OG Tracker path videos sync.
+        <a
+          id="link-site"
+          href="https://www.10tracker.com/extension/devices"
+          target="_blank"
+          rel="noreferrer"
+          >Devices</a
+        >
+        ·
+        <a
+          href="https://www.10tracker.com/privacy-policy#youtube-progress-extension"
+          target="_blank"
+          rel="noreferrer"
+          >Privacy</a
+        >.
+      </p>
+    </main>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

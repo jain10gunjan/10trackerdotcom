@@ -50,6 +50,7 @@ export default function ExamHubPage({
   categorySlug,
   initialSubjects = [],
   mockTestCount = 0,
+  topicMockCount = 0,
   dailyPracticeCount = 0,
 }) {
   const { user } = useAuth();
@@ -190,6 +191,7 @@ export default function ExamHubPage({
             <ExamHubPathCards
               categorySlug={categorySlug}
               mockTestCount={mockTestCount}
+              topicMockCount={topicMockCount}
               dailyPracticeCount={dailyPracticeCount}
             />
           </div>

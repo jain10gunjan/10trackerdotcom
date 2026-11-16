@@ -1,10 +1,10 @@
 import {
   Home,
-  GraduationCap,
-  Map,
-  Coins,
-  Newspaper,
-  Briefcase,
+  BookOpenCheck,
+  Route,
+  BadgeIndianRupee,
+  Megaphone,
+  BriefcaseBusiness,
   Info,
   Mail,
   Shield,
@@ -15,14 +15,14 @@ import {
  * Flip to true when OG Trackers / roadmaps relaunch.
  * Keeps routes and feature code intact while hiding product surfaces.
  */
-export const SHOW_OG_TRACKERS = false;
+export const SHOW_OG_TRACKERS = true;
 
 const PRIMARY_NAV_ALL = [
   { name: 'Home', path: '/', icon: Home },
-  { name: 'Exams', path: '/exams', icon: GraduationCap },
-  { name: 'OG Trackers', path: '/og-trackers', icon: Map, launchLater: true },
-  { name: 'Pricing', path: '/pricing', icon: Coins },
-  { name: 'Updates', path: '/articles', icon: Newspaper },
+  { name: 'Exams', path: '/exams', icon: BookOpenCheck },
+  { name: 'OG Trackers', path: '/og-trackers', icon: Route, launchLater: true },
+  { name: 'Pricing', path: '/pricing', icon: BadgeIndianRupee },
+  { name: 'Updates', path: '/articles', icon: Megaphone },
 ];
 
 export const PRIMARY_NAV = PRIMARY_NAV_ALL.filter(
@@ -30,7 +30,7 @@ export const PRIMARY_NAV = PRIMARY_NAV_ALL.filter(
 );
 
 export const MORE_NAV = [
-  { name: 'Jobs', path: '/article/latest-jobs', icon: Briefcase },
+  { name: 'Jobs', path: '/article/latest-jobs', icon: BriefcaseBusiness },
   { name: 'About', path: '/about-us', icon: Info },
   { name: 'Contact', path: '/contact-us', icon: Mail },
 ];
@@ -74,9 +74,9 @@ export const FOOTER_LEGAL_LINKS = FOOTER_NAV.map((item) => ({
 /** Core tabs shown in the mobile bottom bar */
 export const MOBILE_TAB_NAV = [
   { name: 'Home', path: '/', icon: Home },
-  { name: 'Exams', path: '/exams', icon: GraduationCap },
-  { name: 'Pricing', path: '/pricing', icon: Coins },
-  { name: 'Updates', path: '/articles', icon: Newspaper },
+  { name: 'Exams', path: '/exams', icon: BookOpenCheck },
+  { name: 'Pricing', path: '/pricing', icon: BadgeIndianRupee },
+  { name: 'Updates', path: '/articles', icon: Megaphone },
 ];
 
 export function isNavActive(pathname, path) {

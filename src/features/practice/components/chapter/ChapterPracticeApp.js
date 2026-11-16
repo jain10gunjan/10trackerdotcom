@@ -1,6 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
+import { Suspense } from 'react';
 import { MathJax, MathJaxContext } from 'better-react-mathjax';
 import {
   ChevronLeft,
@@ -16,6 +17,7 @@ import {
   Timer,
 } from 'lucide-react';
 import ExamSubpageHeader from '@/features/exam-hub/components/ExamSubpageHeader';
+import BackToOgPathChip from '@/features/og-trackers/components/BackToOgPathChip';
 import { useChapterPractice } from '@/features/practice/hooks/useChapterPractice';
 import { mathJaxConfig, progressQuestionId } from '@/features/practice/lib/chapterPracticeUtils';
 import ChapterPracticeSkeleton, { QuestionCardSkeleton } from './ChapterPracticeSkeleton';
@@ -75,6 +77,9 @@ export default function ChapterPracticeApp({ initialData = null }) {
           <p className="mt-2 text-xs text-neutral-500 font-medium">
             {p.subjectTitle} › {p.chapterTitle} › Practice
           </p>
+          <Suspense fallback={null}>
+            <BackToOgPathChip className="mt-3" />
+          </Suspense>
         </ExamSubpageHeader>
 
         <div className="sticky top-20 z-30 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2.5 bg-neutral-50/95 backdrop-blur-md border-b border-neutral-200/80 mb-5">

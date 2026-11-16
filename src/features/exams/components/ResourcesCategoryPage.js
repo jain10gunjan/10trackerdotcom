@@ -1,15 +1,15 @@
 "use client";
 
-import { useState, useEffect, useCallback, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { createClient } from "@supabase/supabase-js";
-import { useParams, useRouter } from "next/navigation"; // Updated importimport { useParams } from "next/navigation";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { useCredits } from "@/context/CreditsContext";
 import toast from "react-hot-toast";
 import { AnimatePresence, motion } from "framer-motion";
 import Navbar from "@/components/layout/Navbar";
-import BuyNow from "@/features/pricing/components/BuyNow";
 import MetaDataJobs from "@/components/ui/Seo";
-import BuyNowYearWise from "@/features/pricing/components/BuyNowYearWise";
 
 // Initialize Supabase client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -28,68 +28,30 @@ export default function Home() {
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [expandedQuestions, setExpandedQuestions] = useState({});
   const [activeTab, setActiveTab] = useState("all");
-  const [orderChecking, setOrderChecking] = useState(false);
   const [showBuyModal, setShowBuyModal] = useState(false);
   const [selectedPracticeUrl, setSelectedPracticeUrl] = useState(null);
-  const [hasAccess, setHasAccess] = useState(null); // New state to track access
 
   const { category } = useParams();
   const { user, setShowAuthModal } = useAuth();
+  const { loading: creditsLoading, unlimited, credits, setShowPaywall } = useCredits();
   const router = useRouter();
 
-  const fetchOrderStatus = useCallback(
-    async (email) => {
-      if (!email) return false;
+  // Credits / unlimited subscription gate (replaces legacy per-category orders)
+  const hasAccess = Boolean(user) && (unlimited || Number(credits) > 0);
+  const orderChecking = Boolean(user) && creditsLoading;
 
-      try {
-        const { data, error } = await supabase
-          .from("orders")
-          .select("status")
-          .eq("user_email", email)
-          .eq("plan", category)
-          .order("created_at", { ascending: false })
-          .limit(1);
-
-        if (error) throw new Error(error.message || "Failed to fetch order status");
-
-        return data[0]?.status === "completed";
-      } catch (err) {
-        console.error("Order fetch error:", err.message);
-        return false;
-      }
-    },
-    [category]
-  );
-
-  // Check order status on mount
   useEffect(() => {
-    const checkAccess = async () => {
-      if (!user) {
-        setShowAuthModal(true);
-        setHasAccess(false);
-        return;
-      }
-
-      setShowAuthModal(false);
-      setOrderChecking(true);
-      try {
-        const access = await fetchOrderStatus(user.email);
-        setHasAccess(access);
-        if (!access) {
-          toast.error("Access denied. Please purchase a plan.");
-          // setShowBuyModal(true); // Show buy modal instead of redirecting
-        }
-      } catch (err) {
-        toast.error("Failed to verify access");
-        setHasAccess(false);
-        setShowBuyModal(true); // Show buy modal on error
-      } finally {
-        setOrderChecking(false);
-      }
-    };
-
-    checkAccess();
-  }, [user, fetchOrderStatus, category, setShowAuthModal]);
+    if (!user) {
+      setShowAuthModal(true);
+      return;
+    }
+    setShowAuthModal(false);
+    if (creditsLoading) return;
+    if (!hasAccess) {
+      toast.error("You need credits or an unlimited plan to view these resources.");
+      setShowBuyModal(true);
+    }
+  }, [user, creditsLoading, hasAccess, setShowAuthModal]);
 
   // Fetch questions with pagination and filters
   useEffect(() => {
@@ -184,12 +146,6 @@ export default function Home() {
 
   const handleCloseModal = () => {
     setShowBuyModal(false);
-  };
-
-  const handlePurchaseSuccess = () => {
-    setShowBuyModal(false);
-    setHasAccess(true); // Grant access after successful purchase
-    toast.success("Purchase successful!");
   };
 
   const categoryTitle = category
@@ -641,17 +597,27 @@ export default function Home() {
               </div>
               <p className="text-gray-600 mb-6">
                 Get unlimited access to all {categoryTitle} practice questions, detailed
-                solutions, and performance tracking.
+                solutions, and performance tracking with credits or a subscription.
               </p>
-              <Suspense
-                fallback={
-                  <div className="py-8 flex justify-center">
-                    <div className="h-8 w-8 rounded-full border-4 border-t-indigo-600 border-indigo-100 animate-spin"></div>
-                  </div>
-                }
-              >
-                <BuyNowYearWise category={category} onSuccess={handlePurchaseSuccess} redirectUrl={window.location.href} />
-              </Suspense>
+              <div className="flex flex-col gap-3">
+                <Link
+                  href="/pricing"
+                  className="w-full text-center px-6 py-3 rounded-xl bg-neutral-900 text-white font-semibold hover:bg-neutral-800 transition-colors"
+                  onClick={() => setShowBuyModal(false)}
+                >
+                  View plans &amp; subscribe
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowBuyModal(false);
+                    setShowPaywall(true);
+                  }}
+                  className="w-full px-6 py-3 rounded-xl border border-neutral-200 text-neutral-700 font-medium hover:bg-neutral-50 transition-colors"
+                >
+                  How credits work
+                </button>
+              </div>
             </motion.div>
           </motion.div>
         )}

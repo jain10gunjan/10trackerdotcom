@@ -48,7 +48,6 @@ export default function AuthModalWrapper() {
       subtitle={modalContext.subtitle}
       showBenefits={modalContext.showBenefits}
       allowGuestContinue={modalContext.allowGuestContinue}
-      signUpHref={modalContext.signUpHref}
     />
   );
 }

@@ -3,11 +3,14 @@ import React, { useState, useEffect, useCallback } from "react";
 import { MathJax, MathJaxContext } from "better-react-mathjax";
 import { useParams } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
-import { upsertUserProgress } from "@/lib/userProgressUpsert";
 import toast from "react-hot-toast";
 import debounce from "lodash/debounce";
 import { useAuth } from "@/context/AuthContext";
-import { applyProgressUserFilter, getProgressUserId, mergeProgressRows } from "@/lib/progressIdentity";
+import { applyPracticeProgressUpdate } from "@/features/credits/lib/recordPracticeProgress";
+import {
+  flushProgressBufferToApi,
+  registerProgressFlushLifecycle,
+} from "@/lib/progressFlushClient";
 import ProgressBar from "@/features/practice/components/ProgressBar";
 import QuestionCard from "@/features/practice/components/QuestionCard";
 import Navbar from "@/components/layout/Navbar";
@@ -75,24 +78,20 @@ const Pagetracker = () => {
 
   const debouncedFetchUserProgress = useCallback(
     debounce(async () => {
-      if (!user?.id) return;
+      if (!user?.id || !pagetopic) return;
       try {
-        let query = supabase
-          .from("user_progress")
-          .select("completedquestions, correctanswers, points")
-          .eq("topic", pagetopic)
-          .eq("area", "upsc");
-        query = applyProgressUserFilter(query, user);
-
-        const { data, error } = await query;
-
-        if (error && error.code !== "PGRST116") throw error;
-        const rows = Array.isArray(data) ? data : data ? [data] : [];
-        const merged = mergeProgressRows(rows);
+        const res = await fetch(
+          `/api/practice/progress?area=${encodeURIComponent("upsc")}&topics=${encodeURIComponent(pagetopic)}`,
+          { credentials: "include" }
+        );
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || `HTTP ${res.status}`);
+        }
         setProgress({
-          completedquestions: merged.completed,
-          correctanswers: merged.correct,
-          points: merged.points,
+          completedquestions: data.completed ?? [],
+          correctanswers: data.correct ?? [],
+          points: data.points ?? 0,
         });
       } catch (error) {
         console.error("Progress fetch error:", error);
@@ -161,33 +160,26 @@ const Pagetracker = () => {
     fetchData();
   }, [pagetopic]);
 
-  const debouncedUpdateProgress = useCallback(
-    debounce(async (updatedProgress) => {
+  const debouncedFlushProgress = useCallback(
+    debounce(async () => {
       if (!user) return;
-
       try {
-        const { data, error } = await upsertUserProgress(
-          supabase,
-          {
-            user_id: getProgressUserId(user),
-            topic: pagetopic,
-            completedquestions: updatedProgress.completedquestions,
-            correctanswers: updatedProgress.correctanswers,
-            points: updatedProgress.points,
-            area: "upsc",
-          },
-          { select: "*" }
-        );
-
-        if (error) throw error;
-        console.log("Progress updated:", data);
+        const result = await flushProgressBufferToApi(user, { silent: true });
+        if (!result.ok) {
+          toast.error(result.error || "Failed to save progress");
+        }
       } catch (error) {
         console.error("Progress update error:", error);
         toast.error(`Failed to update progress: ${error.message}`);
       }
     }, 500),
-    [user, pagetopic]
+    [user]
   );
+
+  useEffect(() => {
+    if (!user?.id) return undefined;
+    return registerProgressFlushLifecycle(user);
+  }, [user]);
 
   const updateProgress = (questionId, isCorrect) => {
     if (!user) {
@@ -195,23 +187,33 @@ const Pagetracker = () => {
       return;
     }
 
-    const updatedCompleted = [
-      ...new Set([...progress.completedquestions, questionId]),
-    ];
-    const updatedCorrect = isCorrect
-      ? [...new Set([...progress.correctanswers, questionId])]
-      : progress.correctanswers;
-    const points = progress.points + (isCorrect ? 100 : 0);
-
-    const updatedProgress = {
-      completedquestions: updatedCompleted,
-      correctanswers: updatedCorrect,
-      points,
-    };
-
-    setProgress(updatedProgress);
+    applyPracticeProgressUpdate({
+      userId: user.id,
+      questionId,
+      isCorrect,
+      area: "upsc",
+      topic: pagetopic,
+      pointsPerCorrect: 100,
+      setProgress: (updater) => {
+        setProgress((prev) => {
+          const normalized =
+            typeof updater === "function"
+              ? updater({
+                  completed: prev.completedquestions,
+                  correct: prev.correctanswers,
+                  points: prev.points,
+                })
+              : updater;
+          return {
+            completedquestions: normalized.completed ?? prev.completedquestions,
+            correctanswers: normalized.correct ?? prev.correctanswers,
+            points: normalized.points ?? prev.points,
+          };
+        });
+      },
+    });
     toast.success(isCorrect ? "Correct! +100 points" : "Marked as completed");
-    debouncedUpdateProgress(updatedProgress);
+    debouncedFlushProgress();
   };
 
   const reportQuestion = async (questionId, reason) => {

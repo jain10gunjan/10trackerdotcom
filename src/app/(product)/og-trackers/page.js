@@ -6,7 +6,8 @@ import { SHOW_OG_TRACKERS } from '@/lib/siteNav';
 export const metadata = SHOW_OG_TRACKERS
   ? {
       title: 'OG Trackers',
-      description: 'YouTube + LeetCode + CodeStudio learning paths',
+      description:
+        'Structured GATE, DSA, and placement study paths — YouTube lessons, practice, mocks, and coding progress on 10Tracker.',
     }
   : {
       title: 'OG Trackers — Coming soon',
@@ -31,7 +32,7 @@ export default function Page() {
     <>
       <MetaDataJobs
         seoTitle="OG Trackers"
-        seoDescription="Learning paths with YouTube and coding problems"
+        seoDescription="Structured study paths with YouTube, practice, mocks, and coding progress"
       />
       <OgTrackersCatalogPage />
     </>

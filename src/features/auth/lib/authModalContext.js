@@ -52,15 +52,12 @@ export function getAuthModalContext(pathname, search = '') {
     subtitle = 'Practice MCQs, mock tests, and daily sets with progress saved.';
   }
 
-  const signUpHref = `/sign-up?redirect=${encodeURIComponent(returnPath)}`;
-
   return {
     title,
     subtitle,
     showBenefits,
     allowGuestContinue,
     returnPath,
-    signUpHref,
   };
 }
 
@@ -72,6 +69,5 @@ export function getPurchaseAuthModalContext(returnPath) {
     showBenefits: false,
     allowGuestContinue: false,
     returnPath: returnPath || '/',
-    signUpHref: `/sign-up?redirect=${encodeURIComponent(returnPath || '/')}`,
   };
 }

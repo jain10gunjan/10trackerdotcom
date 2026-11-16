@@ -71,6 +71,18 @@ const CATALOG = [
     sort_order: 60,
   },
   {
+    slug: 'cat',
+    name: 'CAT',
+    description: 'Common Admission Test',
+    category: 'Management',
+    image_url:
+      'https://upload.wikimedia.org/wikipedia/commons/thumb/5/55/Emblem_of_India.svg/240px-Emblem_of_India.svg.png',
+    icon: '🎓',
+    color_gradient: 'from-violet-600 to-indigo-700',
+    sort_order: 58,
+    defaultActive: true,
+  },
+  {
     slug: 'bitsat',
     name: 'BITSAT',
     description: 'Birla Institute of Technology and Science, Pilani',
@@ -121,10 +133,12 @@ async function main() {
   const rows = CATALOG.map((exam) => {
     const slug = exam.slug.toLowerCase();
     const already = activeBySlug.has(slug);
+    const { defaultActive, ...examFields } = exam;
     return {
-      ...exam,
+      ...examFields,
       slug,
-      is_active: already ? activeBySlug.get(slug) : false,
+      // Preserve admin toggles for existing rows; allow defaultActive for new inserts (e.g. CAT).
+      is_active: already ? activeBySlug.get(slug) : Boolean(defaultActive),
       updated_at: new Date().toISOString(),
     };
   });

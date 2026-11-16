@@ -127,7 +127,13 @@ export default function RootLayout({ children }) {
         <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
         <link rel="manifest" href="/site.webmanifest" />
       </head>
-      <body>
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        style={{
+          fontFamily:
+            'var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif',
+        }}
+      >
         <Providers>
           {children}
           <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />

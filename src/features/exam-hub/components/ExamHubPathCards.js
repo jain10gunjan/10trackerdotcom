@@ -11,8 +11,13 @@ const ICONS = {
   'topic-tests': Grid3X3,
 };
 
-export default function ExamHubPathCards({ categorySlug, mockTestCount, dailyPracticeCount }) {
-  const cards = buildPathCards(categorySlug, { mockTestCount, dailyPracticeCount });
+export default function ExamHubPathCards({
+  categorySlug,
+  mockTestCount,
+  topicMockCount = 0,
+  dailyPracticeCount,
+}) {
+  const cards = buildPathCards(categorySlug, { mockTestCount, topicMockCount, dailyPracticeCount });
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">

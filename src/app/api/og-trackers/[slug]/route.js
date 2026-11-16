@@ -6,13 +6,20 @@ import {
   OG_TRACKERS_SETUP_HINT,
 } from '@/features/og-trackers/lib/ogTrackerService';
 
-export async function GET(_request, { params }) {
+/**
+ * Fast by default. Pass ?sync=1 only when the user explicitly refreshes /
+ * wants practice+mock mirrored into og_progress.
+ */
+export async function GET(request, { params }) {
   try {
     const { slug } = await params;
     const session = await requireSessionEmail();
     const email = session.error ? null : session.email;
 
-    const result = await getPathBySlug(slug, email);
+    const { searchParams } = new URL(request.url);
+    const syncPlatform = searchParams.get('sync') === '1';
+
+    const result = await getPathBySlug(slug, email, { syncPlatform });
     if (result.setupRequired) {
       return NextResponse.json({
         success: false,

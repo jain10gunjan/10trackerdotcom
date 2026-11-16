@@ -35,6 +35,7 @@ import LeaderboardPanel from '@/features/mock-test/components/LeaderboardPanel';
 import TestLeaderboardInline from '@/features/mock-test/components/TestLeaderboardInline';
 import { useMockTestProfile } from '@/features/mock-test/components/useMockTestProfile';
 import { isMotdTest } from '@/features/mock-test/lib/mockOfTheDay';
+import { isTopicWiseTest } from '@/features/mock-test/lib/topicWiseTest';
 import { parseJsonResponse } from '@/lib/toastAsync';
 
 // Supabase configuration with connection pooling
@@ -95,16 +96,6 @@ function FullPageLoader() {
   );
 }
 
-const isTopicWiseTest = (test) => {
-  if (isMotdTest(test)) return false;
-  const desc = String(test?.description || '').trim().toLowerCase();
-  if (desc.startsWith('topic-wise test')) return true;
-  const mode = String(test?.creation_mode || '').trim().toLowerCase();
-  if (mode === 'topic_auto' || mode === 'topic_wise') return true;
-  const name = String(test?.name || '').trim().toLowerCase();
-  if (name.includes('topic test')) return true;
-  return false;
-};
 
 const MOCK_TEST_TABS = [
   { id: 'tests', label: 'Tests', icon: BookOpen, requiresAuth: false },

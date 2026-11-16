@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { MathJax, MathJaxContext } from "better-react-mathjax";
 import toast from "react-hot-toast";
 // import { topicData } from "./assets/aptitudetopicslist";
@@ -7,9 +7,18 @@ import SyntaxHighlighter from "react-syntax-highlighter";
 import { docco } from "react-syntax-highlighter/dist/esm/styles/hljs";
 import { useParams } from "next/navigation";
 import Head from "next/head";
+import { useAuth } from "@/context/AuthContext";
+import { applyPracticeProgressUpdate } from "@/features/credits/lib/recordPracticeProgress";
+import {
+  flushProgressBufferToApi,
+  registerProgressFlushLifecycle,
+} from "@/lib/progressFlushClient";
+
+const APTITUDE_AREA = "general-aptitude";
 
 const Pagetracker = () => {
   const { pagetopic } = useParams();
+  const { user, setShowAuthModal } = useAuth();
   const [data, setData] = useState([null]);
 
   const [data1, setData1] = useState([]);
@@ -24,6 +33,88 @@ const Pagetracker = () => {
   //   const topicInfo = topicData[pagetopic];
   const chapterName = topicInfo.name;
   // const storageKey = topicInfo.storageKey;
+
+  const topicKey = String(pagetopic || "");
+
+  const syncTopicProgressFromApi = useCallback(async () => {
+    if (!user?.id || !topicKey) return;
+    try {
+      const res = await fetch(
+        `/api/practice/progress?area=${encodeURIComponent(APTITUDE_AREA)}&topics=${encodeURIComponent(topicKey)}`,
+        { credentials: "include" }
+      );
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok || !payload.success) return;
+      setUserData((prev) => ({
+        ...prev,
+        [topicKey]: {
+          points: payload.points ?? 0,
+          completedQuestions: payload.completed ?? [],
+          correctlyAnsweredQuestionIds: payload.correct ?? [],
+          previouslyCorrectlyAnsweredQuestionIds: payload.correct ?? [],
+          totalquestion: Array.isArray(data) ? data.length : 0,
+        },
+      }));
+    } catch {
+      /* ignore load errors; UI still usable */
+    }
+  }, [user?.id, topicKey, data]);
+
+  useEffect(() => {
+    syncTopicProgressFromApi();
+  }, [syncTopicProgressFromApi]);
+
+  useEffect(() => {
+    if (!user?.id) return undefined;
+    return registerProgressFlushLifecycle(user);
+  }, [user]);
+
+  const recordAttempt = useCallback(
+    (questionId, isCorrect) => {
+      if (!user?.id) {
+        setShowAuthModal?.(true);
+        toast.error("Sign in to save progress");
+        return;
+      }
+      applyPracticeProgressUpdate({
+        userId: user.id,
+        questionId,
+        isCorrect,
+        area: APTITUDE_AREA,
+        topic: topicKey,
+        pointsPerCorrect: 100,
+        setProgress: (updater) => {
+          setUserData((prev) => {
+            const current = prev[topicKey] || {
+              points: 0,
+              completedQuestions: [],
+              correctlyAnsweredQuestionIds: [],
+            };
+            const normalized =
+              typeof updater === "function"
+                ? updater({
+                    completed: current.completedQuestions || [],
+                    correct: current.correctlyAnsweredQuestionIds || [],
+                    points: current.points || 0,
+                  })
+                : updater;
+            return {
+              ...prev,
+              [topicKey]: {
+                points: normalized.points ?? 0,
+                completedQuestions: normalized.completed ?? [],
+                correctlyAnsweredQuestionIds: normalized.correct ?? [],
+                previouslyCorrectlyAnsweredQuestionIds: normalized.correct ?? [],
+                totalquestion: Array.isArray(data) ? data.length : 0,
+              },
+            };
+          });
+        },
+      });
+      flushProgressBufferToApi(user, { silent: true });
+    },
+    [user, setShowAuthModal, topicKey, data]
+  );
 
   useEffect(() => {
     if (!pagetopic) {
@@ -74,90 +165,24 @@ const Pagetracker = () => {
 
   const handleOptionClick = (option, id) => {
     const filteredData = data.filter((item) => item._id === id);
+    const alreadyDone = userData[filteredData[0]?.topic]?.completedQuestions?.includes(id);
 
     if (option === filteredData[0]?.correct_option) {
       toast.success("Correct option");
-
-      if (!userData[filteredData[0]?.topic]?.completedQuestions.includes(id)) {
-        const topicData = userData[filteredData[0]?.topic] || {}; // Get topic data or default to an empty object
-        const newCompletedQuestions = [
-          ...(topicData.completedQuestions || []),
-          id,
-        ];
-        const newCorrectlyAnsweredQuestionIds = [
-          ...(topicData.correctlyAnsweredQuestionIds || []),
-          filteredData[0]?._id,
-        ];
-        const newPreviouslyCorrectlyAnsweredQuestionIds = [
-          ...(topicData.previouslyCorrectlyAnsweredQuestionIds || []),
-          filteredData[0]?._id,
-        ];
-        const newPoints = (topicData.points || 0) + 100;
-
-        const updatedUserData = {
-          ...userData,
-          [filteredData[0]?.topic]: {
-            points: newPoints,
-            completedQuestions: newCompletedQuestions,
-            correctlyAnsweredQuestionIds: newCorrectlyAnsweredQuestionIds,
-            previouslyCorrectlyAnsweredQuestionIds:
-              newPreviouslyCorrectlyAnsweredQuestionIds,
-            totalquestion: data.length,
-          },
-        };
-
-        localStorage.setItem("userData", JSON.stringify(updatedUserData));
-        setUserData(updatedUserData);
-      }
+      if (!alreadyDone) recordAttempt(id, true);
     } else {
       toast.error("Wrong option");
+      if (!alreadyDone) recordAttempt(id, false);
     }
   };
 
   const handleProgressFunction = (id) => {
     const filteredData = data.filter((item) => item._id === id);
-
     toast.success("Mark Completed...");
-
-    if (!userData[filteredData[0]?.topic]?.completedQuestions.includes(id)) {
-      const topicData = userData[filteredData[0]?.topic] || {}; // Get topic data or default to an empty object
-      const newCompletedQuestions = [
-        ...(topicData.completedQuestions || []),
-        id,
-      ];
-      const newCorrectlyAnsweredQuestionIds = [
-        ...(topicData.correctlyAnsweredQuestionIds || []),
-        filteredData[0]?._id,
-      ];
-      const newPreviouslyCorrectlyAnsweredQuestionIds = [
-        ...(topicData.previouslyCorrectlyAnsweredQuestionIds || []),
-        filteredData[0]?._id,
-      ];
-      const newPoints = (topicData.points || 0) + 100;
-
-      const updatedUserData = {
-        ...userData,
-        [filteredData[0]?.topic]: {
-          points: newPoints,
-          completedQuestions: newCompletedQuestions,
-          correctlyAnsweredQuestionIds: newCorrectlyAnsweredQuestionIds,
-          previouslyCorrectlyAnsweredQuestionIds:
-            newPreviouslyCorrectlyAnsweredQuestionIds,
-          totalquestion: data.length,
-        },
-      };
-
-      localStorage.setItem("userData", JSON.stringify(updatedUserData));
-      setUserData(updatedUserData);
+    if (!userData[filteredData[0]?.topic]?.completedQuestions?.includes(id)) {
+      recordAttempt(id, true);
     }
   };
-
-  useEffect(() => {
-    const storedUserData = localStorage.getItem("userData");
-    if (storedUserData) {
-      setUserData(JSON.parse(storedUserData));
-    }
-  }, []);
 
   useEffect(() => {
     window.MathJax = {

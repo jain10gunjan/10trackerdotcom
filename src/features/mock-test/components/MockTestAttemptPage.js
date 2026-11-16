@@ -25,6 +25,7 @@ import {
 import toast from "react-hot-toast";
 import { toastPromise } from "@/lib/toastAsync";
 import MockTestSubpageHeader from '@/features/mock-test-hub/components/MockTestSubpageHeader';
+import BackToOgPathChip from '@/features/og-trackers/components/BackToOgPathChip';
 import {
   categoryMatches,
   isAnswerCorrect,
@@ -1867,6 +1868,9 @@ export default function EnhancedMobileMockTestPage() {
             <div className="sticky top-20 z-30 rounded-2xl border border-neutral-200/90 bg-white/95 shadow-sm backdrop-blur overflow-hidden">
               <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(16,185,129,0.06),transparent_50%)] pointer-events-none" />
               <div className="relative p-3 md:p-4 space-y-2.5">
+              <Suspense fallback={null}>
+                <BackToOgPathChip />
+              </Suspense>
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2.5 min-w-0 flex-1">
                   <span className="hidden sm:inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-emerald-100 bg-emerald-50 text-[11px] font-bold tabular-nums text-emerald-800">

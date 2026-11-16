@@ -1,5 +1,6 @@
 import { getSupabaseServer } from '@/lib/supabaseServer';
 import { fetchActiveMockTests } from '@/features/mock-test/lib/mockTestUtils';
+import { isTopicWiseTest } from '@/features/mock-test/lib/topicWiseTest';
 import { fetchExamHubMeta } from '@/features/exam-hub/lib/fetchExamHubMeta';
 import { fetchExamSubjects } from '@/features/exam-hub/lib/fetchExamSubjects';
 import { categorySlugToDbKey } from '@/features/exam-hub/lib/categoryKey';
@@ -34,10 +35,14 @@ export async function fetchHubPageData(categorySlug) {
     fetchDailyPracticeCount(categorySlug),
   ]);
 
+  const mocks = mockResult?.data || [];
+  const topicMockCount = mocks.filter(isTopicWiseTest).length;
+
   return {
     exam,
     subjects,
-    mockTestCount: mockResult?.data?.length || 0,
+    mockTestCount: mocks.length,
+    topicMockCount,
     dailyPracticeCount,
   };
 }

@@ -119,8 +119,12 @@ export function filterSubjects(subjects, searchTerm = '') {
   );
 }
 
-export function buildPathCards(categorySlug, { mockTestCount = 0, dailyPracticeCount = 0 } = {}) {
+export function buildPathCards(
+  categorySlug,
+  { mockTestCount = 0, topicMockCount = 0, dailyPracticeCount = 0 } = {}
+) {
   const base = `/${categorySlug}`;
+  const fullMockCount = Math.max(0, mockTestCount - topicMockCount);
   return [
     {
       id: 'practice',
@@ -136,7 +140,7 @@ export function buildPathCards(categorySlug, { mockTestCount = 0, dailyPracticeC
       href: `/mock-test/${categorySlug}`,
       title: 'Full mock tests',
       description: 'Full-length mocks with scores and leaderboard.',
-      badge: mockTestCount > 0 ? `${mockTestCount} live` : 'Coming soon',
+      badge: fullMockCount > 0 ? `${fullMockCount} live` : mockTestCount > 0 ? `${mockTestCount} live` : 'Coming soon',
       live: mockTestCount > 0,
     },
     {
@@ -149,11 +153,11 @@ export function buildPathCards(categorySlug, { mockTestCount = 0, dailyPracticeC
     },
     {
       id: 'topic-tests',
-      href: `${base}`,
+      href: `/mock-test/${categorySlug}?type=topic`,
       title: 'Topic-wise tests',
-      description: 'Timed mini-tests for weak areas — launching soon.',
-      badge: 'Coming soon',
-      live: false,
+      description: 'Timed mini-tests for weak areas.',
+      badge: topicMockCount > 0 ? `${topicMockCount} live` : 'Browse',
+      live: true,
     },
   ];
 }

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import WalletBar from '@/features/credits/components/WalletBar';
+import GoogleAuthButton from '@/features/auth/components/GoogleAuthButton';
 import {
   MOBILE_TAB_NAV,
   MORE_NAV,
@@ -33,10 +34,21 @@ function getUserInitial(user) {
 
 const MobileBottomMenu = () => {
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const pathname = usePathname();
-  const { user, signOut, isAdmin } = useAuth();
+  const { user, signOut, isAdmin, signInWithGoogle } = useAuth();
 
   const moreActive = isMoreNavActive(pathname);
+
+  const handleGoogleSignIn = async () => {
+    setGoogleLoading(true);
+    try {
+      await signInWithGoogle({ redirectUrl: pathname || '/' });
+    } catch (err) {
+      console.error('Google sign-in failed:', err);
+      setGoogleLoading(false);
+    }
+  };
 
   useEffect(() => {
     setSheetOpen(false);
@@ -53,13 +65,13 @@ const MobileBottomMenu = () => {
 
   const tabClass = (active) =>
     `flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-1 py-2 touch-manipulation transition-colors ${
-      active ? 'text-emerald-700' : 'text-neutral-500 hover:text-neutral-800'
+      active ? 'text-[#3F5EB9]' : 'text-neutral-500 hover:text-neutral-800'
     }`;
 
   const sheetLinkClass = (active) =>
     `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors touch-manipulation ${
       active
-        ? 'bg-emerald-50 text-emerald-900'
+        ? 'bg-[#E8EDF8] text-[#1e2f6b]'
         : 'text-neutral-700 hover:bg-neutral-50 hover:text-neutral-900'
     }`;
 
@@ -94,7 +106,7 @@ const MobileBottomMenu = () => {
                 </span>
                 <span
                   className={`h-0.5 w-5 rounded-full transition-colors ${
-                    active ? 'bg-emerald-600' : 'bg-transparent'
+                    active ? 'bg-[#3F5EB9]' : 'bg-transparent'
                   }`}
                 />
               </Link>
@@ -112,7 +124,7 @@ const MobileBottomMenu = () => {
             <span className="w-full truncate text-center text-[10px] font-medium leading-tight">More</span>
             <span
               className={`h-0.5 w-5 rounded-full transition-colors ${
-                moreActive || sheetOpen ? 'bg-emerald-600' : 'bg-transparent'
+                moreActive || sheetOpen ? 'bg-[#3F5EB9]' : 'bg-transparent'
               }`}
             />
           </button>
@@ -263,21 +275,15 @@ const MobileBottomMenu = () => {
                     </button>
                   </div>
                 ) : (
-                  <div className="mb-4 grid grid-cols-2 gap-2 border-t border-neutral-100 pt-3">
-                    <Link
-                      href="/sign-in"
-                      onClick={() => setSheetOpen(false)}
-                      className="rounded-xl border border-neutral-200 px-3 py-2.5 text-center text-sm font-semibold text-neutral-800 hover:bg-neutral-50 touch-manipulation"
-                    >
-                      Sign in
-                    </Link>
-                    <Link
-                      href="/sign-up"
-                      onClick={() => setSheetOpen(false)}
-                      className="rounded-xl bg-neutral-900 px-3 py-2.5 text-center text-sm font-semibold text-white hover:bg-neutral-800 touch-manipulation"
-                    >
-                      Sign up
-                    </Link>
+                  <div className="mb-4 border-t border-neutral-100 pt-3">
+                    <GoogleAuthButton
+                      size="hero"
+                      label="Sign in with Google"
+                      loadingLabel="Signing in…"
+                      loading={googleLoading}
+                      onClick={handleGoogleSignIn}
+                      className="w-full justify-center"
+                    />
                   </div>
                 )}
 
@@ -290,7 +296,7 @@ const MobileBottomMenu = () => {
                       key={item.path}
                       href={item.path}
                       onClick={() => setSheetOpen(false)}
-                      className="rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-xs font-medium text-neutral-600 transition-colors hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-900 touch-manipulation"
+                      className="rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-xs font-medium text-neutral-600 transition-colors hover:border-[#3F5EB9]/40 hover:bg-[#E8EDF8] hover:text-[#1e2f6b] touch-manipulation"
                     >
                       {item.name.replace(' Policy', '').replace(' of Service', '')}
                     </Link>

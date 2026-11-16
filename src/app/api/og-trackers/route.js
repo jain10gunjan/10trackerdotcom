@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
 import { requireSessionEmail } from '@/features/credits/lib/requireSession';
 import {
-  listActivePaths,
+  listExamHub,
+  listPublicPaths,
+} from '@/features/og-trackers/lib/examHierarchy';
+import {
   getDashboardStats,
   OG_TRACKERS_SETUP_HINT,
 } from '@/features/og-trackers/lib/ogTrackerService';
@@ -11,8 +14,9 @@ export async function GET() {
     const session = await requireSessionEmail();
     const email = session.error ? null : session.email;
 
-    const [catalog, stats] = await Promise.all([
-      listActivePaths(email),
+    const [hub, catalog, stats] = await Promise.all([
+      listExamHub(email),
+      listPublicPaths(email),
       email
         ? getDashboardStats(email)
         : Promise.resolve({
@@ -20,16 +24,20 @@ export async function GET() {
             leetcodeSolved: 0,
             codestudioSolved: 0,
             hackerrankSolved: 0,
+            practiceCompleted: 0,
+            mocksCompleted: 0,
             isPremium: false,
           }),
     ]);
 
-    if (catalog.setupRequired) {
+    if (hub.setupRequired || catalog.setupRequired) {
       return NextResponse.json({
         success: true,
+        exams: [],
         paths: [],
         stats,
-        isPremium: catalog.isPremium,
+        isPremium: hub.isPremium ?? catalog.isPremium,
+        hierarchyReady: false,
         setupRequired: true,
         setupHint: OG_TRACKERS_SETUP_HINT,
       });
@@ -37,9 +45,11 @@ export async function GET() {
 
     return NextResponse.json({
       success: true,
-      paths: catalog.paths,
+      exams: hub.exams || [],
+      paths: catalog.paths || [],
       stats,
-      isPremium: catalog.isPremium,
+      isPremium: hub.isPremium,
+      hierarchyReady: Boolean(hub.hierarchyReady),
       setupRequired: false,
     });
   } catch (err) {

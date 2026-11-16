@@ -80,20 +80,18 @@ export default function DashboardSubjectPractice({
     );
   }
 
-  const exams = (practice || []).filter((e) => e.topics?.length > 0);
   const primaryArea = primaryExam?.slug;
-  const sortedExams = primaryArea
-    ? [
-        ...exams.filter((e) => practiceAreaMatchesSlug(e.area, primaryArea)),
-        ...exams.filter((e) => !practiceAreaMatchesSlug(e.area, primaryArea)),
-      ]
+  const exams = (practice || []).filter((e) => e.topics?.length > 0);
+  // Home / embedded: only the selected exam — never mix other exams in.
+  const scopedExams = primaryArea
+    ? exams.filter((e) => practiceAreaMatchesSlug(e.area, primaryArea))
     : exams;
 
-  const displayExam = sortedExams[0];
+  const displayExam = scopedExams[0];
   const topics = displayExam
     ? [...(displayExam.topics || [])]
         .sort((a, b) => b.completedQuestions - a.completedQuestions)
-        .slice(0, 5)
+        .slice(0, 8)
     : [];
 
   if (!displayExam || !topics.length) {
@@ -164,18 +162,6 @@ export default function DashboardSubjectPractice({
         ))}
       </ul>
 
-      {sortedExams.length > 1 ? (
-        <div className="px-5 py-3 border-t border-neutral-100 bg-neutral-50/50">
-          <p className="text-xs text-neutral-500">
-            Also practicing{' '}
-            {sortedExams
-              .slice(1, 3)
-              .map((e) => formatExamSlug(e.area))
-              .join(', ')}
-            {sortedExams.length > 3 ? ` +${sortedExams.length - 3} more` : ''}
-          </p>
-        </div>
-      ) : null}
     </section>
   );
 }

@@ -20,8 +20,6 @@ import {
   Lightbulb,
   Trophy,
 } from "lucide-react";
-import toast from "react-hot-toast";
-
 /* ─── tiny helpers ─── */
 function SectionCard({ icon, title, children }) {
   return (
@@ -199,16 +197,13 @@ export default function ExamPage() {
                 </Link>
               )}
               {exam.practiceLinks?.mockTests && (
-                <div
-                  // href={exam.practiceLinks.mockTests}
-                  onClick={()=>{
-                    toast.success("Coming soon");
-                  }}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-neutral-300 bg-gray-500 text-white text-sm font-medium hover:bg-neutral-600 hover:cursor-pointer transition-colors"
+                <Link
+                  href={exam.practiceLinks.mockTests}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-neutral-300 bg-white text-neutral-800 text-sm font-medium hover:bg-neutral-50 transition-colors"
                 >
                   <FileText className="w-4 h-4" />
-                  Mock tests  
-                </div>
+                  Mock tests
+                </Link>
               )}
               {exam.practiceLinks?.dpp && (
                 <Link
@@ -220,16 +215,13 @@ export default function ExamPage() {
                 </Link>
               )}
               {exam.practiceLinks?.topicWiseTests && (
-                <div
-                onClick={()=>{
-                  toast.success("Coming soon");
-                }}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-neutral-300 bg-gray-500 text-white text-sm font-medium hover:bg-neutral-600 hover:cursor-pointer transition-colors"
-              
+                <Link
+                  href={exam.practiceLinks.topicWiseTests}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-neutral-300 bg-white text-neutral-800 text-sm font-medium hover:bg-neutral-50 transition-colors"
                 >
                   <ArrowRight className="w-4 h-4" />
                   Topic tests
-                </div>
+                </Link>
               )}
             </div>
           </section>

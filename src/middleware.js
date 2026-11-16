@@ -68,6 +68,32 @@ const withAuth = auth((req) => {
     return NextResponse.redirect(url, 308);
   }
 
+  // Legacy parallel practice loop → exam catalog / category hubs
+  if (pathname === "/practice-unlimited" || pathname.startsWith("/practice-unlimited/")) {
+    const url = req.nextUrl.clone();
+    const parts = pathname.split("/").filter(Boolean);
+    if (parts.length >= 3) {
+      url.pathname = `/${parts[1]}/practice/${encodeURIComponent(parts[2])}`;
+    } else if (parts.length === 2) {
+      url.pathname = `/${parts[1]}`;
+    } else {
+      url.pathname = "/exams";
+    }
+    return NextResponse.redirect(url, 308);
+  }
+
+  if (pathname === "/aptitude" || pathname === "/aptitude/") {
+    const url = req.nextUrl.clone();
+    url.pathname = "/general-aptitude";
+    return NextResponse.redirect(url, 308);
+  }
+
+  if (pathname === "/upsc/prelims" || pathname === "/upsc/prelims/") {
+    const url = req.nextUrl.clone();
+    url.pathname = "/upsc-prelims";
+    return NextResponse.redirect(url, 308);
+  }
+
   if (pathname === "/admin/roadmaps" || pathname.startsWith("/admin/roadmaps/")) {
     const url = req.nextUrl.clone();
     url.pathname = "/admin/og-trackers";

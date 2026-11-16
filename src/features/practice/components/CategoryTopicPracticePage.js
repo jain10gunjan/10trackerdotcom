@@ -11,13 +11,11 @@ import { useCredits } from "@/context/CreditsContext";
 import { normalizeQuestionId } from "@/features/credits/lib/practiceCreditUtils";
 import { showPracticeAnswerToast } from "@/features/credits/lib/practiceAnswerToast";
 import { applyPracticeProgressUpdate } from "@/features/credits/lib/recordPracticeProgress";
-import { upsertUserProgress } from "@/lib/userProgressUpsert";
-import { applyProgressUserFilter, mergeProgressRows } from "@/lib/progressIdentity";
+import { readProgressBuffer } from "@/lib/progressBuffer";
 import {
-  readProgressBuffer,
-  writeProgressBuffer,
-  saveProgressBufferToSupabase,
-} from "@/lib/progressBuffer";
+  flushProgressBufferToApi,
+  registerProgressFlushLifecycle,
+} from "@/lib/progressFlushClient";
 import toast from "react-hot-toast";
 import { Clock } from "lucide-react";
 import {
@@ -314,7 +312,7 @@ const Pagetracker = memo(() => {
     }
   }, [category, pagetopic, getCached, setCached]);
 
-  // Fetch user progress
+  // Fetch user progress via authenticated API (not browser Supabase)
   const fetchUserProgress = useCallback(async () => {
     if (!user?.id || !pagetopic || !category) {
       setProgress({ completed: [], correct: [], points: 0 });
@@ -322,45 +320,24 @@ const Pagetracker = memo(() => {
     }
 
     try {
-      let query = supabase
-        .from("user_progress")
-        .select("completedquestions, correctanswers, points")
-        .eq("topic", pagetopic)
-        .eq("area", category);
-      query = applyProgressUserFilter(query, user);
-
-      const { data, error } = await query;
-
-      if (error && error.code !== "PGRST116") {
-        throw error;
+      const area = String(category).trim().toLowerCase();
+      const res = await fetch(
+        `/api/practice/progress?area=${encodeURIComponent(area)}&topics=${encodeURIComponent(pagetopic)}`,
+        { credentials: "include" }
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || `HTTP ${res.status}`);
       }
-
-      const rows = Array.isArray(data) ? data : data ? [data] : [];
-      const merged = mergeProgressRows(rows);
-      setProgress(merged);
+      setProgress({
+        completed: data.completed ?? [],
+        correct: data.correct ?? [],
+        points: data.points ?? 0,
+      });
     } catch (error) {
       handleError(error, "Failed to load progress", "Error fetching user progress:");
       setProgress({ completed: [], correct: [], points: 0 });
     }
-  }, [user, pagetopic, category]);
-
-  // Helper: Fetch existing progress from database
-  const fetchExistingProgress = useCallback(async () => {
-    let query = supabase
-      .from("user_progress")
-      .select("completedquestions, correctanswers, points")
-      .eq("topic", pagetopic)
-      .eq("area", category);
-    query = applyProgressUserFilter(query, user);
-
-    const { data, error } = await query;
-
-    if (error && error.code !== "PGRST116") {
-      throw error;
-    }
-
-    const rows = Array.isArray(data) ? data : data ? [data] : [];
-    return mergeProgressRows(rows);
   }, [user, pagetopic, category]);
 
   const refreshUnsavedCount = useCallback(() => {
@@ -425,10 +402,13 @@ const Pagetracker = memo(() => {
 
     setIsManualSaving(true);
     try {
-      await saveProgressBufferToSupabase({ supabase, upsertUserProgress, user });
+      const result = await flushProgressBufferToApi(user, { silent: false });
+      if (!result.ok) {
+        throw new Error(result.error || "Save failed");
+      }
       toast.success("Progress saved!", { duration: 2000 });
       setUnsavedCount(0);
-      fetchUserProgress();
+      await fetchUserProgress();
     } catch (e) {
       handleError(e, "Failed to save progress.", "Error saving buffered progress:");
       refreshUnsavedCount();
@@ -613,6 +593,11 @@ const Pagetracker = memo(() => {
 
   // initialize unsaved count from shared local buffer
   useEffect(() => { refreshUnsavedCount(); }, [refreshUnsavedCount]);
+
+  useEffect(() => {
+    if (!user?.id) return undefined;
+    return registerProgressFlushLifecycle(user);
+  }, [user]);
 
   // unsaved changes warning: tab close/refresh + internal navigation
   useEffect(() => {

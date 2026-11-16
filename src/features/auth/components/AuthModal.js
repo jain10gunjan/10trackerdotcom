@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { X } from 'lucide-react';
 import { useEffect, useCallback, useState } from 'react';
 import AuthBrandMark from '@/features/auth/components/AuthBrandMark';
@@ -13,7 +12,6 @@ const DEFAULT_CONTEXT = {
   subtitle: 'Save your progress and pick up where you left off.',
   showBenefits: true,
   allowGuestContinue: false,
-  signUpHref: '/sign-up',
 };
 
 export default function AuthModal({
@@ -24,7 +22,6 @@ export default function AuthModal({
   subtitle,
   showBenefits,
   allowGuestContinue,
-  signUpHref,
 }) {
   const [isLoading, setIsLoading] = useState(false);
 
@@ -33,7 +30,6 @@ export default function AuthModal({
     subtitle: subtitle ?? DEFAULT_CONTEXT.subtitle,
     showBenefits: showBenefits ?? DEFAULT_CONTEXT.showBenefits,
     allowGuestContinue: allowGuestContinue ?? DEFAULT_CONTEXT.allowGuestContinue,
-    signUpHref: signUpHref ?? DEFAULT_CONTEXT.signUpHref,
   };
 
   useEffect(() => {
@@ -51,14 +47,6 @@ export default function AuthModal({
         e.preventDefault();
         e.stopPropagation();
       }
-      closeModal();
-    },
-    [closeModal]
-  );
-
-  const handleSignUpClick = useCallback(
-    (e) => {
-      e.stopPropagation();
       closeModal();
     },
     [closeModal]
@@ -146,18 +134,11 @@ export default function AuthModal({
             onClick={handleGoogleSignIn}
             loading={isLoading}
             loadingLabel="Signing in…"
-            label="Continue with Google"
+            label="Sign in with Google"
           />
 
-          <p className="mt-4 text-center text-sm text-neutral-600">
-            New here?{' '}
-            <Link
-              href={ctx.signUpHref}
-              onClick={handleSignUpClick}
-              className="font-semibold text-emerald-700 hover:text-emerald-800"
-            >
-              Create an account
-            </Link>
+          <p className="mt-4 text-center text-xs text-neutral-500">
+            One tap with Google — no separate sign-up form
           </p>
 
           {ctx.allowGuestContinue ? (
