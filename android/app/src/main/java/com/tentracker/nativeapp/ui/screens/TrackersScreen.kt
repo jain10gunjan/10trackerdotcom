@@ -29,12 +29,16 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tentracker.nativeapp.data.OgExam
@@ -50,8 +54,15 @@ import com.tentracker.nativeapp.ui.theme.Muted
 import com.tentracker.nativeapp.ui.viewmodel.HomeViewModel
 
 private val Neutral50 = Color(0xFFFAFAFA)
+private val Neutral100 = Color(0xFFF5F5F5)
+private val Neutral400 = Color(0xFFA3A3A3)
+private val Neutral500 = Color(0xFF737373)
+private val Neutral600 = Color(0xFF525252)
+private val Neutral800 = Color(0xFF262626)
 private val Neutral900 = Color(0xFF171717)
 private val Neutral950 = Color(0xFF0A0A0A)
+private val BrandBright = Color(0xFF4B6BC7)
+private val CardBorder = Color(0xE6E5E5E5)
 
 @Composable
 fun TrackersScreen(
@@ -64,19 +75,31 @@ fun TrackersScreen(
     val paths = catalog?.paths.orEmpty()
     val stats = catalog?.stats
 
+    val totalSteps = remember(exams, paths) {
+        exams.sumOf { it.totalSteps }.takeIf { it > 0 }
+            ?: paths.sumOf { it.totalResources }.takeIf { it > 0 }
+            ?: 0
+    }
+    val liveChapters = remember(exams) { exams.sumOf { it.liveChapterCount } }
+    val userCompleted = remember(stats) {
+        (stats?.videosCompleted ?: 0) +
+            (stats?.practiceCompleted ?: 0) +
+            (stats?.mocksCompleted ?: 0)
+    }
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
             .background(Neutral50),
-        contentPadding = PaddingValues(bottom = 32.dp),
+        contentPadding = PaddingValues(bottom = 64.dp),
     ) {
         item {
             TrackersHero(
+                loading = state.loading && catalog == null,
                 examCount = exams.size,
-                pathCount = paths.size,
-                userClears = (stats?.videosCompleted ?: 0) +
-                    (stats?.practiceCompleted ?: 0) +
-                    (stats?.mocksCompleted ?: 0),
+                liveChapters = liveChapters,
+                totalSteps = totalSteps,
+                userClears = userCompleted,
                 isPremium = catalog?.isPremium == true,
             )
         }
@@ -87,21 +110,22 @@ fun TrackersScreen(
                     hint,
                     modifier = Modifier
                         .padding(horizontal = 16.dp)
-                        .padding(bottom = 12.dp)
+                        .padding(bottom = 20.dp)
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(12.dp))
                         .background(Color(0xFFFFFBEB))
                         .border(1.dp, Color(0xFFFDE68A), RoundedCornerShape(12.dp))
-                        .padding(12.dp),
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
                     style = MaterialTheme.typography.bodySmall,
                     color = Color(0xFF92400E),
+                    lineHeight = 20.sp,
                 )
             }
         }
 
         when {
             state.loading && catalog == null -> {
-                item { LoadingState(message = "Loading trackers…") }
+                item { LoadingState(message = "Loading exams…") }
             }
             state.error != null && exams.isEmpty() && paths.isEmpty() -> {
                 item {
@@ -114,7 +138,7 @@ fun TrackersScreen(
             exams.isEmpty() && paths.isEmpty() -> {
                 item {
                     EmptyState(
-                        message = "No exam tracks published yet.",
+                        message = "No exams published yet. Run the hierarchy migration to seed GATE CSE chapters.",
                         actionLabel = "Retry",
                         onAction = { vm.refresh() },
                     )
@@ -122,11 +146,11 @@ fun TrackersScreen(
             }
             else -> {
                 if (exams.isNotEmpty()) {
-                    item { SectionHeading(label = "Exam hub", title = "Choose your exam track") }
+                    item { ExamHubHeading() }
                     items(exams, key = { it.slug }) { exam ->
                         OgTrackerExamCard(
                             exam = exam,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                             onClick = { if (exam.slug.isNotBlank()) onOpenPath(exam.slug) },
                         )
                     }
@@ -137,13 +161,14 @@ fun TrackersScreen(
                         SectionHeading(
                             label = "Learning paths",
                             title = "OG tracker paths",
-                            modifier = Modifier.padding(top = if (exams.isNotEmpty()) 16.dp else 0.dp),
+                            subtitle = "Direct chapter checklists when you skip the exam hub.",
+                            modifier = Modifier.padding(top = if (exams.isNotEmpty()) 12.dp else 0.dp),
                         )
                     }
                     items(paths, key = { it.id }) { path ->
                         OgTrackerPathCard(
                             path = path,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                             onClick = { onOpenPath(path.slug) },
                         )
                     }
@@ -155,90 +180,166 @@ fun TrackersScreen(
 
 @Composable
 private fun TrackersHero(
+    loading: Boolean,
     examCount: Int,
-    pathCount: Int,
+    liveChapters: Int,
+    totalSteps: Int,
     userClears: Int,
     isPremium: Boolean,
 ) {
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .padding(top = 12.dp, bottom = 20.dp),
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        Color(0xFFF8FAFC),
+                        Color(0xFFF1F5F9),
+                        Neutral50,
+                    ),
+                ),
+            ),
     ) {
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(20.dp))
+                .matchParentSize()
                 .background(
-                    Brush.linearGradient(
-                        listOf(Brand, Color(0xFF5B7AD4)),
+                    Brush.radialGradient(
+                        colors = listOf(BrandSoft, Color.Transparent),
+                        radius = 900f,
                     ),
-                )
-                .padding(20.dp),
+                ),
+        )
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .padding(top = 20.dp, bottom = 40.dp),
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    "OG TRACKERS",
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    letterSpacing = 1.6.sp,
-                    color = Color.White.copy(alpha = 0.85f),
-                )
-                Text(
-                    "YouTube lessons, practice, and mocks in one path.",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                )
-                Text(
-                    "Watch progress syncs when you're signed in.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White.copy(alpha = 0.88f),
-                )
-                if (isPremium) {
-                    Text(
-                        "Premium active",
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(999.dp))
-                            .background(Color.White.copy(alpha = 0.2f))
-                            .padding(horizontal = 10.dp, vertical = 4.dp),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color.White,
-                    )
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(14.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            HeroMetric("Exams", if (examCount > 0) "$examCount" else "—", Modifier.weight(1f))
-            HeroMetric("Paths", if (pathCount > 0) "$pathCount" else "—", Modifier.weight(1f))
-            HeroMetric(
-                label = if (userClears > 0) "Your clears" else "Progress",
-                value = if (userClears > 0) "$userClears" else "—",
-                modifier = Modifier.weight(1f),
+            Text(
+                "Structured study paths",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = 2.sp,
+                color = Neutral500,
             )
+            Text(
+                "Finish every chapter — watch, practice, mock.",
+                modifier = Modifier.padding(top = 12.dp),
+                fontSize = 34.sp,
+                fontWeight = FontWeight.Black,
+                lineHeight = 36.sp,
+                letterSpacing = (-0.5).sp,
+                color = Neutral950,
+            )
+            Text(
+                "OG Trackers turn each exam into chapters with one checklist. Lessons sync from " +
+                    "YouTube through our Chrome extension; practice and mocks use what's already on 10Tracker.",
+                modifier = Modifier.padding(top = 16.dp),
+                fontSize = 14.sp,
+                lineHeight = 22.sp,
+                color = Neutral600,
+            )
+            if (isPremium) {
+                Text(
+                    "Premium active",
+                    modifier = Modifier
+                        .padding(top = 12.dp)
+                        .clip(RoundedCornerShape(999.dp))
+                        .background(Color.White.copy(alpha = 0.9f))
+                        .border(1.dp, Brand.copy(alpha = 0.25f), RoundedCornerShape(999.dp))
+                        .padding(horizontal = 10.dp, vertical = 4.dp),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Brand,
+                )
+            } else {
+                Text(
+                    "Sign in to keep checklist progress across devices.",
+                    modifier = Modifier.padding(top = 12.dp),
+                    fontSize = 12.sp,
+                    color = Neutral500,
+                )
+            }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 24.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                HeroMetricChip(
+                    value = if (loading) "—" else if (examCount > 0) "$examCount" else "—",
+                    label = "exams",
+                )
+                HeroMetricChip(
+                    value = if (loading) "—" else if (liveChapters > 0) "$liveChapters" else "—",
+                    label = "live chapters",
+                )
+                HeroMetricChip(
+                    value = if (loading) "—" else if (totalSteps > 0) "$totalSteps" else "—",
+                    label = "total steps",
+                )
+            }
+            if (userClears > 0) {
+                Text(
+                    modifier = Modifier.padding(top = 8.dp),
+                    text = buildAnnotatedString {
+                        withStyle(androidx.compose.ui.text.SpanStyle(fontWeight = FontWeight.SemiBold, color = Neutral900)) {
+                            append("$userClears")
+                        }
+                        append(" your clears")
+                    },
+                    fontSize = 14.sp,
+                    color = Neutral500,
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun HeroMetric(label: String, value: String, modifier: Modifier = Modifier) {
+private fun HeroMetricChip(value: String, label: String) {
+    Text(
+        text = buildAnnotatedString {
+            withStyle(androidx.compose.ui.text.SpanStyle(fontWeight = FontWeight.SemiBold, color = Neutral900)) {
+                append(value)
+            }
+            append(" ")
+            append(label)
+        },
+        fontSize = 14.sp,
+        color = Neutral500,
+    )
+}
+
+@Composable
+private fun ExamHubHeading() {
     Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(14.dp))
-            .background(Color.White)
-            .border(1.dp, Border, RoundedCornerShape(14.dp))
-            .padding(vertical = 10.dp, horizontal = 8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
     ) {
-        Text(value, fontWeight = FontWeight.Bold, color = Ink, fontSize = 16.sp)
-        Text(label, style = MaterialTheme.typography.labelSmall, color = Muted, fontSize = 10.sp)
+        Text(
+            "Exam hub",
+            fontSize = 10.sp,
+            fontWeight = FontWeight.SemiBold,
+            letterSpacing = 1.6.sp,
+            color = Brand,
+        )
+        Text(
+            "Choose your exam track",
+            modifier = Modifier.padding(top = 4.dp),
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = (-0.25).sp,
+            color = Neutral950,
+        )
+        Text(
+            "Each exam opens into chapters. Live chapters launch a full tracker; the rest are ready " +
+                "for content when you add YouTube and practice later.",
+            modifier = Modifier.padding(top = 8.dp),
+            fontSize = 14.sp,
+            lineHeight = 20.sp,
+            color = Neutral600,
+        )
     }
 }
 
@@ -246,6 +347,7 @@ private fun HeroMetric(label: String, value: String, modifier: Modifier = Modifi
 private fun SectionHeading(
     label: String,
     title: String,
+    subtitle: String,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -260,12 +362,13 @@ private fun SectionHeading(
         )
         Text(
             title,
+            modifier = Modifier.padding(top = 4.dp),
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
             color = Neutral950,
         )
         Text(
-            "Structured steps with videos, practice chapters, and mocks.",
+            subtitle,
             style = MaterialTheme.typography.bodySmall,
             color = Muted,
             modifier = Modifier.padding(top = 4.dp),
@@ -280,93 +383,125 @@ private fun OgTrackerExamCard(
     onClick: () -> Unit,
 ) {
     val percent = exam.percent.coerceIn(0, 100)
+    val totalChapters = exam.chapterCount
+    val live = exam.liveChapterCount
+
     Column(
         modifier = modifier
             .fillMaxWidth()
+            .shadow(
+                elevation = 12.dp,
+                shape = RoundedCornerShape(16.dp),
+                ambientColor = Color(0x47171F2E),
+                spotColor = Color(0x47171F2E),
+            )
             .clip(RoundedCornerShape(16.dp))
             .background(Color.White)
-            .border(1.dp, Border, RoundedCornerShape(16.dp))
-            .clickable(onClick = onClick)
-            .padding(18.dp),
+            .border(1.dp, CardBorder, RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick),
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(3.dp)
-                .clip(RoundedCornerShape(999.dp))
-                .background(Brush.horizontalGradient(listOf(Brand, Color(0xFF6B8AE8)))),
+                .height(4.dp)
+                .background(Brush.horizontalGradient(listOf(Brand, BrandBright))),
         )
-        Spacer(modifier = Modifier.height(14.dp))
-        Row(verticalAlignment = Alignment.Top) {
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Brand),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(Icons.Default.School, contentDescription = null, tint = Color.White)
+        Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 20.dp)) {
+            Row(verticalAlignment = Alignment.Top) {
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Brand),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(Icons.Default.School, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        "EXAM TRACK",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        letterSpacing = 1.4.sp,
+                        color = Neutral400,
+                    )
+                    Text(
+                        exam.title,
+                        modifier = Modifier.padding(top = 2.dp),
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = (-0.25).sp,
+                        color = Neutral950,
+                    )
+                }
             }
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
+            exam.description?.takeIf { it.isNotBlank() }?.let {
                 Text(
-                    "EXAM TRACK",
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    letterSpacing = 1.2.sp,
-                    color = Muted,
-                )
-                Text(
-                    exam.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = Neutral950,
+                    it,
+                    fontSize = 14.sp,
+                    lineHeight = 22.sp,
+                    color = Neutral600,
+                    maxLines = 2,
+                    modifier = Modifier.padding(top = 12.dp),
                 )
             }
-        }
-        exam.description?.takeIf { it.isNotBlank() }?.let {
-            Text(
-                it,
-                style = MaterialTheme.typography.bodySmall,
-                color = Muted,
-                maxLines = 2,
-                modifier = Modifier.padding(top = 10.dp),
-            )
-        }
-        Row(
-            modifier = Modifier.padding(top = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            Pill("${exam.liveChapterCount}/${exam.chapterCount.takeIf { it > 0 } ?: "—"} live")
-            if (exam.totalSteps > 0) Pill("${exam.totalSteps} steps")
-        }
-        if (exam.totalSteps > 0) {
-            Spacer(modifier = Modifier.height(14.dp))
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.padding(top = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Text("Progress", style = MaterialTheme.typography.labelSmall, color = Muted)
-                Text("$percent%", fontWeight = FontWeight.SemiBold, color = Ink, fontSize = 12.sp)
+                Pill("${live}/${if (totalChapters > 0) totalChapters else "—"} chapters live")
+                if (exam.totalSteps > 0) Pill("${exam.totalSteps} steps")
             }
-            LinearProgressIndicator(
-                progress = { (percent / 100f).coerceIn(0f, 1f).coerceAtLeast(if (percent == 0) 0.03f else 0f) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 6.dp)
-                    .height(6.dp)
-                    .clip(RoundedCornerShape(999.dp)),
-                color = Brand,
-                trackColor = Color(0xFFF5F5F5),
-            )
-        }
-        Row(
-            modifier = Modifier.padding(top = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text("Open chapters", fontWeight = FontWeight.SemiBold, color = Neutral900, fontSize = 14.sp)
-            Spacer(modifier = Modifier.width(4.dp))
-            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = Brand, modifier = Modifier.size(16.dp))
+            if (exam.totalSteps > 0) {
+                Spacer(modifier = Modifier.height(20.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text("Progress", fontSize = 12.sp, color = Neutral500)
+                    Text("$percent%", fontWeight = FontWeight.SemiBold, color = Neutral800, fontSize = 12.sp)
+                }
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 6.dp)
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(999.dp))
+                        .background(Neutral100),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(
+                                (percent.coerceAtLeast(if (percent == 0) 3 else percent) / 100f)
+                                    .coerceIn(0.03f, 1f),
+                            )
+                            .height(6.dp)
+                            .clip(RoundedCornerShape(999.dp))
+                            .background(Brand),
+                    )
+                }
+            } else {
+                Text(
+                    "Chapters opening soon — structure is ready.",
+                    modifier = Modifier.padding(top = 20.dp),
+                    fontSize = 12.sp,
+                    color = Neutral500,
+                )
+            }
+            Row(
+                modifier = Modifier.padding(top = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("Open chapters", fontWeight = FontWeight.SemiBold, color = Neutral900, fontSize = 14.sp)
+                Spacer(modifier = Modifier.width(6.dp))
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = null,
+                    tint = Brand,
+                    modifier = Modifier.size(16.dp),
+                )
+            }
         }
     }
 }
@@ -381,11 +516,12 @@ private fun OgTrackerPathCard(
     Column(
         modifier = modifier
             .fillMaxWidth()
+            .shadow(8.dp, RoundedCornerShape(16.dp), ambientColor = Color(0x47171F2E), spotColor = Color(0x47171F2E))
             .clip(RoundedCornerShape(16.dp))
             .background(Color.White)
-            .border(1.dp, Border, RoundedCornerShape(16.dp))
+            .border(1.dp, CardBorder, RoundedCornerShape(16.dp))
             .clickable(onClick = onClick)
-            .padding(16.dp),
+            .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -395,7 +531,7 @@ private fun OgTrackerPathCard(
                 path.category?.takeIf { it.isNotBlank() }?.let {
                     Text(it.uppercase(), fontSize = 10.sp, fontWeight = FontWeight.SemiBold, color = Muted)
                 }
-                Text(path.title, fontWeight = FontWeight.Bold, color = Ink)
+                Text(path.title, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Ink)
             }
             if (path.locked) {
                 Text(
@@ -412,20 +548,34 @@ private fun OgTrackerPathCard(
             }
         }
         if (!path.description.isNullOrBlank()) {
-            Text(path.description, style = MaterialTheme.typography.bodySmall, color = Muted, maxLines = 2)
+            Text(path.description, fontSize = 14.sp, color = Neutral600, maxLines = 2, lineHeight = 20.sp)
         }
-        Text(
-            "${path.completedResources}/${path.totalResources} steps · $percent%",
-            style = MaterialTheme.typography.labelSmall,
-            color = Muted,
-            fontWeight = FontWeight.Medium,
-        )
-        LinearProgressIndicator(
-            progress = { (percent / 100f).coerceIn(0f, 1f) },
-            modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(99.dp)),
-            color = Neutral900,
-            trackColor = Color(0xFFE5E5E5),
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                "${path.completedResources}/${path.totalResources} complete",
+                fontSize = 12.sp,
+                color = Neutral500,
+            )
+            Text("$percent%", fontWeight = FontWeight.Medium, color = Neutral800, fontSize = 12.sp)
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(6.dp)
+                .clip(RoundedCornerShape(999.dp))
+                .background(Color(0xCCE5E5E5)),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth((percent / 100f).coerceIn(0f, 1f))
+                    .height(6.dp)
+                    .clip(RoundedCornerShape(999.dp))
+                    .background(Neutral900),
+            )
+        }
     }
 }
 
@@ -435,11 +585,11 @@ private fun Pill(text: String) {
         text,
         modifier = Modifier
             .clip(RoundedCornerShape(999.dp))
-            .background(Color(0xFFFAFAFA))
+            .background(Neutral50)
             .border(1.dp, Border, RoundedCornerShape(999.dp))
             .padding(horizontal = 10.dp, vertical = 4.dp),
         fontSize = 11.sp,
         fontWeight = FontWeight.SemiBold,
-        color = Muted,
+        color = Neutral600,
     )
 }
