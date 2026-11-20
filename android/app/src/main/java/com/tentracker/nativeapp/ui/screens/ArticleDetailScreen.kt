@@ -1,8 +1,5 @@
 package com.tentracker.nativeapp.ui.screens
 
-import android.annotation.SuppressLint
-import android.webkit.WebView
-import android.webkit.WebViewClient
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Column
@@ -41,7 +38,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
 import coil.compose.AsyncImage
 import com.tentracker.nativeapp.data.ApiClient
 import com.tentracker.nativeapp.data.ArticleDetail
@@ -54,10 +50,11 @@ import com.tentracker.nativeapp.ui.theme.EmeraldSoft
 import com.tentracker.nativeapp.ui.theme.Ink
 import com.tentracker.nativeapp.ui.theme.Muted
 import com.tentracker.nativeapp.ui.theme.SurfaceMuted
+import com.tentracker.nativeapp.ui.util.MathJaxHtmlContent
 import com.tentracker.nativeapp.ui.util.absoluteSiteUrl
+import com.tentracker.nativeapp.ui.util.canonicalizeQuestionHtml
 
 @OptIn(ExperimentalMaterial3Api::class)
-@SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun ArticleDetailScreen(
     slug: String,
@@ -174,36 +171,24 @@ fun ArticleDetailScreen(
 
 @Composable
 private fun ArticleBodyWebView(content: String) {
-    val html = """
-        <!DOCTYPE html><html><head>
-        <meta name="viewport" content="width=device-width, initial-scale=1"/>
-        <style>
-          body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;margin:0;color:#171717;line-height:1.65;font-size:16px;}
-          img{max-width:100%;height:auto;border-radius:12px;}
-          a{color:#3F5EB9;}
-          h1,h2,h3{color:#171717;margin-top:1.25em;}
-          p{margin:0.75em 0;}
-        </style></head><body>
-        $content
-        </body></html>
+    val body = canonicalizeQuestionHtml(content).orEmpty()
+    val articleCss = """
+        img{border-radius:12px;}
+        a{color:#3F5EB9;}
+        h1,h2,h3{margin-top:1.25em;}
+        p{margin:0.75em 0;}
     """.trimIndent()
-    AndroidView(
+    MathJaxHtmlContent(
+        rawHtml = body,
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
             .background(Color.White)
             .border(1.dp, Border, RoundedCornerShape(16.dp))
             .padding(4.dp),
-        factory = { ctx ->
-            WebView(ctx).apply {
-                webViewClient = WebViewClient()
-                settings.javaScriptEnabled = false
-                loadDataWithBaseURL(ApiClient.BASE_URL, html, "text/html", "UTF-8", null)
-            }
-        },
-        update = { web ->
-            web.loadDataWithBaseURL(ApiClient.BASE_URL, html, "text/html", "UTF-8", null)
-        },
+        textSizeSp = 16f,
+        bodyExtraCss = articleCss,
+        canonicalize = false,
     )
 }
 
