@@ -2,6 +2,7 @@ package com.tentracker.nativeapp.ui.screens
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,8 +20,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.OpenInBrowser
+import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.TrackChanges
@@ -84,9 +88,11 @@ fun MockListScreen(
     title: String,
     category: String,
     vm: MockListViewModel,
+    isSignedIn: Boolean = false,
     onBack: () -> Unit,
     onStartNative: (test: MockTestSummary) -> Unit,
     onOpenWeb: (pathOrUrl: String, title: String?) -> Unit = { _, _ -> },
+    onSignIn: () -> Unit = {},
 ) {
     val state by vm.state.collectAsState()
 
@@ -144,6 +150,18 @@ fun MockListScreen(
                     item {
                         MockListHubBanner(title = title, testsCount = state.tests.size)
                     }
+                    if (!isSignedIn) {
+                        item {
+                            MockGuestHero(
+                                testsCount = state.tests.size,
+                                totalQuestions = state.tests.sumOf { it.totalQuestions },
+                                onSignIn = onSignIn,
+                            )
+                        }
+                    }
+                    item {
+                        MockCatalogHeader()
+                    }
                     items(state.tests, key = { it.id }) { test ->
                         MockTestCard(
                             test = test,
@@ -194,14 +212,17 @@ private fun MockListHubBanner(title: String, testsCount: Int) {
                     ),
             )
             Column(modifier = Modifier.padding(20.dp)) {
-                Surface(
-                    shape = RoundedCornerShape(999.dp),
-                    color = EmeraldSoft.copy(alpha = 0.9f),
-                    border = BorderStroke(1.dp, EmeraldBorder),
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier
+                        .background(EmeraldSoft.copy(alpha = 0.9f), RoundedCornerShape(999.dp))
+                        .border(1.dp, EmeraldBorder, RoundedCornerShape(999.dp))
+                        .padding(horizontal = 10.dp, vertical = 4.dp),
                 ) {
+                    Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = Emerald, modifier = Modifier.size(14.dp))
                     Text(
                         "Mock tests",
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = EmeraldDark,
@@ -217,12 +238,155 @@ private fun MockListHubBanner(title: String, testsCount: Int) {
                 )
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    "Timed full mocks with ranks on web. $testsCount tests available — sign in on web to sync credits.",
+                    "Timed full mocks and topic-wise tests with ranks and analytics. Browse freely — sign in when you start.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = Muted,
                     lineHeight = 20.sp,
                 )
+                Spacer(modifier = Modifier.height(14.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(20.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    HubStatLine(Icons.Default.MenuBook, "$testsCount", "tests")
+                    HubStatLine(Icons.Default.TrackChanges, label = "Exam simulation")
+                    HubStatLine(Icons.Default.EmojiEvents, label = "Leaderboard & analytics")
+                }
             }
+        }
+    }
+}
+
+@Composable
+private fun HubStatLine(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    value: String? = null,
+    label: String,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Icon(icon, contentDescription = null, tint = Emerald, modifier = Modifier.size(16.dp))
+        if (value != null) {
+            Text(value, fontWeight = FontWeight.Bold, color = Ink, fontSize = 13.sp)
+        }
+        Text(label, color = Muted, fontSize = 13.sp)
+    }
+}
+
+@Composable
+private fun MockGuestHero(
+    testsCount: Int,
+    totalQuestions: Int,
+    onSignIn: () -> Unit,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        border = BorderStroke(1.dp, EmeraldBorder),
+    ) {
+        Box {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.linearGradient(
+                            colors = listOf(
+                                EmeraldSoft.copy(alpha = 0.55f),
+                                Color.White,
+                                Color.White,
+                            ),
+                        ),
+                    ),
+            )
+            Column(modifier = Modifier.padding(20.dp)) {
+                Text(
+                    "GUEST BROWSE",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = EmeraldDark,
+                    letterSpacing = 0.8.sp,
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    "Explore mocks without signing in",
+                    fontWeight = FontWeight.Bold,
+                    color = Ink,
+                    style = MaterialTheme.typography.titleLarge,
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    "Full-length and topic-wise tests are open to browse. Sign in when you start so your score and rank are saved.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Muted,
+                    lineHeight = 20.sp,
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    HubStatLine(Icons.Default.MenuBook, "$testsCount", "tests")
+                    HubStatLine(Icons.Default.TrackChanges, totalQuestions.toString(), "questions")
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Icon(Icons.Default.People, contentDescription = null, tint = Emerald, modifier = Modifier.size(16.dp))
+                        Text("Join thousands of students", color = Muted, fontSize = 13.sp)
+                    }
+                }
+                Spacer(modifier = Modifier.height(14.dp))
+                Button(
+                    onClick = onSignIn,
+                    colors = ButtonDefaults.buttonColors(containerColor = Ink),
+                    shape = RoundedCornerShape(12.dp),
+                ) {
+                    Text("Sign in to track progress", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                    Spacer(modifier = Modifier.size(6.dp))
+                    Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(16.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MockCatalogHeader() {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.Top,
+    ) {
+        Surface(
+            shape = RoundedCornerShape(8.dp),
+            color = EmeraldSoft,
+            border = BorderStroke(1.dp, EmeraldBorder),
+            modifier = Modifier.size(28.dp),
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Text("01", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = EmeraldDark)
+            }
+        }
+        Column {
+            Text(
+                "CATALOG",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = EmeraldDark,
+                letterSpacing = 0.8.sp,
+            )
+            Text(
+                "Available tests",
+                fontWeight = FontWeight.Bold,
+                color = Ink,
+                style = MaterialTheme.typography.titleLarge,
+            )
+            Text(
+                "Switch between full mocks and topic-wise sets, then start when ready.",
+                style = MaterialTheme.typography.bodySmall,
+                color = Muted,
+                lineHeight = 18.sp,
+            )
         }
     }
 }
