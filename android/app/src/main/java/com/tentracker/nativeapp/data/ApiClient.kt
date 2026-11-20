@@ -80,8 +80,17 @@ class ApiClient(private val sessionStore: SessionStore) {
     suspend fun savePracticeProgress(entries: Map<String, Map<String, Any?>>): ProgressSaveResponse =
         post("/api/practice/progress", mapOf("entries" to entries), ProgressSaveResponse::class.java)
 
-    suspend fun getArticles(page: Int = 1, limit: Int = 20): ArticlesResponse =
-        get("/api/articles?page=$page&limit=$limit", ArticlesResponse::class.java)
+    suspend fun getArticles(
+        page: Int = 1,
+        limit: Int = 20,
+        category: String? = null,
+        query: String? = null,
+    ): ArticlesResponse {
+        val parts = mutableListOf("page=$page", "limit=$limit")
+        category?.takeIf { it.isNotBlank() }?.let { parts.add("category=${enc(it)}") }
+        query?.takeIf { it.isNotBlank() }?.let { parts.add("q=${enc(it)}") }
+        return get("/api/articles?${parts.joinToString("&")}", ArticlesResponse::class.java)
+    }
 
     suspend fun getArticle(slug: String): ArticleDetailResponse =
         get("/api/articles/${enc(slug)}", ArticleDetailResponse::class.java)

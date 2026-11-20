@@ -12,10 +12,17 @@ import androidx.compose.ui.unit.sp
 
 val Brand = Color(0xFF3F5EB9)
 val BrandSoft = Color(0xFFE8EDF8)
+val SheetActiveText = Color(0xFF1E2F6B)
 val Bg = Color(0xFFF8FAFC)
+val SurfaceMuted = Color(0xFFFAFAFA)
 val Ink = Color(0xFF171717)
 val Muted = Color(0xFF737373)
 val Border = Color(0xFFE5E5E5)
+val Emerald = Color(0xFF059669)
+val EmeraldDark = Color(0xFF065F46)
+val EmeraldSoft = Color(0xFFECFDF5)
+val EmeraldBorder = Color(0xFFD1FAE5)
+val AmberCoin = Color(0xFFD97706)
 
 private val colors = lightColorScheme(
     primary = Brand,

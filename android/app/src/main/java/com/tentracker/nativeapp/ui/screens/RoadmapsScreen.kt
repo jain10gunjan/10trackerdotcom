@@ -23,8 +23,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.CardGiftcard
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -36,14 +40,15 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -51,9 +56,13 @@ import androidx.compose.ui.unit.sp
 import com.tentracker.nativeapp.data.RoadmapSummary
 import com.tentracker.nativeapp.ui.theme.Border
 import com.tentracker.nativeapp.ui.theme.Brand
-import com.tentracker.nativeapp.ui.theme.BrandSoft
+import com.tentracker.nativeapp.ui.theme.Emerald
+import com.tentracker.nativeapp.ui.theme.EmeraldBorder
+import com.tentracker.nativeapp.ui.theme.EmeraldDark
+import com.tentracker.nativeapp.ui.theme.EmeraldSoft
 import com.tentracker.nativeapp.ui.theme.Ink
 import com.tentracker.nativeapp.ui.theme.Muted
+import com.tentracker.nativeapp.ui.theme.SurfaceMuted
 import com.tentracker.nativeapp.ui.viewmodel.RoadmapsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -66,6 +75,7 @@ fun RoadmapsScreen(
     val state by vm.state.collectAsState()
 
     Scaffold(
+        containerColor = SurfaceMuted,
         topBar = {
             TopAppBar(
                 title = { Text("Roadmaps") },
@@ -74,188 +84,312 @@ fun RoadmapsScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White),
             )
         },
     ) { padding ->
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .padding(padding)
-                .fillMaxSize()
-                .padding(horizontal = 16.dp),
+                .fillMaxSize(),
+            contentPadding = PaddingValues(bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text(
-                "Day-by-day study plans with free preview days.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = Muted,
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-
-            OutlinedTextField(
-                value = state.searchQuery,
-                onValueChange = vm::setSearch,
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                placeholder = { Text("Search roadmaps") },
-                leadingIcon = {
-                    Icon(Icons.Default.Search, contentDescription = null, tint = Muted)
-                },
-                shape = RoundedCornerShape(14.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Brand,
-                    unfocusedBorderColor = Border,
-                ),
-            )
-
-            if (state.categories.size > 1) {
-                Spacer(modifier = Modifier.height(10.dp))
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    state.categories.forEach { category ->
-                        val selected = category == state.selectedCategory
-                        Text(
-                            text = category,
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(999.dp))
-                                .background(if (selected) Brand else Color.White)
-                                .border(1.dp, if (selected) Brand else Border, RoundedCornerShape(999.dp))
-                                .clickable { vm.setCategory(category) }
-                                .padding(horizontal = 12.dp, vertical = 8.dp),
-                            color = if (selected) Color.White else Ink,
-                            fontWeight = FontWeight.Medium,
-                            fontSize = 13.sp,
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            when {
-                state.loading && state.roadmaps.isEmpty() -> {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = Brand)
-                    }
-                }
-                state.error != null && state.roadmaps.isEmpty() -> {
-                    EmptyOrErrorPanel(
-                        title = "Couldn't load roadmaps",
-                        message = state.error ?: "Something went wrong.",
-                        actionLabel = "Retry",
-                        onAction = { vm.refresh() },
-                    )
-                }
-                state.filtered.isEmpty() -> {
-                    EmptyOrErrorPanel(
-                        title = "No roadmaps match",
-                        message = if (state.searchQuery.isNotBlank() || state.selectedCategory != "All") {
-                            "Try another search or category."
-                        } else {
-                            "Roadmaps will show up here when published."
-                        },
-                        actionLabel = if (state.searchQuery.isNotBlank() || state.selectedCategory != "All") {
-                            "Clear filters"
-                        } else {
-                            "Retry"
-                        },
-                        onAction = {
-                            if (state.searchQuery.isNotBlank() || state.selectedCategory != "All") {
-                                vm.setSearch("")
-                                vm.setCategory("All")
-                            } else {
-                                vm.refresh()
-                            }
-                        },
-                    )
-                }
-                else -> {
-                    LazyColumn(
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                        contentPadding = PaddingValues(bottom = 24.dp),
+            item {
+                Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(24.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Border),
                     ) {
-                        item {
+                        Column(modifier = Modifier.padding(20.dp)) {
                             Text(
-                                "${state.filtered.size} roadmap${if (state.filtered.size == 1) "" else "s"}",
-                                style = MaterialTheme.typography.labelSmall,
+                                "10Tracker roadmap marketplace",
+                                fontSize = 12.sp,
+                                color = EmeraldDark,
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(999.dp))
+                                    .background(EmeraldSoft)
+                                    .border(1.dp, EmeraldBorder, RoundedCornerShape(999.dp))
+                                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                "Structured plans. One-time purchase.",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = Ink,
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                "Day-by-day study roadmaps with tasks and progress tracking. Preview free days, then unlock the full plan.",
+                                style = MaterialTheme.typography.bodyMedium,
                                 color = Muted,
                             )
                         }
-                        items(state.filtered, key = { it.id.ifBlank { it.slug } }) { roadmap ->
-                            RoadmapCard(roadmap = roadmap, onClick = { onOpenRoadmap(roadmap) })
-                        }
-                        state.disclaimer?.takeIf { it.isNotBlank() }?.let { disclaimer ->
-                            item {
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = state.searchQuery,
+                        onValueChange = vm::setSearch,
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        placeholder = { Text("Search roadmaps") },
+                        leadingIcon = {
+                            Icon(Icons.Default.Search, contentDescription = null, tint = Muted)
+                        },
+                        shape = RoundedCornerShape(14.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Emerald,
+                            unfocusedBorderColor = Border,
+                        ),
+                    )
+                }
+            }
+
+            if (state.categories.size > 1) {
+                item {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        state.categories.forEach { category ->
+                            val selected = category == state.selectedCategory
+                            val shape = RoundedCornerShape(12.dp)
+                            Box(
+                                modifier = Modifier
+                                    .clip(shape)
+                                    .clickable { vm.setCategory(category) }
+                                    .background(if (selected) Ink else Color.White)
+                                    .border(1.dp, if (selected) Ink else Border, shape)
+                                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                            ) {
                                 Text(
-                                    disclaimer,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = Muted,
-                                    modifier = Modifier.padding(top = 4.dp),
+                                    category,
+                                    color = if (selected) Color.White else Ink,
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 13.sp,
                                 )
                             }
                         }
                     }
                 }
             }
+
+            when {
+                state.loading && state.roadmaps.isEmpty() -> {
+                    item {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().height(200.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            CircularProgressIndicator(color = Brand)
+                        }
+                    }
+                }
+                state.error != null && state.roadmaps.isEmpty() -> {
+                    item {
+                        Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                            EmptyOrErrorPanel(
+                                title = "Couldn't load roadmaps",
+                                message = state.error ?: "Something went wrong.",
+                                actionLabel = "Retry",
+                                onAction = { vm.refresh() },
+                            )
+                        }
+                    }
+                }
+                state.filtered.isEmpty() -> {
+                    item {
+                        Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                            EmptyOrErrorPanel(
+                                title = "No roadmaps match",
+                                message = if (state.searchQuery.isNotBlank() || state.selectedCategory != "All") {
+                                    "Try another search or category."
+                                } else {
+                                    "Roadmaps will show up here when published."
+                                },
+                                actionLabel = if (state.searchQuery.isNotBlank() || state.selectedCategory != "All") {
+                                    "Clear filters"
+                                } else {
+                                    "Retry"
+                                },
+                                onAction = {
+                                    if (state.searchQuery.isNotBlank() || state.selectedCategory != "All") {
+                                        vm.setSearch("")
+                                        vm.setCategory("All")
+                                    } else {
+                                        vm.refresh()
+                                    }
+                                },
+                            )
+                        }
+                    }
+                }
+                else -> {
+                    item {
+                        Text(
+                            "${state.filtered.size} roadmap${if (state.filtered.size == 1) "" else "s"}",
+                            modifier = Modifier.padding(horizontal = 20.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Muted,
+                        )
+                    }
+                    items(state.filtered, key = { it.id.ifBlank { it.slug } }) { roadmap ->
+                        Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                            RoadmapCatalogCard(roadmap = roadmap, onClick = { onOpenRoadmap(roadmap) })
+                        }
+                    }
+                    state.disclaimer?.takeIf { it.isNotBlank() }?.let { disclaimer ->
+                        item {
+                            Text(
+                                disclaimer,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Muted,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }
 
 @Composable
-private fun RoadmapCard(roadmap: RoadmapSummary, onClick: () -> Unit) {
+private fun RoadmapCatalogCard(roadmap: RoadmapSummary, onClick: () -> Unit) {
     Card(
-        onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         border = androidx.compose.foundation.BorderStroke(1.dp, Border),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.Top) {
                 Box(
                     modifier = Modifier
-                        .size(40.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(BrandSoft),
+                        .size(56.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(
+                            Brush.linearGradient(
+                                colors = listOf(EmeraldSoft, Color(0xFFD1FAE5).copy(alpha = 0.8f)),
+                            ),
+                        )
+                        .border(1.dp, EmeraldBorder, RoundedCornerShape(16.dp)),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(Icons.Default.Map, contentDescription = null, tint = Brand)
+                    Icon(Icons.Default.Map, contentDescription = null, tint = EmeraldDark, modifier = Modifier.size(28.dp))
                 }
-                Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(roadmap.title, fontWeight = FontWeight.SemiBold, color = Ink)
-                    val label = roadmap.examLabel?.takeIf { it.isNotBlank() } ?: "General"
-                    Text(label, style = MaterialTheme.typography.labelSmall, color = Muted)
+                    Row(
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(
+                            roadmap.title,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 17.sp,
+                            color = Ink,
+                            modifier = Modifier.weight(1f),
+                        )
+                        roadmap.examLabel?.takeIf { it.isNotBlank() }?.let { label ->
+                            Text(
+                                label,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Muted,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(999.dp))
+                                    .background(Color(0xFFF5F5F5))
+                                    .border(1.dp, Border, RoundedCornerShape(999.dp))
+                                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                            )
+                        }
+                    }
+                    if (!roadmap.description.isNullOrBlank()) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            roadmap.description!!,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Muted,
+                            maxLines = 2,
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                        NeutralMetaChip("₹${roadmap.priceInr} · one-time")
+                        if (roadmap.totalDays > 0) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(999.dp))
+                                    .background(Color(0xFFF5F5F5))
+                                    .padding(horizontal = 10.dp, vertical = 5.dp),
+                            ) {
+                                Icon(Icons.Default.CalendarToday, contentDescription = null, tint = Muted, modifier = Modifier.size(12.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("${roadmap.totalDays} days", fontSize = 12.sp, color = Muted, fontWeight = FontWeight.Medium)
+                            }
+                        }
+                        if (roadmap.freePreviewDays > 0) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(999.dp))
+                                    .background(EmeraldSoft)
+                                    .border(1.dp, EmeraldBorder, RoundedCornerShape(999.dp))
+                                    .padding(horizontal = 10.dp, vertical = 5.dp),
+                            ) {
+                                Icon(Icons.Default.CardGiftcard, contentDescription = null, tint = EmeraldDark, modifier = Modifier.size(12.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    "${roadmap.freePreviewDays} free preview",
+                                    fontSize = 12.sp,
+                                    color = EmeraldDark,
+                                    fontWeight = FontWeight.Medium,
+                                )
+                            }
+                        }
+                    }
                 }
-                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = Brand)
             }
-            if (!roadmap.description.isNullOrBlank()) {
-                Text(roadmap.description!!, style = MaterialTheme.typography.bodyMedium, maxLines = 2)
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                MetaChip("${roadmap.totalDays} days")
-                if (roadmap.freePreviewDays > 0) {
-                    MetaChip("${roadmap.freePreviewDays} free preview")
-                }
-                MetaChip("₹${roadmap.priceInr}")
+            Spacer(modifier = Modifier.height(16.dp))
+            androidx.compose.material3.HorizontalDivider(color = Border.copy(alpha = 0.6f))
+            Spacer(modifier = Modifier.height(14.dp))
+            Button(
+                onClick = onClick,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = Ink),
+                shape = RoundedCornerShape(12.dp),
+            ) {
+                Text(
+                    if (roadmap.freePreviewDays > 0) "Preview free days" else "View roadmap",
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(18.dp))
             }
         }
     }
 }
 
 @Composable
-private fun MetaChip(text: String) {
+private fun NeutralMetaChip(text: String) {
     Text(
         text = text,
         modifier = Modifier
             .clip(RoundedCornerShape(999.dp))
-            .background(BrandSoft)
-            .padding(horizontal = 10.dp, vertical = 4.dp),
-        color = Brand,
-        fontWeight = FontWeight.SemiBold,
+            .background(Color(0xFFF5F5F5))
+            .padding(horizontal = 10.dp, vertical = 5.dp),
+        color = Ink,
+        fontWeight = FontWeight.Medium,
         fontSize = 12.sp,
     )
 }
@@ -271,11 +405,12 @@ fun EmptyOrErrorPanel(
         modifier = Modifier
             .fillMaxWidth()
             .border(1.dp, Border, RoundedCornerShape(16.dp))
+            .background(Color.White, RoundedCornerShape(16.dp))
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text(title, fontWeight = FontWeight.Bold, color = Ink)
         Text(message, style = MaterialTheme.typography.bodyMedium, color = Muted)
-        TextButton(onClick = onAction) { Text(actionLabel) }
+        androidx.compose.material3.TextButton(onClick = onAction) { Text(actionLabel) }
     }
 }
