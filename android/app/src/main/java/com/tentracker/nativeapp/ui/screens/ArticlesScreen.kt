@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -21,14 +22,19 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -45,11 +51,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -70,8 +79,14 @@ import com.tentracker.nativeapp.ui.theme.SurfaceMuted
 import com.tentracker.nativeapp.ui.util.absoluteSiteUrl
 import com.tentracker.nativeapp.ui.viewmodel.ArticlesViewModel
 import kotlinx.coroutines.flow.distinctUntilChanged
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 private val AccentFallback = Emerald
+private val Neutral600 = Color(0xFF525252)
+private val VioletGlow = Color(0xFFC4B5FD)
 
 @Composable
 fun ArticlesScreen(
@@ -101,14 +116,14 @@ fun ArticlesScreen(
         ) {
             item {
                 Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
                     UpdatesHeroCard(
                         title = state.selectedCategory?.replace('-', ' ')?.replaceFirstChar { it.uppercase() }
                             ?: "Stay exam-ready with the latest updates",
                         subtitle = if (state.selectedCategory != null) {
-                            "Browse ${state.selectedCategory!!.replace('-', ' ')} articles and prep notes."
+                            "Browse ${state.selectedCategory!!.replace('-', ' ')} articles, alerts, and prep notes."
                         } else {
-                            "Current affairs, exam alerts, and preparation notes — clear and searchable."
+                            "Current affairs, exam alerts, admit cards, and preparation notes — clear and searchable."
                         },
                         searchQuery = state.searchQuery,
                         onSearchChange = vm::setSearchQuery,
@@ -129,19 +144,22 @@ fun ArticlesScreen(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(
-                                "CATEGORIES",
+                                "Categories",
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.SemiBold,
                                 color = Emerald,
-                                letterSpacing = 1.sp,
+                                letterSpacing = 0.5.sp,
+                                fontSize = 12.sp,
                             )
                             if (hasFilters) {
                                 TextButton(onClick = { vm.clearFilters() }) {
-                                    Text("Clear filters", fontSize = 12.sp, color = Muted)
+                                    Icon(Icons.Default.Close, contentDescription = null, tint = Muted, modifier = Modifier.size(14.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Clear filters", fontSize = 12.sp, color = Muted, fontWeight = FontWeight.SemiBold)
                                 }
                             }
                         }
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -245,50 +263,120 @@ private fun UpdatesHeroCard(
         border = androidx.compose.foundation.BorderStroke(1.dp, Border),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
-        Column(modifier = Modifier.padding(20.dp)) {
-            Row(
+        Box(modifier = Modifier.fillMaxWidth()) {
+            Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(999.dp))
-                    .background(EmeraldSoft)
-                    .border(1.dp, EmeraldBorder, RoundedCornerShape(999.dp))
-                    .padding(horizontal = 12.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                Text("10Tracker · News & updates", fontSize = 12.sp, color = EmeraldDark, fontWeight = FontWeight.Medium)
-            }
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = Ink)
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = Muted)
-            Spacer(modifier = Modifier.height(16.dp))
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = onSearchChange,
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                placeholder = { Text("Search updates…", color = Muted) },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Muted) },
-                shape = RoundedCornerShape(12.dp),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions = KeyboardActions(onSearch = { onSearch() }),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Emerald,
-                    unfocusedBorderColor = Border,
-                ),
+                    .align(Alignment.TopEnd)
+                    .offset(x = 40.dp, y = (-48).dp)
+                    .size(200.dp)
+                    .blur(80.dp)
+                    .background(Color(0xFFA7F3D0).copy(alpha = 0.35f), CircleShape),
             )
-            Spacer(modifier = Modifier.height(10.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .offset(x = (-40).dp, y = 48.dp)
+                    .size(200.dp)
+                    .blur(80.dp)
+                    .background(VioletGlow.copy(alpha = 0.2f), CircleShape),
+            )
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.linearGradient(
+                            colors = listOf(
+                                Color.White,
+                                Color.White,
+                                Color(0xFFFAFAFA).copy(alpha = 0.9f),
+                            ),
+                        ),
+                    ),
+            )
+
+            Column(modifier = Modifier.padding(24.dp)) {
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(999.dp))
+                        .background(EmeraldSoft.copy(alpha = 0.8f))
+                        .border(1.dp, EmeraldBorder, RoundedCornerShape(999.dp))
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Emerald, modifier = Modifier.size(14.dp))
+                    Text(
+                        "10Tracker · News & updates",
+                        fontSize = 12.sp,
+                        color = EmeraldDark,
+                        fontWeight = FontWeight.Medium,
+                    )
+                }
+                Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    "$totalCount ${if (totalCount == 1) "article" else "articles"}",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium,
+                    title,
+                    fontSize = 30.sp,
+                    lineHeight = 34.sp,
+                    fontWeight = FontWeight.Bold,
                     color = Ink,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
                 )
-                if (hasFilters) {
-                    Spacer(modifier = Modifier.width(12.dp))
-                    TextButton(onClick = onClearFilters) {
-                        Text("Clear", color = EmeraldDark, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = Neutral600, lineHeight = 22.sp)
+                Spacer(modifier = Modifier.height(24.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = onSearchChange,
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                        placeholder = { Text("Search updates…", color = Muted) },
+                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Muted) },
+                        shape = RoundedCornerShape(12.dp),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                        keyboardActions = KeyboardActions(onSearch = { onSearch() }),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFF6EE7B7),
+                            unfocusedBorderColor = Border,
+                        ),
+                    )
+                    Button(
+                        onClick = onSearch,
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Ink, contentColor = Color.White),
+                        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 14.dp),
+                    ) {
+                        Text("Search", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "${"%,d".format(Locale.US, totalCount)} ${if (totalCount == 1) "article" else "articles"}",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Ink,
+                    )
+                    if (searchQuery.isNotBlank()) {
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Text(
+                            "Matching “$searchQuery”",
+                            fontSize = 14.sp,
+                            color = Muted,
+                        )
+                        TextButton(onClick = onClearFilters) {
+                            Text("Clear", color = EmeraldDark, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                        }
+                    } else if (hasFilters) {
+                        Spacer(modifier = Modifier.width(12.dp))
+                        TextButton(onClick = onClearFilters) {
+                            Text("Clear", color = EmeraldDark, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                        }
                     }
                 }
             }
@@ -307,7 +395,7 @@ private fun CategoryChip(label: String, active: Boolean, onClick: () -> Unit) {
             .border(1.dp, if (active) Ink else Border, shape)
             .padding(horizontal = 14.dp, vertical = 8.dp),
     ) {
-        Text(label, color = if (active) Color.White else Ink, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+        Text(label, color = if (active) Color.White else Ink, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
     }
 }
 
@@ -322,16 +410,35 @@ private fun FeaturedArticleCard(article: ArticleSummary, onClick: () -> Unit) {
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
         Column {
-            ArticleHeroImage(article = article, modifier = Modifier.fillMaxWidth().aspectRatio(16f / 10f))
-            Column(modifier = Modifier.padding(16.dp)) {
+            ArticleHeroImage(
+                article = article,
+                modifier = Modifier.fillMaxWidth().aspectRatio(16f / 10f),
+                topRadius = 24.dp,
+            )
+            Column(modifier = Modifier.padding(24.dp)) {
                 ArticleMetaRow(article = article, showFeaturedBadge = true)
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(article.title, fontWeight = FontWeight.Bold, fontSize = 20.sp, color = Ink, maxLines = 3)
-                article.excerpt?.takeIf { it.isNotBlank() }?.let {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(it, style = MaterialTheme.typography.bodyMedium, color = Muted, maxLines = 3)
-                }
                 Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    article.title,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 24.sp,
+                    lineHeight = 30.sp,
+                    color = Ink,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                article.excerpt?.takeIf { it.isNotBlank() }?.let {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        it,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Neutral600,
+                        lineHeight = 22.sp,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                Spacer(modifier = Modifier.height(24.dp))
                 ReadLink()
             }
         }
@@ -370,13 +477,29 @@ private fun ArticleListCard(article: ArticleSummary, onClick: () -> Unit) {
             }
             Column(modifier = Modifier.padding(16.dp)) {
                 ArticleMetaRow(article = article, showFeaturedBadge = false)
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(article.title, fontWeight = FontWeight.SemiBold, fontSize = 17.sp, color = Ink, maxLines = 2)
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    article.title,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 16.sp,
+                    lineHeight = 22.sp,
+                    color = Ink,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
                 article.excerpt?.takeIf { it.isNotBlank() }?.let {
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(it, style = MaterialTheme.typography.bodyMedium, color = Muted, maxLines = 2)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        it,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontSize = 14.sp,
+                        color = Muted,
+                        lineHeight = 20.sp,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(16.dp))
                 ReadLink(label = "Read")
             }
         }
@@ -384,21 +507,26 @@ private fun ArticleListCard(article: ArticleSummary, onClick: () -> Unit) {
 }
 
 @Composable
-private fun ArticleHeroImage(article: ArticleSummary, modifier: Modifier = Modifier) {
+private fun ArticleHeroImage(
+    article: ArticleSummary,
+    modifier: Modifier = Modifier,
+    topRadius: androidx.compose.ui.unit.Dp = 16.dp,
+) {
+    val shape = RoundedCornerShape(topStart = topRadius, topEnd = topRadius)
     val imageUrl = absoluteSiteUrl(article.featured_image_url)
     if (imageUrl != null) {
         AsyncImage(
             model = imageUrl,
             contentDescription = null,
-            modifier = modifier.clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)),
+            modifier = modifier.clip(shape),
             contentScale = ContentScale.Crop,
         )
     } else {
         Box(
-            modifier = modifier.background(AccentFallback),
+            modifier = modifier.clip(shape).background(AccentFallback),
             contentAlignment = Alignment.Center,
         ) {
-            Text("10Tracker", color = Color.White.copy(alpha = 0.9f), fontWeight = FontWeight.SemiBold)
+            Text("10Tracker", color = Color.White.copy(alpha = 0.9f), fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
         }
     }
 }
@@ -423,20 +551,7 @@ private fun ArticleMetaRow(article: ArticleSummary, showFeaturedBadge: Boolean) 
                 Text("Featured", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF92400E))
             }
         }
-        article.category?.takeIf { it.isNotBlank() }?.let { cat ->
-            Text(
-                cat.replace('-', ' ').replaceFirstChar { it.uppercase() },
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Medium,
-                color = EmeraldDark,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(999.dp))
-                    .background(EmeraldSoft)
-                    .border(1.dp, EmeraldBorder, RoundedCornerShape(999.dp))
-                    .padding(horizontal = 8.dp, vertical = 3.dp),
-            )
-        }
-        formatArticleDate(article.created_at).takeIf { it.isNotBlank() }?.let { date ->
+        formatArticleListDate(article.created_at).takeIf { it.isNotBlank() }?.let { date ->
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 Icon(Icons.Default.CalendarToday, contentDescription = null, tint = Muted, modifier = Modifier.size(14.dp))
                 Text(date, fontSize = 12.sp, color = Muted)
@@ -447,20 +562,24 @@ private fun ArticleMetaRow(article: ArticleSummary, showFeaturedBadge: Boolean) 
 
 @Composable
 private fun ReadLink(label: String = "Read article") {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(label, color = EmeraldDark, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
         Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = EmeraldDark, modifier = Modifier.size(16.dp))
     }
 }
 
-private fun formatArticleDate(iso: String?): String {
+private val articleListDateFormatter: DateTimeFormatter =
+    DateTimeFormatter.ofPattern("d MMM yyyy", Locale.forLanguageTag("en-IN"))
+
+private fun formatArticleListDate(iso: String?): String {
     if (iso.isNullOrBlank()) return ""
-    val datePart = iso.take(10)
-    val parts = datePart.split("-")
-    if (parts.size != 3) return datePart
-    val months = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
-    val monthIdx = parts[1].toIntOrNull()?.minus(1) ?: return datePart
-    val month = months.getOrElse(monthIdx) { parts[1] }
-    val day = parts[2].toIntOrNull()?.toString() ?: parts[2]
-    return "$day $month ${parts[0]}"
+    return try {
+        Instant.parse(iso).atZone(ZoneId.of("Asia/Kolkata")).format(articleListDateFormatter)
+    } catch (_: Exception) {
+        try {
+            Instant.parse("${iso}T00:00:00Z").atZone(ZoneId.of("Asia/Kolkata")).format(articleListDateFormatter)
+        } catch (_: Exception) {
+            iso.take(10)
+        }
+    }
 }
