@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -82,6 +83,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.tentracker.nativeapp.data.ActiveExam
+import com.tentracker.nativeapp.data.ExamHubContinue
+import com.tentracker.nativeapp.data.ExamHubSubjectProgress
 import com.tentracker.nativeapp.data.SubjectGroup
 import com.tentracker.nativeapp.data.Subtopic
 import com.tentracker.nativeapp.ui.components.ErrorState
@@ -95,6 +98,9 @@ private val EmeraldSoft = Color(0xFFECFDF5)
 private val EmeraldInk = Color(0xFF065F46)
 private val EmeraldBorder = Color(0xFFD1FAE5)
 private val Emerald700 = Color(0xFF047857)
+private val HubContinueBlue = Color(0xFF3F5EB9)
+private val HubContinueBlueDark = Color(0xFF1E2F6B)
+private val HubContinueShell = Color(0xFFE8EDF8)
 private val Neutral50 = Color(0xFFFAFAFA)
 private val Neutral100 = Color(0xFFF5F5F5)
 private val Neutral200 = Color(0xFFE5E5E5)
@@ -135,6 +141,9 @@ fun ExamDetailScreen(
     onOpenChapter: (subject: String, chapter: String, chapterTitle: String) -> Unit,
     onOpenMocks: () -> Unit = {},
     onStartMock: (testId: String, name: String, durationMinutes: Int) -> Unit = { _, _, _ -> },
+    onGoToDashboard: () -> Unit = {},
+    onSignIn: () -> Unit = {},
+    onOpenDailyPractice: () -> Unit = {},
 ) {
     val state by vm.state.collectAsState()
     var searchQuery by rememberSaveable { mutableStateOf("") }
@@ -170,12 +179,25 @@ fun ExamDetailScreen(
         }
     }
 
-    val pathCards = remember(state.mockTestCount) {
+    val pathCards = remember(state.mockTestCount, state.topicMockCount, state.dailyPracticeCount) {
         buildPathCards(
             mockTestCount = state.mockTestCount,
+            topicMockCount = state.topicMockCount,
+            dailyPracticeCount = state.dailyPracticeCount,
             onScrollPractice = { scrollToPractice() },
             onOpenMocks = onOpenMocks,
+            onOpenDailyPractice = onOpenDailyPractice,
         )
+    }
+
+    fun handleContinue(item: ExamHubContinue?) {
+        if (item == null) return
+        val resolved = resolveContinueTarget(item, state.subjects)
+        if (resolved != null) {
+            onOpenChapter(resolved.subject, resolved.chapterSlug, resolved.chapterTitle)
+        } else {
+            scrollToPractice()
+        }
     }
 
     Scaffold(
@@ -229,6 +251,7 @@ fun ExamDetailScreen(
                             exam = state.exam,
                             subjects = state.subjects,
                             mockTestCount = state.mockTestCount,
+                            overallPercent = if (state.isSignedIn) state.overallPercent else null,
                             onScrollToPractice = ::scrollToPractice,
                             onOpenMocks = onOpenMocks,
                             onBrowseExams = onBack,
@@ -241,6 +264,25 @@ fun ExamDetailScreen(
 
                     item(key = "paths") {
                         ExamHubPathCards(cards = pathCards)
+                    }
+
+                    if (state.isSignedIn) {
+                        item(key = "continue") {
+                            ExamHubContinueCard(
+                                continueItem = state.continueItem,
+                                loading = state.progressLoading,
+                                onContinue = { handleContinue(state.continueItem) },
+                            )
+                        }
+                        item(key = "progress-strip") {
+                            ExamHubProgressStrip(
+                                subjects = state.progressSubjects,
+                                loading = state.progressLoading,
+                                onOpenSubject = { progress ->
+                                    openSubjectFromProgress(progress, state.subjects, onOpenChapter)
+                                },
+                            )
+                        }
                     }
 
                     if (state.subjects.isEmpty()) {
@@ -276,7 +318,11 @@ fun ExamDetailScreen(
                     }
 
                     item(key = "bottom-cta") {
-                        ExamHubBottomCta(isSignedIn = state.isSignedIn)
+                        ExamHubBottomCta(
+                            isSignedIn = state.isSignedIn,
+                            onGoToDashboard = onGoToDashboard,
+                            onSignIn = onSignIn,
+                        )
                     }
 
                     item { Spacer(modifier = Modifier.height(72.dp)) }
@@ -292,6 +338,7 @@ private fun ExamHubHeroCard(
     exam: ActiveExam?,
     subjects: List<SubjectGroup>,
     mockTestCount: Int,
+    overallPercent: Int? = null,
     onScrollToPractice: () -> Unit,
     onOpenMocks: () -> Unit,
     onBrowseExams: () -> Unit,
@@ -418,6 +465,7 @@ private fun ExamHubHeroCard(
                     subjects = stats.subjects,
                     topics = stats.topics,
                     questions = stats.questions,
+                    overallPercent = overallPercent,
                 )
             }
         }
@@ -626,7 +674,199 @@ private fun EmptyPracticeContent(onBrowseExams: () -> Unit) {
 }
 
 @Composable
-private fun ExamHubBottomCta(isSignedIn: Boolean) {
+private fun ExamHubContinueCard(
+    continueItem: ExamHubContinue?,
+    loading: Boolean,
+    onContinue: () -> Unit,
+) {
+    if (loading) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(100.dp)
+                .clip(RoundedCornerShape(24.dp))
+                .background(HubContinueShell.copy(alpha = 0.9f))
+                .border(1.dp, HubContinueBlue.copy(alpha = 0.25f), RoundedCornerShape(24.dp)),
+        )
+        return
+    }
+    if (continueItem?.href.isNullOrBlank()) return
+
+    val subjectLabel = displaySubjectName(
+        continueItem?.subject?.replace('-', ' ')?.ifBlank { null }
+            ?: continueItem?.topic.orEmpty(),
+    )
+    val topicSuffix = continueItem?.topic?.takeIf {
+        continueItem.hasProgress && !continueItem.subject.isNullOrBlank()
+    }?.let { " · ${it.replace('-', ' ')}" }.orEmpty()
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = HubContinueShell.copy(alpha = 0.9f)),
+        border = androidx.compose.foundation.BorderStroke(1.dp, HubContinueBlue.copy(alpha = 0.25f)),
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Text(
+                "PICK UP WHERE YOU LEFT OFF",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = HubContinueBlueDark,
+                letterSpacing = 0.5.sp,
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        "$subjectLabel$topicSuffix",
+                        fontWeight = FontWeight.Bold,
+                        color = Neutral900,
+                        fontSize = 18.sp,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        if (continueItem?.hasProgress == true) {
+                            "Continue your last practice session for this exam."
+                        } else {
+                            "Continue your last session."
+                        },
+                        fontSize = 14.sp,
+                        color = Neutral400,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(HubContinueBlue)
+                        .clickable(onClick = onContinue)
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Icon(Icons.Default.PlayArrow, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                    Text("Continue", color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ExamHubProgressStrip(
+    subjects: List<ExamHubSubjectProgress>,
+    loading: Boolean,
+    onOpenSubject: (ExamHubSubjectProgress) -> Unit,
+) {
+    if (loading) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(120.dp)
+                .clip(RoundedCornerShape(24.dp))
+                .background(Color.White)
+                .border(1.dp, Neutral200, RoundedCornerShape(24.dp)),
+        )
+        return
+    }
+    if (subjects.isEmpty()) return
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Neutral200),
+    ) {
+        Column {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Neutral50.copy(alpha = 0.5f))
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+            ) {
+                Text("Your subject progress", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Neutral900)
+            }
+            LazyRow(
+                contentPadding = PaddingValues(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                items(subjects, key = { it.slug }) { subject ->
+                    Column(
+                        modifier = Modifier
+                            .width(176.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Color.White)
+                            .border(1.dp, Neutral200, RoundedCornerShape(16.dp))
+                            .clickable { onOpenSubject(subject) }
+                            .padding(12.dp),
+                    ) {
+                        Text(
+                            displaySubjectName(subject.name),
+                            fontWeight = FontWeight.SemiBold,
+                            color = Neutral900,
+                            fontSize = 14.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text("${subject.percent}%", fontSize = 11.sp, color = Neutral400)
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("Open", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = Emerald700)
+                                Icon(
+                                    Icons.AutoMirrored.Filled.ArrowForward,
+                                    contentDescription = null,
+                                    tint = Emerald700,
+                                    modifier = Modifier.size(12.dp),
+                                )
+                            }
+                        }
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 6.dp)
+                                .height(4.dp)
+                                .clip(RoundedCornerShape(999.dp))
+                                .background(Neutral100),
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth(subject.percent.coerceIn(0, 100) / 100f)
+                                    .height(4.dp)
+                                    .clip(RoundedCornerShape(999.dp))
+                                    .background(Emerald500),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ExamHubBottomCta(
+    isSignedIn: Boolean,
+    onGoToDashboard: () -> Unit,
+    onSignIn: () -> Unit,
+) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -674,6 +914,29 @@ private fun ExamHubBottomCta(isSignedIn: Boolean) {
                     color = Color(0xFFD4D4D4),
                     modifier = Modifier.padding(top = 8.dp),
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                )
+            }
+            Spacer(modifier = Modifier.height(24.dp))
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color.White)
+                    .clickable(onClick = if (isSignedIn) onGoToDashboard else onSignIn)
+                    .padding(horizontal = 24.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    if (isSignedIn) "Go to dashboard" else "Get started free",
+                    color = Neutral900,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 14.sp,
+                )
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = null,
+                    tint = Neutral900,
+                    modifier = Modifier.size(16.dp),
                 )
             }
         }
@@ -752,14 +1015,51 @@ private fun ExamHubThumb(exam: ActiveExam?, fallbackTitle: String) {
 }
 
 @Composable
-private fun QuickStatsGrid(subjects: Int, topics: Int, questions: Int) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        QuickStatTile(modifier = Modifier.weight(1f), value = subjects, label = "Subjects", icon = Icons.Default.MenuBook)
-        QuickStatTile(modifier = Modifier.weight(1f), value = topics, label = "Topics", icon = Icons.Default.TrackChanges)
-        QuickStatTile(modifier = Modifier.weight(1f), value = questions, label = "Questions", icon = Icons.Default.Bolt)
+private fun QuickStatsGrid(subjects: Int, topics: Int, questions: Int, overallPercent: Int? = null) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            QuickStatTile(modifier = Modifier.weight(1f), value = subjects, label = "Subjects", icon = Icons.Default.MenuBook)
+            QuickStatTile(modifier = Modifier.weight(1f), value = topics, label = "Topics", icon = Icons.Default.TrackChanges)
+            QuickStatTile(modifier = Modifier.weight(1f), value = questions, label = "Questions", icon = Icons.Default.Bolt)
+        }
+        if (overallPercent != null && overallPercent > 0) {
+        Spacer(modifier = Modifier.height(12.dp))
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(EmeraldSoft.copy(alpha = 0.5f))
+                .border(1.dp, EmeraldBorder.copy(alpha = 0.6f), RoundedCornerShape(12.dp))
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text("Your overall progress", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = EmeraldInk)
+                Text("$overallPercent%", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = EmeraldInk)
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 6.dp)
+                    .height(6.dp)
+                    .clip(RoundedCornerShape(999.dp))
+                    .background(EmeraldBorder),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(overallPercent.coerceIn(0, 100) / 100f)
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(999.dp))
+                        .background(Emerald500),
+                )
+            }
+        }
+        }
     }
 }
 
@@ -1068,13 +1368,24 @@ private fun TopicChip(topic: Subtopic, onClick: () -> Unit) {
 
 private fun buildPathCards(
     mockTestCount: Int,
+    topicMockCount: Int,
+    dailyPracticeCount: Int,
     onScrollPractice: () -> Unit,
     onOpenMocks: () -> Unit,
+    onOpenDailyPractice: () -> Unit,
 ): List<PathCardSpec> {
+    val fullMockCount = (mockTestCount - topicMockCount).coerceAtLeast(0)
     val mockBadge = when {
+        fullMockCount > 0 -> "$fullMockCount live"
         mockTestCount > 0 -> "$mockTestCount live"
         else -> "Coming soon"
     }
+    val dailyBadge = if (dailyPracticeCount > 0) {
+        "$dailyPracticeCount set${if (dailyPracticeCount == 1) "" else "s"}"
+    } else {
+        "Explore"
+    }
+    val topicBadge = if (topicMockCount > 0) "$topicMockCount live" else "Browse"
     return listOf(
         PathCardSpec(
             id = "practice",
@@ -1098,21 +1409,85 @@ private fun buildPathCards(
             id = "daily",
             title = "Daily practice",
             description = "Short daily MCQ sets with explanations — no timer.",
-            badge = "Explore",
+            badge = dailyBadge,
             live = true,
             icon = Icons.Default.CalendarMonth,
-            onClick = onScrollPractice,
+            onClick = onOpenDailyPractice,
         ),
         PathCardSpec(
             id = "topic-tests",
             title = "Topic-wise tests",
             description = "Timed mini-tests for weak areas.",
-            badge = "Browse",
+            badge = topicBadge,
             live = true,
             icon = Icons.Default.GridView,
             onClick = onOpenMocks,
         ),
     )
+}
+
+private data class ContinueTarget(
+    val subject: String,
+    val chapterSlug: String,
+    val chapterTitle: String,
+)
+
+private fun slugifySubject(raw: String): String =
+    raw.trim().lowercase().replace(Regex("\\s+"), "-")
+
+private fun resolveContinueTarget(
+    item: ExamHubContinue,
+    catalog: List<SubjectGroup>,
+): ContinueTarget? {
+    val topic = item.topic?.trim().orEmpty()
+    if (topic.isNotEmpty()) {
+        catalog.forEach { group ->
+            val match = group.subtopics.firstOrNull { st ->
+                st.title.equals(topic, ignoreCase = true) ||
+                    st.title.replace('-', ' ').equals(topic.replace('-', ' '), ignoreCase = true)
+            }
+            if (match != null) {
+                return ContinueTarget(
+                    subject = group.subject,
+                    chapterSlug = match.chapterSlug,
+                    chapterTitle = match.title.replace('-', ' '),
+                )
+            }
+        }
+    }
+    val subjectSlug = item.subject?.trim().orEmpty()
+    if (subjectSlug.isNotEmpty()) {
+        val group = catalog.firstOrNull {
+            slugifySubject(it.subject) == subjectSlug.lowercase() ||
+                it.subject.equals(subjectSlug, ignoreCase = true)
+        } ?: return null
+        val first = group.subtopics.firstOrNull() ?: return ContinueTarget(
+            subject = group.subject,
+            chapterSlug = slugifySubject(group.subject),
+            chapterTitle = displaySubjectName(group.subject),
+        )
+        return ContinueTarget(
+            subject = group.subject,
+            chapterSlug = first.chapterSlug,
+            chapterTitle = first.title.replace('-', ' '),
+        )
+    }
+    return null
+}
+
+private fun openSubjectFromProgress(
+    progress: ExamHubSubjectProgress,
+    catalog: List<SubjectGroup>,
+    onOpenChapter: (subject: String, chapter: String, chapterTitle: String) -> Unit,
+) {
+    val group = catalog.firstOrNull {
+        slugifySubject(it.subject) == progress.slug.lowercase() ||
+            it.subject.equals(progress.name, ignoreCase = true)
+    } ?: return
+    val first = group.subtopics.firstOrNull()
+    if (first != null) {
+        onOpenChapter(group.subject, first.chapterSlug, first.title.replace('-', ' '))
+    }
 }
 
 private data class HubStats(val subjects: Int, val topics: Int, val questions: Int)
