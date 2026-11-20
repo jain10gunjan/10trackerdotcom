@@ -70,7 +70,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.tentracker.nativeapp.ui.components.HtmlText
+import com.tentracker.nativeapp.ui.util.NativeHtmlContent
 import com.tentracker.nativeapp.ui.theme.Border
 import com.tentracker.nativeapp.ui.theme.Emerald
 import com.tentracker.nativeapp.ui.theme.EmeraldBorder
@@ -263,8 +263,8 @@ fun MockAttemptScreen(
                                 }
                             }
 
-                            HtmlText(
-                                html = q.question,
+                            NativeHtmlContent(
+                                rawHtml = q.question,
                                 modifier = Modifier.fillMaxWidth(),
                                 textSizeSp = 16f,
                             )
@@ -534,7 +534,7 @@ private fun MockOptionRow(
             )
         }
         Spacer(modifier = Modifier.width(12.dp))
-        HtmlText(html = html, modifier = Modifier.weight(1f), textSizeSp = 14f)
+        NativeHtmlContent(rawHtml = html, modifier = Modifier.weight(1f), textSizeSp = 14f)
     }
 }
 

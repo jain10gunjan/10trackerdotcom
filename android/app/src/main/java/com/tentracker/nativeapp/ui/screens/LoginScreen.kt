@@ -1,11 +1,6 @@
 package com.tentracker.nativeapp.ui.screens
 
-import android.annotation.SuppressLint
-import android.graphics.Bitmap
 import android.webkit.CookieManager
-import android.webkit.WebResourceRequest
-import android.webkit.WebView
-import android.webkit.WebViewClient
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -31,10 +26,10 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -43,60 +38,79 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.vector.PathParser
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
-import com.tentracker.nativeapp.data.ApiClient
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import com.tentracker.nativeapp.data.SessionStore
 import com.tentracker.nativeapp.ui.components.BrandLogo
 import com.tentracker.nativeapp.ui.theme.Border
 import com.tentracker.nativeapp.ui.theme.Brand
 import com.tentracker.nativeapp.ui.theme.Emerald
 import com.tentracker.nativeapp.ui.theme.Ink
 import com.tentracker.nativeapp.ui.theme.Muted
+import com.tentracker.nativeapp.ui.util.openSite
 
 /**
- * Google sign-in — native shell matches web mobile sign-in; WebView runs the OAuth flow.
+ * Google sign-in shell aligned with web mobile [/sign-in]. OAuth runs in Chrome Custom Tabs (no WebView).
  */
 @OptIn(ExperimentalMaterial3Api::class)
-@SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun LoginScreen(
     onSignedIn: () -> Unit,
     onBack: () -> Unit,
 ) {
-    var showAuthWeb by remember { mutableStateOf(false) }
-    var authPath by remember { mutableStateOf("/sign-in") }
-    var webLoading by remember { mutableStateOf(false) }
-    var finished by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val sessionStore = remember(context) { SessionStore(context) }
+    var authPending by remember { mutableStateOf(false) }
+    var isRedirecting by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME && authPending) {
+                CookieManager.getInstance().flush()
+                if (sessionStore.hasSessionCookie()) {
+                    authPending = false
+                    isRedirecting = true
+                    sessionStore.markSignedInFromCookies()
+                    onSignedIn()
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    fun launchAuth(path: String) {
+        error = null
+        authPending = true
+        openSite(context, path)
+    }
 
     Scaffold(
         containerColor = Color(0xFFFAFAFA),
         topBar = {
             TopAppBar(
-                title = {
-                    if (!showAuthWeb) {
-                        BrandLogo(nameSize = 18.sp)
-                    } else {
-                        Text("Sign in", fontWeight = FontWeight.SemiBold, color = Ink)
-                    }
-                },
+                title = { BrandLogo(nameSize = 18.sp) },
                 navigationIcon = {
-                    IconButton(onClick = {
-                        if (showAuthWeb) showAuthWeb = false else onBack()
-                    }) {
+                    IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
@@ -108,80 +122,55 @@ fun LoginScreen(
             )
         },
     ) { padding ->
-        if (showAuthWeb) {
-            Column(
-                modifier = Modifier
-                    .padding(padding)
-                    .fillMaxSize(),
-            ) {
-                if (webLoading) {
-                    LinearProgressIndicator(
-                        modifier = Modifier.fillMaxWidth(),
-                        color = Brand,
-                    )
-                }
-                key(authPath) {
-                    AndroidView(
-                        modifier = Modifier.fillMaxSize(),
-                        factory = { context ->
-                            WebView(context).apply {
-                                settings.javaScriptEnabled = true
-                                settings.domStorageEnabled = true
-                                CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
-                                webViewClient = object : WebViewClient() {
-                                    override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
-                                        webLoading = true
-                                    }
-
-                                    override fun onPageFinished(view: WebView?, url: String?) {
-                                        webLoading = false
-                                        CookieManager.getInstance().flush()
-                                        if (!finished && looksSignedIn(url)) {
-                                            finished = true
-                                            onSignedIn()
-                                        }
-                                    }
-
-                                    override fun shouldOverrideUrlLoading(
-                                        view: WebView?,
-                                        request: WebResourceRequest?,
-                                    ): Boolean = false
-                                }
-                                loadUrl("${ApiClient.BASE_URL}$authPath")
-                            }
-                        },
-                    )
-                }
-            }
-        } else {
+        if (isRedirecting) {
             Box(
                 modifier = Modifier
                     .padding(padding)
-                    .fillMaxSize()
-                    .padding(horizontal = 20.dp, vertical = 16.dp),
-                contentAlignment = Alignment.TopCenter,
+                    .fillMaxSize(),
+                contentAlignment = Alignment.Center,
             ) {
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(24.dp),
-                    color = Color.White,
-                    border = BorderStroke(1.dp, Border),
-                    shadowElevation = 2.dp,
-                ) {
-                    Box {
-                        Box(
-                            modifier = Modifier
-                                .size(192.dp)
-                                .align(Alignment.TopEnd)
-                                .offset { IntOffset(64, -64) }
-                                .background(Emerald.copy(alpha = 0.25f), RoundedCornerShape(999.dp)),
-                        )
-                        Column(
-                            modifier = Modifier
-                                .padding(horizontal = 24.dp, vertical = 32.dp)
-                                .verticalScroll(rememberScrollState()),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                        ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    CircularProgressIndicator(color = Brand)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("Signing you in…", fontWeight = FontWeight.SemiBold, color = Ink)
+                    Text(
+                        "Taking you to the right place",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Muted,
+                    )
+                }
+            }
+            return@Scaffold
+        }
+
+        Box(
+            modifier = Modifier
+                .padding(padding)
+                .fillMaxSize()
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            contentAlignment = Alignment.TopCenter,
+        ) {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(24.dp),
+                color = Color.White,
+                border = BorderStroke(1.dp, Border),
+                shadowElevation = 2.dp,
+            ) {
+                Box {
+                    Box(
+                        modifier = Modifier
+                            .size(192.dp)
+                            .align(Alignment.TopEnd)
+                            .offset { IntOffset(64, -64) }
+                            .background(Emerald.copy(alpha = 0.25f), RoundedCornerShape(999.dp)),
+                    )
+                    Column(
+                        modifier = Modifier
+                            .padding(horizontal = 24.dp, vertical = 32.dp)
+                            .verticalScroll(rememberScrollState()),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
                         BrandLogo(nameSize = 22.sp)
                         Spacer(modifier = Modifier.height(20.dp))
                         Text(
@@ -197,22 +186,45 @@ fun LoginScreen(
                             color = Muted,
                             textAlign = TextAlign.Center,
                         )
+                        error?.let {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Surface(
+                                color = Color(0xFFFFF1F2),
+                                shape = RoundedCornerShape(16.dp),
+                                border = BorderStroke(1.dp, Color(0xFFFECDD3)),
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text(
+                                    it,
+                                    modifier = Modifier.padding(12.dp),
+                                    color = Color(0xFF9F1239),
+                                    fontSize = 14.sp,
+                                )
+                            }
+                        }
                         Spacer(modifier = Modifier.height(24.dp))
                         OutlinedButton(
-                            onClick = {
-                                authPath = "/sign-in"
-                                finished = false
-                                showAuthWeb = true
-                            },
-                            modifier = Modifier.fillMaxWidth().height(52.dp),
+                            onClick = { launchAuth("/sign-in") },
+                            enabled = !authPending,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(52.dp),
                             shape = RoundedCornerShape(16.dp),
                             border = BorderStroke(1.dp, Border),
                             colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White),
                         ) {
-                            GoogleMark()
+                            if (authPending) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    strokeWidth = 2.dp,
+                                    color = Muted,
+                                )
+                            } else {
+                                GoogleMark()
+                            }
                             Spacer(modifier = Modifier.size(12.dp))
                             Text(
-                                "Continue with Google",
+                                if (authPending) "Signing in…" else "Continue with Google",
                                 color = Ink,
                                 fontWeight = FontWeight.SemiBold,
                                 fontSize = 15.sp,
@@ -220,17 +232,15 @@ fun LoginScreen(
                         }
                         Spacer(modifier = Modifier.height(20.dp))
                         SignUpPrompt(
-                            onSignUp = {
-                                authPath = "/sign-up"
-                                finished = false
-                                showAuthWeb = true
-                            },
+                            onSignUp = { launchAuth("/sign-up") },
                         )
                         Spacer(modifier = Modifier.height(24.dp))
                         androidx.compose.material3.HorizontalDivider(color = Border.copy(alpha = 0.7f))
                         Spacer(modifier = Modifier.height(20.dp))
-                        AuthTrustFooter()
-                        }
+                        AuthTrustFooter(
+                            onOpenTerms = { openSite(context, "/terms-and-services") },
+                            onOpenPrivacy = { openSite(context, "/privacy-policy") },
+                        )
                     }
                 }
             }
@@ -240,7 +250,10 @@ fun LoginScreen(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun AuthTrustFooter() {
+private fun AuthTrustFooter(
+    onOpenTerms: () -> Unit,
+    onOpenPrivacy: () -> Unit,
+) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
@@ -252,12 +265,36 @@ private fun AuthTrustFooter() {
             Text("No credit card required", fontSize = 12.sp, color = Muted)
         }
         Text(
-            "By continuing, you agree to our Terms of Service and Privacy Policy.",
+            textAlign = TextAlign.Center,
             fontSize = 12.sp,
             color = Muted,
-            textAlign = TextAlign.Center,
             lineHeight = 18.sp,
+            modifier = Modifier.fillMaxWidth(),
+            text = buildString {
+                append("By continuing, you agree to our ")
+            },
         )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+        ) {
+            Text(
+                "Terms of Service",
+                fontSize = 12.sp,
+                color = Emerald,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.clickable(onClick = onOpenTerms),
+            )
+            Text(" and ", fontSize = 12.sp, color = Muted)
+            Text(
+                "Privacy Policy",
+                fontSize = 12.sp,
+                color = Emerald,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.clickable(onClick = onOpenPrivacy),
+            )
+            Text(".", fontSize = 12.sp, color = Muted)
+        }
     }
 }
 
@@ -319,16 +356,4 @@ private fun GoogleMark() {
             }
         }
     }
-}
-
-private fun looksSignedIn(url: String?): Boolean {
-    if (url.isNullOrBlank() || !url.contains("10tracker.com")) return false
-    val cookies = CookieManager.getInstance().getCookie(ApiClient.BASE_URL).orEmpty()
-    val hasSession =
-        cookies.contains("authjs.session-token", true) ||
-            cookies.contains("next-auth.session-token", true) ||
-            cookies.contains("__Secure-authjs.session-token", true) ||
-            cookies.contains("__Secure-next-auth.session-token", true)
-    val notAuthPage = !url.contains("/api/auth") && !url.contains("accounts.google.com")
-    return hasSession && notAuthPage
 }

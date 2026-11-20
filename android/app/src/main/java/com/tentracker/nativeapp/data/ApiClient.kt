@@ -19,7 +19,7 @@ import java.util.concurrent.TimeUnit
 
 /**
  * Talks to existing 10tracker.com APIs. No DB changes —
- * uses Auth.js session cookies from the login WebView.
+ * uses Auth.js session cookies (Custom Tabs / shared CookieManager).
  */
 class ApiClient(private val sessionStore: SessionStore) {
 
