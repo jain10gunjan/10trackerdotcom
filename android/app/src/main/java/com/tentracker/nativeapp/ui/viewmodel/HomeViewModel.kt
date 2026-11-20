@@ -3,9 +3,11 @@ package com.tentracker.nativeapp.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.tentracker.nativeapp.data.ActiveExam
 import com.tentracker.nativeapp.data.ApiClient
 import com.tentracker.nativeapp.data.ExamCategory
 import com.tentracker.nativeapp.data.OgCatalogResponse
+import com.tentracker.nativeapp.data.RoadmapSummary
 import com.tentracker.nativeapp.data.SessionStore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,6 +20,8 @@ data class HomeUiState(
     val refreshing: Boolean = false,
     val catalog: OgCatalogResponse? = null,
     val exams: List<ExamCategory> = emptyList(),
+    val activeExams: List<ActiveExam> = emptyList(),
+    val roadmaps: List<RoadmapSummary> = emptyList(),
     val error: String? = null,
     val signedIn: Boolean = false,
 )
@@ -49,12 +53,17 @@ class HomeViewModel(
             try {
                 val catalog = api.getOgCatalog()
                 val exams = runCatching { api.getExamCategories() }.getOrNull()
+                val active = runCatching { api.getActiveExams() }.getOrNull()
+                val roadmaps = runCatching { api.getRoadmaps(limit = 12, sort = "featured") }.getOrNull()
+                val activeList = active?.exams.orEmpty().filter { it.active || it.is_active }
                 _state.update {
                     it.copy(
                         loading = false,
                         refreshing = false,
                         catalog = catalog,
                         exams = exams?.data.orEmpty(),
+                        activeExams = activeList,
+                        roadmaps = roadmaps?.roadmaps.orEmpty(),
                         error = if (catalog.success) null else (catalog.error ?: catalog.setupHint),
                         signedIn = sessionStore.hasSessionCookie() || sessionStore.signedInHint,
                     )
