@@ -19,6 +19,8 @@ data class ExamDetailUiState(
     val mock: MockOfDayMock? = null,
     val exam: ActiveExam? = null,
     val error: String? = null,
+    val isSignedIn: Boolean = false,
+    val mockTestCount: Int = 0,
 )
 
 class ExamDetailViewModel(
@@ -43,6 +45,9 @@ class ExamDetailViewModel(
                         it.slug.equals(category, ignoreCase = true)
                     }
                 }.getOrNull()
+                val session = runCatching { api.getAuthSession() }.getOrNull()
+                val isSignedIn = !session?.user?.email.isNullOrBlank()
+                val mockTestCount = runCatching { api.getMockTests(category).size }.getOrDefault(0)
                 val subjectList = subjects.subjectsData
                 _state.update {
                     it.copy(
@@ -50,11 +55,9 @@ class ExamDetailViewModel(
                         subjects = subjectList,
                         mock = mock,
                         exam = exam,
-                        error = if (subjectList.isEmpty() && mock == null) {
-                            "No subjects yet for this exam"
-                        } else {
-                            null
-                        },
+                        isSignedIn = isSignedIn,
+                        mockTestCount = mockTestCount,
+                        error = null,
                     )
                 }
             } catch (e: Exception) {
