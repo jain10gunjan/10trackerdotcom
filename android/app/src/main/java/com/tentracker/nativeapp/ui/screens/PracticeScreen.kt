@@ -20,7 +20,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -28,7 +27,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -39,7 +37,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.tentracker.nativeapp.ui.components.ErrorState
 import com.tentracker.nativeapp.ui.components.HtmlText
+import com.tentracker.nativeapp.ui.components.LoadingState
 import com.tentracker.nativeapp.ui.theme.Border
 import com.tentracker.nativeapp.ui.theme.Brand
 import com.tentracker.nativeapp.ui.theme.BrandSoft
@@ -85,15 +85,17 @@ fun PracticeScreen(
     ) { innerPadding ->
         when {
             state.loading && state.questions.isEmpty() -> {
-                Box(modifier = Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = Brand)
-                }
+                LoadingState(
+                    modifier = Modifier.padding(innerPadding),
+                    message = "Loading questions…",
+                )
             }
             state.error != null && q == null -> {
-                Column(modifier = Modifier.padding(innerPadding).padding(16.dp)) {
-                    Text(state.error ?: "Error", color = Muted)
-                    TextButton(onClick = { vm.load(1, reset = true) }) { Text("Retry") }
-                }
+                ErrorState(
+                    message = state.error ?: "Could not load questions",
+                    modifier = Modifier.padding(innerPadding),
+                    onRetry = { vm.load(1, reset = true) },
+                )
             }
             q != null -> {
                 Column(

@@ -1,7 +1,6 @@
 package com.tentracker.nativeapp.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -20,7 +19,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -36,15 +34,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.tentracker.nativeapp.ui.components.EmptyState
+import com.tentracker.nativeapp.ui.components.ErrorState
+import com.tentracker.nativeapp.ui.components.LoadingState
 import com.tentracker.nativeapp.ui.theme.Border
 import com.tentracker.nativeapp.ui.theme.Brand
 import com.tentracker.nativeapp.ui.theme.BrandSoft
 import com.tentracker.nativeapp.ui.theme.Ink
-import com.tentracker.nativeapp.ui.theme.Muted
-import com.tentracker.nativeapp.ui.util.openSite
 import com.tentracker.nativeapp.ui.viewmodel.ExamDetailViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -55,9 +53,9 @@ fun ExamDetailScreen(
     vm: ExamDetailViewModel,
     onBack: () -> Unit,
     onOpenChapter: (subject: String, chapter: String, chapterTitle: String) -> Unit,
+    onOpenWeb: (pathOrUrl: String, title: String?) -> Unit = { _, _ -> },
 ) {
     val state by vm.state.collectAsState()
-    val context = LocalContext.current
 
     Scaffold(
         containerColor = Color.White,
@@ -75,16 +73,25 @@ fun ExamDetailScreen(
     ) { padding ->
         when {
             state.loading && state.subjects.isEmpty() -> {
-                Box(
-                    modifier = Modifier.fillMaxSize().padding(padding),
-                    contentAlignment = Alignment.Center,
-                ) { CircularProgressIndicator(color = Brand) }
+                LoadingState(
+                    modifier = Modifier.padding(padding),
+                    message = "Loading subjects…",
+                )
             }
             state.error != null && state.subjects.isEmpty() -> {
-                Column(modifier = Modifier.padding(padding).padding(16.dp)) {
-                    Text(state.error ?: "Error", color = Muted)
-                    TextButton(onClick = { vm.refresh() }) { Text("Retry") }
-                }
+                ErrorState(
+                    message = state.error ?: "Could not load exam",
+                    modifier = Modifier.padding(padding),
+                    onRetry = { vm.refresh() },
+                )
+            }
+            state.subjects.isEmpty() && state.mock == null -> {
+                EmptyState(
+                    message = "No subjects yet for this exam.",
+                    modifier = Modifier.padding(padding),
+                    actionLabel = "Retry",
+                    onAction = { vm.refresh() },
+                )
             }
             else -> {
                 LazyColumn(
@@ -112,7 +119,7 @@ fun ExamDetailScreen(
                                     Button(
                                         onClick = {
                                             val href = mock.href ?: "/mock-test/$category/attempt/${mock.id}"
-                                            openSite(context, href)
+                                            onOpenWeb(href, mock.name)
                                         },
                                         colors = ButtonDefaults.buttonColors(containerColor = Brand),
                                         shape = RoundedCornerShape(12.dp),

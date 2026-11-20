@@ -21,7 +21,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -36,6 +35,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.tentracker.nativeapp.data.ArticleSummary
+import com.tentracker.nativeapp.ui.components.EmptyState
+import com.tentracker.nativeapp.ui.components.ErrorState
+import com.tentracker.nativeapp.ui.components.LoadingState
 import com.tentracker.nativeapp.ui.theme.Border
 import com.tentracker.nativeapp.ui.theme.Brand
 import com.tentracker.nativeapp.ui.theme.Ink
@@ -69,15 +71,20 @@ fun ArticlesScreen(
 
         when {
             state.loading && state.articles.isEmpty() -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = Brand)
-                }
+                LoadingState(message = "Loading updates…")
             }
             state.error != null && state.articles.isEmpty() -> {
-                Column {
-                    Text(state.error ?: "Error", color = Muted)
-                    TextButton(onClick = { vm.refresh() }) { Text("Retry") }
-                }
+                ErrorState(
+                    message = state.error ?: "Could not load updates",
+                    onRetry = { vm.refresh() },
+                )
+            }
+            state.articles.isEmpty() -> {
+                EmptyState(
+                    message = "No updates yet.",
+                    actionLabel = "Retry",
+                    onAction = { vm.refresh() },
+                )
             }
             else -> {
                 LazyColumn(

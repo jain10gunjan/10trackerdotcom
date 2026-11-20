@@ -14,6 +14,7 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -58,6 +59,7 @@ fun MainShell(
     onOpenPath: (String) -> Unit,
     onOpenExam: (slug: String, name: String) -> Unit,
     onOpenArticle: (slug: String) -> Unit,
+    onOpenWeb: (pathOrUrl: String, title: String?) -> Unit,
     onSignIn: () -> Unit,
     initialTab: String = "tab_home",
 ) {
@@ -66,6 +68,16 @@ fun MainShell(
     val homeState by homeVm.state.collectAsState()
     val backStack by tabNav.currentBackStackEntryAsState()
     val current = backStack?.destination?.route ?: initialTab
+
+    LaunchedEffect(initialTab) {
+        if (current != initialTab) {
+            tabNav.navigate(initialTab) {
+                popUpTo(tabNav.graph.findStartDestination().id) { saveState = true }
+                launchSingleTop = true
+                restoreState = true
+            }
+        }
+    }
 
     Scaffold(
         containerColor = Color.White,
@@ -160,6 +172,7 @@ fun MainShell(
                         sessionStore.clear()
                         homeVm.refresh()
                     },
+                    onOpenWeb = onOpenWeb,
                 )
             }
         }

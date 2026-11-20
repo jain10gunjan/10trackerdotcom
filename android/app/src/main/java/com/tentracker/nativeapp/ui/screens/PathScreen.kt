@@ -1,7 +1,5 @@
 package com.tentracker.nativeapp.ui.screens
 
-import android.net.Uri
-import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -19,7 +17,6 @@ import androidx.compose.material.icons.filled.Quiz
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material3.Card
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -32,11 +29,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.Modifier
 import com.tentracker.nativeapp.data.OgResource
+import com.tentracker.nativeapp.ui.components.EmptyState
+import com.tentracker.nativeapp.ui.components.ErrorState
+import com.tentracker.nativeapp.ui.components.LoadingState
 import com.tentracker.nativeapp.ui.util.extractYouTubeVideoId
 import com.tentracker.nativeapp.ui.util.resourceOpenUrl
 import com.tentracker.nativeapp.ui.viewmodel.PathViewModel
@@ -47,9 +46,9 @@ fun PathScreen(
     vm: PathViewModel,
     onBack: () -> Unit,
     onPlayVideo: (resourceId: String, youtubeId: String, title: String) -> Unit,
+    onOpenWeb: (url: String, title: String?) -> Unit = { _, _ -> },
 ) {
     val state by vm.state.collectAsState()
-    val context = LocalContext.current
     val path = state.detail?.path
     val resources = state.detail?.resources.orEmpty()
 
@@ -73,23 +72,26 @@ fun PathScreen(
         }
     ) { padding ->
         when {
-            state.loading -> {
-                Column(
-                    modifier = Modifier
-                        .padding(padding)
-                        .fillMaxSize(),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) { CircularProgressIndicator() }
+            state.loading && path == null -> {
+                LoadingState(
+                    modifier = Modifier.padding(padding),
+                    message = "Loading tracker…",
+                )
             }
             state.error != null && path == null -> {
-                Column(
-                    modifier = Modifier
-                        .padding(padding)
-                        .padding(24.dp)
-                ) {
-                    Text(state.error ?: "Error")
-                }
+                ErrorState(
+                    message = state.error ?: "Could not load this tracker",
+                    modifier = Modifier.padding(padding),
+                    onRetry = { vm.refresh() },
+                )
+            }
+            resources.isEmpty() -> {
+                EmptyState(
+                    message = "No lessons in this path yet.",
+                    modifier = Modifier.padding(padding),
+                    actionLabel = "Refresh",
+                    onAction = { vm.refresh(sync = true) },
+                )
             }
             else -> {
                 LazyColumn(
@@ -123,8 +125,7 @@ fun PathScreen(
                                 } else {
                                     val url = resourceOpenUrl(resource, path?.slug.orEmpty())
                                     if (url != null) {
-                                        CustomTabsIntent.Builder().build()
-                                            .launchUrl(context, Uri.parse(url))
+                                        onOpenWeb(url, resource.title)
                                     }
                                 }
                             }
