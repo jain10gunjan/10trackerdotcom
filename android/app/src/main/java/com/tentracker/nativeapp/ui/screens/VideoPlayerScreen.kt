@@ -99,6 +99,7 @@ import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.options.IFram
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.views.YouTubePlayerView
 import com.tentracker.nativeapp.data.ApiClient
 import com.tentracker.nativeapp.data.OgResource
+import com.tentracker.nativeapp.ui.motion.OgFadeSlideIn
 import com.tentracker.nativeapp.ui.theme.Border
 import com.tentracker.nativeapp.ui.theme.Brand
 import com.tentracker.nativeapp.ui.theme.Ink
@@ -391,6 +392,7 @@ fun VideoPlayerScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .shadow(8.dp, RoundedCornerShape(16.dp), ambientColor = Color.Black.copy(0.2f))
                             .clip(RoundedCornerShape(16.dp))
                             .border(1.dp, Color(0xFF262626), RoundedCornerShape(16.dp)),
                     ) {
@@ -518,6 +520,7 @@ fun VideoPlayerScreen(
 
             if (!fullscreen) {
                 item {
+                    OgFadeSlideIn(delayMillis = 100) {
                     Column(
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -697,11 +700,13 @@ fun VideoPlayerScreen(
                             )
                         }
                     }
+                    }
                 }
 
-                upcomingSections.forEach { section ->
+                upcomingSections.forEachIndexed { sectionIndex, section ->
                     val doneCount = section.items.count { (_, r) -> r.progress?.status == "COMPLETED" }
                     item {
+                        OgFadeSlideIn(delayMillis = 140 + sectionIndex * 45) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -752,6 +757,7 @@ fun VideoPlayerScreen(
                                     HorizontalDivider(color = Neutral100, thickness = 1.dp)
                                 }
                             }
+                        }
                         }
                         Spacer(modifier = Modifier.height(20.dp))
                     }

@@ -15,6 +15,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -51,7 +55,9 @@ import androidx.compose.ui.unit.sp
 import com.tentracker.nativeapp.data.OgResource
 import com.tentracker.nativeapp.ui.components.EmptyState
 import com.tentracker.nativeapp.ui.components.ErrorState
-import com.tentracker.nativeapp.ui.components.LoadingState
+import com.tentracker.nativeapp.ui.motion.OgEaseOut
+import com.tentracker.nativeapp.ui.motion.OgFadeSlideIn
+import com.tentracker.nativeapp.ui.motion.OgShimmerBlock
 import com.tentracker.nativeapp.ui.theme.Brand
 import com.tentracker.nativeapp.ui.util.extractYouTubeVideoId
 import com.tentracker.nativeapp.ui.util.resourceOpenUrl
@@ -107,11 +113,18 @@ fun PathScreen(
     Scaffold(
         containerColor = Neutral50,
         bottomBar = {
-            continueResource?.let { resource ->
+            AnimatedVisibility(
+                visible = continueResource != null,
+                enter = slideInVertically(
+                    initialOffsetY = { it / 3 },
+                    animationSpec = tween(400, easing = OgEaseOut),
+                ) + fadeIn(tween(400, easing = OgEaseOut, delayMillis = 80)),
+            ) {
+                val resource = continueResource ?: return@AnimatedVisibility
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(Color.White)
+                        .background(Color.White.copy(alpha = 0.92f))
                         .border(1.dp, Color(0xE6E5E5E5))
                         .clickable {
                             val type = resource.type.uppercase()
@@ -145,6 +158,7 @@ fun PathScreen(
                     }
                     Row(
                         modifier = Modifier
+                            .shadow(12.dp, RoundedCornerShape(12.dp), ambientColor = Brand.copy(0.35f), spotColor = Brand.copy(0.45f))
                             .clip(RoundedCornerShape(12.dp))
                             .background(Brand)
                             .padding(horizontal = 14.dp, vertical = 10.dp),
@@ -186,10 +200,7 @@ fun PathScreen(
     ) { padding ->
         when {
             state.loading && path == null -> {
-                LoadingState(
-                    modifier = Modifier.padding(padding),
-                    message = "Loading tracker…",
-                )
+                PathViewerSkeleton(modifier = Modifier.padding(padding))
             }
             state.error != null && path == null -> {
                 ErrorState(
@@ -215,139 +226,143 @@ fun PathScreen(
                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 112.dp),
                 ) {
                     item {
-                        Row(
-                            modifier = Modifier
-                                .clickable(onClick = onBack)
-                                .padding(vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        ) {
-                            Icon(
-                                Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = null,
-                                tint = Neutral500,
-                                modifier = Modifier.size(16.dp),
-                            )
-                            Text("All trackers", fontSize = 14.sp, color = Neutral500)
-                        }
-
-                        val category = path?.category?.trim().takeIf { !it.isNullOrBlank() } ?: "General"
-                        Text(
-                            category.uppercase(),
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            letterSpacing = 0.4.sp,
-                            color = Neutral500,
-                        )
-                        Text(
-                            path?.title.orEmpty(),
-                            modifier = Modifier.padding(top = 4.dp),
-                            fontSize = 30.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            letterSpacing = (-0.25).sp,
-                            color = Neutral900,
-                        )
-                        path?.description?.takeIf { it.isNotBlank() }?.let { desc ->
-                            Text(
-                                desc,
-                                fontSize = 14.sp,
-                                lineHeight = 20.sp,
-                                color = Neutral600,
-                                modifier = Modifier.padding(top = 8.dp),
-                            )
-                        }
-                        val completed = path?.completedResources ?: 0
-                        val total = path?.totalResources ?: 0
-                        val pct = path?.percent ?: 0
-                        Column(
-                            modifier = Modifier
-                                .padding(top = 16.dp)
-                                .fillMaxWidth(0.92f),
-                        ) {
+                        OgFadeSlideIn(delayMillis = 0) {
                             Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                            ) {
-                                Text(
-                                    buildString {
-                                        append("$completed/$total complete")
-                                        if (state.refreshing) append(" · syncing…")
-                                    },
-                                    fontSize = 12.sp,
-                                    color = Neutral500,
-                                )
-                                Text("$pct%", fontWeight = FontWeight.Medium, color = Neutral800, fontSize = 12.sp)
-                            }
-                            Box(
                                 modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(top = 4.dp)
-                                    .height(6.dp)
-                                    .clip(RoundedCornerShape(999.dp))
-                                    .background(Color(0xCCE5E5E5)),
+                                    .clickable(onClick = onBack)
+                                    .padding(vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
                             ) {
+                                Icon(
+                                    Icons.AutoMirrored.Filled.ArrowBack,
+                                    contentDescription = null,
+                                    tint = Neutral500,
+                                    modifier = Modifier.size(16.dp),
+                                )
+                                Text("All trackers", fontSize = 14.sp, color = Neutral500)
+                            }
+
+                            val category = path?.category?.trim().takeIf { !it.isNullOrBlank() } ?: "General"
+                            Text(
+                                category.uppercase(),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                letterSpacing = 0.4.sp,
+                                color = Neutral500,
+                            )
+                            Text(
+                                path?.title.orEmpty(),
+                                modifier = Modifier.padding(top = 4.dp),
+                                fontSize = 30.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                letterSpacing = (-0.25).sp,
+                                color = Neutral900,
+                            )
+                            path?.description?.takeIf { it.isNotBlank() }?.let { desc ->
+                                Text(
+                                    desc,
+                                    fontSize = 14.sp,
+                                    lineHeight = 20.sp,
+                                    color = Neutral600,
+                                    modifier = Modifier.padding(top = 8.dp),
+                                )
+                            }
+                            val completed = path?.completedResources ?: 0
+                            val total = path?.totalResources ?: 0
+                            val pct = path?.percent ?: 0
+                            Column(
+                                modifier = Modifier
+                                    .padding(top = 16.dp)
+                                    .fillMaxWidth(0.92f),
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                ) {
+                                    Text(
+                                        buildString {
+                                            append("$completed/$total complete")
+                                            if (state.refreshing) append(" · syncing…")
+                                        },
+                                        fontSize = 12.sp,
+                                        color = Neutral500,
+                                    )
+                                    Text("$pct%", fontWeight = FontWeight.Medium, color = Neutral800, fontSize = 12.sp)
+                                }
                                 Box(
                                     modifier = Modifier
-                                        .fillMaxWidth((pct / 100f).coerceIn(0f, 1f))
+                                        .fillMaxWidth()
+                                        .padding(top = 4.dp)
                                         .height(6.dp)
                                         .clip(RoundedCornerShape(999.dp))
-                                        .background(Neutral900),
-                                )
+                                        .background(Color(0xCCE5E5E5)),
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth((pct / 100f).coerceIn(0f, 1f))
+                                            .height(6.dp)
+                                            .clip(RoundedCornerShape(999.dp))
+                                            .background(Neutral900),
+                                    )
+                                }
                             }
                         }
                         Spacer(modifier = Modifier.height(28.dp))
                     }
 
-                    sections.forEach { section ->
+                    sections.forEachIndexed { sectionIndex, section ->
                         val doneCount = section.items.count { (_, r) -> r.progress?.status == "COMPLETED" }
                         item {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(bottom = 8.dp, start = 4.dp, end = 4.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text(
-                                    section.label,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = Neutral800,
-                                    fontSize = 14.sp,
-                                )
-                                Text(
-                                    "$doneCount/${section.items.size} done",
-                                    fontSize = 11.sp,
-                                    color = Neutral500,
-                                )
-                            }
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .shadow(2.dp, RoundedCornerShape(16.dp))
-                                    .clip(RoundedCornerShape(16.dp))
-                                    .background(Color.White)
-                                    .border(1.dp, CardBorder, RoundedCornerShape(16.dp)),
-                            ) {
-                                section.items.forEachIndexed { sectionIdx, indexed ->
-                                    val resource = indexed.value
-                                    val globalIndex = indexed.index
-                                    ResourceRow(
-                                        resource = resource,
-                                        index = globalIndex,
-                                        mutedBg = resource.sequenceLocked,
-                                        onClick = {
-                                            val type = resource.type.uppercase()
-                                            val ytId = extractYouTubeVideoId(resource.youtubeVideoId)
-                                            if (type == "VIDEO" && ytId != null && !resource.locked && !resource.sequenceLocked) {
-                                                onPlayVideo(resource.id, ytId, resource.title)
-                                            } else {
-                                                val url = resourceOpenUrl(resource, path?.slug.orEmpty())
-                                                if (url != null) onOpenWeb(url, resource.title)
-                                            }
-                                        },
+                            OgFadeSlideIn(delayMillis = 60 + sectionIndex * 50) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(bottom = 8.dp, start = 4.dp, end = 4.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text(
+                                        section.label,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = Neutral800,
+                                        fontSize = 14.sp,
                                     )
-                                    if (sectionIdx < section.items.lastIndex) {
-                                        HorizontalDivider(color = Neutral100, thickness = 1.dp)
+                                    Text(
+                                        "$doneCount/${section.items.size} done",
+                                        fontSize = 11.sp,
+                                        color = Neutral500,
+                                    )
+                                }
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .shadow(2.dp, RoundedCornerShape(16.dp))
+                                        .clip(RoundedCornerShape(16.dp))
+                                        .background(Color.White)
+                                        .border(1.dp, CardBorder, RoundedCornerShape(16.dp)),
+                                ) {
+                                    section.items.forEachIndexed { sectionIdx, indexed ->
+                                        val resource = indexed.value
+                                        val globalIndex = indexed.index
+                                        ResourceRow(
+                                            resource = resource,
+                                            index = globalIndex,
+                                            mutedBg = resource.sequenceLocked,
+                                            onClick = {
+                                                val type = resource.type.uppercase()
+                                                val ytId = extractYouTubeVideoId(resource.youtubeVideoId)
+                                                if (type == "VIDEO" && ytId != null && !resource.locked && !resource.sequenceLocked) {
+                                                    onPlayVideo(resource.id, ytId, resource.title)
+                                                } else {
+                                                    val url = resourceOpenUrl(resource, path?.slug.orEmpty())
+                                                    if (url != null) onOpenWeb(url, resource.title)
+                                                }
+                                            },
+                                        )
+                                        if (sectionIdx < section.items.lastIndex) {
+                                            HorizontalDivider(color = Neutral100, thickness = 1.dp)
+                                        }
                                     }
                                 }
                             }
@@ -515,6 +530,43 @@ private fun continueCtaLabel(type: String, status: String?): String {
             else -> "Start mock"
         }
         else -> "Open"
+    }
+}
+
+@Composable
+private fun PathViewerSkeleton(modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .background(Neutral50)
+            .padding(horizontal = 16.dp, vertical = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        OgShimmerBlock(modifier = Modifier.fillMaxWidth(0.35f), height = 14.dp)
+        OgShimmerBlock(modifier = Modifier.fillMaxWidth(0.72f), height = 32.dp)
+        OgShimmerBlock(modifier = Modifier.fillMaxWidth(), height = 14.dp)
+        OgShimmerBlock(modifier = Modifier.fillMaxWidth(0.55f), height = 8.dp)
+        Spacer(modifier = Modifier.height(8.dp))
+        repeat(5) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color.White)
+                    .border(1.dp, CardBorder, RoundedCornerShape(16.dp))
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                OgShimmerBlock(modifier = Modifier.size(40.dp), corner = 12.dp)
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    OgShimmerBlock(modifier = Modifier.fillMaxWidth(0.8f))
+                    OgShimmerBlock(modifier = Modifier.fillMaxWidth(0.5f), height = 12.dp)
+                }
+            }
+        }
     }
 }
 

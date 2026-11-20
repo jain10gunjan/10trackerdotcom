@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material3.Icon
@@ -51,6 +52,8 @@ import com.tentracker.nativeapp.ui.theme.Brand
 import com.tentracker.nativeapp.ui.theme.BrandSoft
 import com.tentracker.nativeapp.ui.theme.Ink
 import com.tentracker.nativeapp.ui.theme.Muted
+import com.tentracker.nativeapp.ui.motion.OgFadeSlideIn
+import com.tentracker.nativeapp.ui.motion.OgHeroAmbientOrbs
 import com.tentracker.nativeapp.ui.viewmodel.HomeViewModel
 
 private val Neutral50 = Color(0xFFFAFAFA)
@@ -97,6 +100,7 @@ fun TrackersScreen(
         item {
             TrackersHero(
                 loading = state.loading && catalog == null,
+                signedIn = state.signedIn,
                 examCount = exams.size,
                 liveChapters = liveChapters,
                 totalSteps = totalSteps,
@@ -166,13 +170,22 @@ fun TrackersScreen(
             }
             else -> {
                 if (exams.isNotEmpty()) {
-                    item { ExamHubHeading() }
-                    items(exams, key = { it.slug }) { exam ->
-                        OgTrackerExamCard(
-                            exam = exam,
+                    item {
+                        OgFadeSlideIn(delayMillis = 80) { ExamHubHeading() }
+                    }
+                    items(
+                        exams.withIndex().toList(),
+                        key = { it.value.slug },
+                    ) { (index, exam) ->
+                        OgFadeSlideIn(
+                            delayMillis = 120 + (index * 45).coerceAtMost(360),
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                            onClick = { if (exam.slug.isNotBlank()) onOpenPath(exam.slug) },
-                        )
+                        ) {
+                            OgTrackerExamCard(
+                                exam = exam,
+                                onClick = { if (exam.slug.isNotBlank()) onOpenPath(exam.slug) },
+                            )
+                        }
                     }
                 }
 
@@ -185,12 +198,19 @@ fun TrackersScreen(
                             modifier = Modifier.padding(top = if (exams.isNotEmpty()) 12.dp else 0.dp),
                         )
                     }
-                    items(paths, key = { it.id }) { path ->
-                        OgTrackerPathCard(
-                            path = path,
+                    items(
+                        paths.withIndex().toList(),
+                        key = { it.value.id },
+                    ) { (index, path) ->
+                        OgFadeSlideIn(
+                            delayMillis = 100 + (index * 40).coerceAtMost(320),
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                            onClick = { onOpenPath(path.slug) },
-                        )
+                        ) {
+                            OgTrackerPathCard(
+                                path = path,
+                                onClick = { onOpenPath(path.slug) },
+                            )
+                        }
                     }
                 }
             }
@@ -201,6 +221,7 @@ fun TrackersScreen(
 @Composable
 private fun TrackersHero(
     loading: Boolean,
+    signedIn: Boolean,
     examCount: Int,
     liveChapters: Int,
     totalSteps: Int,
@@ -230,88 +251,140 @@ private fun TrackersHero(
                     ),
                 ),
         )
+        OgHeroAmbientOrbs(brandBlue = Brand, modifier = Modifier.matchParentSize())
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
                 .padding(top = 20.dp, bottom = 40.dp),
         ) {
-            Text(
-                "Structured study paths",
-                fontSize = 11.sp,
-                fontWeight = FontWeight.SemiBold,
-                letterSpacing = 2.sp,
-                color = Neutral500,
-            )
-            Text(
-                "Finish every chapter — watch, practice, mock.",
-                modifier = Modifier.padding(top = 12.dp),
-                fontSize = 34.sp,
-                fontWeight = FontWeight.Black,
-                lineHeight = 36.sp,
-                letterSpacing = (-0.5).sp,
-                color = Neutral950,
-            )
-            Text(
-                "OG Trackers turn each exam into chapters with one checklist. Lessons sync from " +
-                    "YouTube through our Chrome extension; practice and mocks use what's already on 10Tracker.",
-                modifier = Modifier.padding(top = 16.dp),
-                fontSize = 14.sp,
-                lineHeight = 22.sp,
-                color = Neutral600,
-            )
-            if (isPremium) {
+            OgFadeSlideIn(delayMillis = 0) {
                 Text(
-                    "Premium active",
-                    modifier = Modifier
-                        .padding(top = 12.dp)
-                        .clip(RoundedCornerShape(999.dp))
-                        .background(Color.White.copy(alpha = 0.9f))
-                        .border(1.dp, Brand.copy(alpha = 0.25f), RoundedCornerShape(999.dp))
-                        .padding(horizontal = 10.dp, vertical = 4.dp),
+                    "Structured study paths",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = Brand,
+                    letterSpacing = 2.sp,
+                    color = Neutral500,
                 )
-            } else {
+            }
+            OgFadeSlideIn(delayMillis = 50) {
                 Text(
-                    "Sign in to keep checklist progress across devices.",
+                    "Finish every chapter — watch, practice, mock.",
                     modifier = Modifier.padding(top = 12.dp),
-                    fontSize = 12.sp,
-                    color = Neutral500,
+                    fontSize = 34.sp,
+                    fontWeight = FontWeight.Black,
+                    lineHeight = 36.sp,
+                    letterSpacing = (-0.5).sp,
+                    color = Neutral950,
                 )
             }
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 24.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                HeroMetricChip(
-                    value = if (loading) "—" else if (examCount > 0) "$examCount" else "—",
-                    label = "exams",
-                )
-                HeroMetricChip(
-                    value = if (loading) "—" else if (liveChapters > 0) "$liveChapters" else "—",
-                    label = "live chapters",
-                )
-                HeroMetricChip(
-                    value = if (loading) "—" else if (totalSteps > 0) "$totalSteps" else "—",
-                    label = "total steps",
-                )
-            }
-            if (userClears > 0) {
+            OgFadeSlideIn(delayMillis = 120) {
                 Text(
-                    modifier = Modifier.padding(top = 8.dp),
-                    text = buildAnnotatedString {
-                        withStyle(androidx.compose.ui.text.SpanStyle(fontWeight = FontWeight.SemiBold, color = Neutral900)) {
-                            append("$userClears")
-                        }
-                        append(" your clears")
-                    },
+                    "OG Trackers turn each exam into chapters with one checklist. Lessons sync from " +
+                        "YouTube through our Chrome extension; practice and mocks use what's already on 10Tracker.",
+                    modifier = Modifier.padding(top = 16.dp),
                     fontSize = 14.sp,
-                    color = Neutral500,
+                    lineHeight = 22.sp,
+                    color = Neutral600,
                 )
+            }
+            OgFadeSlideIn(delayMillis = 180) {
+                if (!signedIn) {
+                    Row(
+                        modifier = Modifier
+                            .padding(top = 16.dp)
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Color.White.copy(alpha = 0.9f))
+                            .border(1.dp, Brand.copy(alpha = 0.2f), RoundedCornerShape(16.dp))
+                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Brand),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                Icons.Default.Extension,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(18.dp),
+                            )
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "Extension = YouTube progress that actually counts",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Neutral950,
+                            )
+                            Text(
+                                "Sign in, install once, connect your account. Watch % writes into the chapter tracker for catalogued videos.",
+                                modifier = Modifier.padding(top = 4.dp),
+                                fontSize = 13.sp,
+                                lineHeight = 18.sp,
+                                color = Neutral600,
+                            )
+                        }
+                    }
+                } else if (isPremium) {
+                    Text(
+                        "Premium active",
+                        modifier = Modifier
+                            .padding(top = 12.dp)
+                            .clip(RoundedCornerShape(999.dp))
+                            .background(Color.White.copy(alpha = 0.9f))
+                            .border(1.dp, Brand.copy(alpha = 0.25f), RoundedCornerShape(999.dp))
+                            .padding(horizontal = 10.dp, vertical = 4.dp),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Brand,
+                    )
+                } else {
+                    Text(
+                        "Sign in to keep checklist progress across devices.",
+                        modifier = Modifier.padding(top = 12.dp),
+                        fontSize = 12.sp,
+                        color = Neutral500,
+                    )
+                }
+            }
+            OgFadeSlideIn(delayMillis = 240) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 24.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    HeroMetricChip(
+                        value = if (loading) "—" else if (examCount > 0) "$examCount" else "—",
+                        label = "exams",
+                    )
+                    HeroMetricChip(
+                        value = if (loading) "—" else if (liveChapters > 0) "$liveChapters" else "—",
+                        label = "live chapters",
+                    )
+                    HeroMetricChip(
+                        value = if (loading) "—" else if (totalSteps > 0) "$totalSteps" else "—",
+                        label = "total steps",
+                    )
+                }
+                if (userClears > 0) {
+                    Text(
+                        modifier = Modifier.padding(top = 8.dp),
+                        text = buildAnnotatedString {
+                            withStyle(androidx.compose.ui.text.SpanStyle(fontWeight = FontWeight.SemiBold, color = Neutral900)) {
+                                append("$userClears")
+                            }
+                            append(" your clears")
+                        },
+                        fontSize = 14.sp,
+                        color = Neutral500,
+                    )
+                }
             }
         }
     }
@@ -399,7 +472,6 @@ private fun SectionHeading(
 @Composable
 private fun OgTrackerExamCard(
     exam: OgExam,
-    modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
     val percent = exam.percent.coerceIn(0, 100)
@@ -407,7 +479,7 @@ private fun OgTrackerExamCard(
     val live = exam.liveChapterCount
 
     Column(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxWidth()
             .shadow(
                 elevation = 12.dp,
@@ -529,12 +601,11 @@ private fun OgTrackerExamCard(
 @Composable
 private fun OgTrackerPathCard(
     path: OgPathSummary,
-    modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
     val percent = path.percent.coerceIn(0, 100)
     Column(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxWidth()
             .shadow(8.dp, RoundedCornerShape(16.dp), ambientColor = Color(0x47171F2E), spotColor = Color(0x47171F2E))
             .clip(RoundedCornerShape(16.dp))
