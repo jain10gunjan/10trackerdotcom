@@ -13,6 +13,8 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.logging.HttpLoggingInterceptor
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 import java.util.concurrent.TimeUnit
 
 /**
@@ -45,6 +47,50 @@ class ApiClient(private val sessionStore: SessionStore) {
     suspend fun getExamCategories(): ExamCategoriesResponse =
         get("/api/exams/categories", ExamCategoriesResponse::class.java)
 
+    suspend fun getActiveExams(): ActiveExamsResponse =
+        get("/api/exams/active", ActiveExamsResponse::class.java)
+
+    suspend fun getSubjects(category: String): SubjectsResponse {
+        val q = URLEncoder.encode(category, StandardCharsets.UTF_8.toString())
+        return get("/api/allsubtopics?category=$q", SubjectsResponse::class.java)
+    }
+
+    suspend fun getChapterQuestions(
+        category: String,
+        subject: String,
+        chapter: String,
+        page: Int = 1,
+        limit: Int = 20,
+    ): ChapterQuestionsResponse {
+        val c = enc(category)
+        val s = enc(subject)
+        val ch = enc(chapter)
+        return get(
+            "/api/questions/chapter?category=$c&subject=$s&chapter=$ch&page=$page&limit=$limit",
+            ChapterQuestionsResponse::class.java,
+        )
+    }
+
+    suspend fun getPracticeProgress(area: String, topics: List<String>): PracticeProgressResponse {
+        val a = enc(area)
+        val t = enc(topics.joinToString(","))
+        return get("/api/practice/progress?area=$a&topics=$t", PracticeProgressResponse::class.java)
+    }
+
+    suspend fun savePracticeProgress(entries: Map<String, Map<String, Any?>>): ProgressSaveResponse =
+        post("/api/practice/progress", mapOf("entries" to entries), ProgressSaveResponse::class.java)
+
+    suspend fun getArticles(page: Int = 1, limit: Int = 20): ArticlesResponse =
+        get("/api/articles?page=$page&limit=$limit", ArticlesResponse::class.java)
+
+    suspend fun getArticle(slug: String): ArticleDetailResponse =
+        get("/api/articles/${enc(slug)}", ArticleDetailResponse::class.java)
+
+    suspend fun getMockOfDay(category: String): MockOfDayResponse {
+        val q = enc(category)
+        return get("/api/mock-test/mock-of-day?category=$q", MockOfDayResponse::class.java)
+    }
+
     suspend fun saveVideoProgress(
         resourceId: String,
         percentWatched: Int,
@@ -57,6 +103,9 @@ class ApiClient(private val sessionStore: SessionStore) {
         if (status != null) payload["status"] = status
         post("/api/og-trackers/progress", payload, ProgressSaveResponse::class.java)
     }
+
+    private fun enc(value: String): String =
+        URLEncoder.encode(value, StandardCharsets.UTF_8.toString())
 
     private suspend fun <T> get(path: String, clazz: Class<T>): T = withContext(Dispatchers.IO) {
         val request = Request.Builder()
@@ -82,7 +131,6 @@ class ApiClient(private val sessionStore: SessionStore) {
         client.newCall(request).execute().use { response ->
             val text = response.body?.string().orEmpty()
             if (!response.isSuccessful) {
-                // Try parse error envelope; otherwise throw.
                 val parsed = runCatching { gson.fromJson(text, clazz) }.getOrNull()
                 if (parsed != null) return parsed
                 error("HTTP ${response.code}: ${text.take(200)}")

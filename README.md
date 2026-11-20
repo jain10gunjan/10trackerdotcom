@@ -2,9 +2,10 @@
 
 ## Native Android app (no DB changes)
 
-Jetpack Compose client under [`android/`](android/) with **in-app YouTube watch-% sync** via existing `POST /api/og-trackers/progress`.
+Full Jetpack Compose rebuild under [`android/`](android/) — Home, Exams → practice MCQs, OG Trackers + in-app YouTube progress, Updates (articles), More (pricing/profile). Uses existing HTTP APIs + Auth.js cookies only.
 
 - Debug APK: [`android/dist/10tracker-native-debug.apk`](android/dist/10tracker-native-debug.apk)
+- Download: https://gofile.io/d/SZQI7fWj
 - Package: `com.tentracker.nativeapp.debug`
 - Docs: [`android/README.md`](android/README.md)
 

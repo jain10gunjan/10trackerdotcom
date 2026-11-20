@@ -1,7 +1,5 @@
 package com.tentracker.nativeapp.ui.screens
 
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -27,13 +25,9 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.Campaign
-import androidx.compose.material.icons.filled.CurrencyRupee
 import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.GridView
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Hub
+import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -42,26 +36,18 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -69,7 +55,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.tentracker.nativeapp.data.ApiClient
 import com.tentracker.nativeapp.data.OgPathSummary
 import com.tentracker.nativeapp.ui.components.BrandLogo
 import com.tentracker.nativeapp.ui.theme.Border
@@ -83,94 +68,47 @@ import com.tentracker.nativeapp.ui.viewmodel.HomeViewModel
 fun HomeScreen(
     vm: HomeViewModel,
     onOpenPath: (String) -> Unit,
-    onOpenPathsTab: () -> Unit = {},
+    onOpenExams: () -> Unit,
+    onOpenTrackers: () -> Unit,
+    onOpenArticles: () -> Unit,
+    onOpenMore: () -> Unit,
     onSignIn: () -> Unit,
     onSignOut: () -> Unit,
 ) {
     val state by vm.state.collectAsState()
-    val context = LocalContext.current
-    var tab by remember { mutableIntStateOf(0) }
 
-    fun openSite(path: String) {
-        context.startActivity(
-            Intent(Intent.ACTION_VIEW, Uri.parse("${ApiClient.BASE_URL}$path"))
-        )
-    }
-
-    Scaffold(
-        containerColor = Color.White,
-        topBar = {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color.White)
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                BrandLogo(nameSize = 20.sp)
-                if (state.signedIn) {
-                    TextButton(onClick = onSignOut) {
-                        Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Sign out")
-                    }
-                } else {
-                    OutlinedButton(
-                        onClick = onSignIn,
-                        shape = RoundedCornerShape(10.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Border),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                    ) {
-                        Icon(Icons.Default.AccountCircle, contentDescription = null, tint = Brand, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Sign in", color = Ink, fontWeight = FontWeight.SemiBold)
-                    }
+    Column(modifier = Modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color.White)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            BrandLogo(nameSize = 20.sp)
+            if (state.signedIn) {
+                TextButton(onClick = onSignOut) {
+                    Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Sign out")
                 }
-            }
-        },
-        bottomBar = {
-            NavigationBar(
-                containerColor = Color.White.copy(alpha = 0.95f),
-                tonalElevation = 0.dp,
-            ) {
-                val items = listOf(
-                    Triple("Home", Icons.Default.Home, 0),
-                    Triple("Exams", Icons.AutoMirrored.Filled.MenuBook, 1),
-                    Triple("Pricing", Icons.Default.CurrencyRupee, 2),
-                    Triple("Updates", Icons.Default.Campaign, 3),
-                    Triple("More", Icons.Default.GridView, 4),
-                )
-                items.forEach { (label, icon, index) ->
-                    NavigationBarItem(
-                        selected = tab == index,
-                        onClick = {
-                            tab = index
-                            when (index) {
-                                0 -> Unit
-                                1 -> openSite("/exams")
-                                2 -> openSite("/pricing")
-                                3 -> openSite("/articles")
-                                4 -> openSite("/")
-                            }
-                        },
-                        icon = { Icon(icon, contentDescription = label) },
-                        label = { Text(label, fontSize = 10.sp) },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = Brand,
-                            selectedTextColor = Brand,
-                            indicatorColor = BrandSoft,
-                            unselectedIconColor = Muted,
-                            unselectedTextColor = Muted,
-                        )
-                    )
+            } else {
+                OutlinedButton(
+                    onClick = onSignIn,
+                    shape = RoundedCornerShape(10.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Border),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                ) {
+                    Icon(Icons.Default.AccountCircle, contentDescription = null, tint = Brand, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Sign in", color = Ink, fontWeight = FontWeight.SemiBold)
                 }
             }
         }
-    ) { padding ->
+
         Box(
             modifier = Modifier
-                .padding(padding)
                 .fillMaxSize()
                 .background(
                     Brush.radialGradient(
@@ -191,12 +129,23 @@ fun HomeScreen(
                         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(14.dp),
                     ) {
-                        item { HeroSection(onBrowseExams = { openSite("/exams") }, onExplorePaths = {
-                            // scroll to paths — for now open first path list below / focus
-                            onOpenPathsTab()
-                        }, onSignIn = onSignIn, signedIn = state.signedIn) }
+                        item {
+                            HeroSection(
+                                onBrowseExams = onOpenExams,
+                                onExplorePaths = onOpenTrackers,
+                                onSignIn = onSignIn,
+                                signedIn = state.signedIn,
+                            )
+                        }
 
-                        item { FeatureChips(onOpenSite = { openSite(it) }, onPaths = onOpenPathsTab) }
+                        item {
+                            FeatureChips(
+                                onExams = onOpenExams,
+                                onPaths = onOpenTrackers,
+                                onArticles = onOpenArticles,
+                                onMore = onOpenMore,
+                            )
+                        }
 
                         item {
                             val examCount = state.exams.size.takeIf { it > 0 }
@@ -215,12 +164,12 @@ fun HomeScreen(
                         item {
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                "OG Trackers · YouTube progress",
+                                "Continue with OG Trackers",
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold,
                             )
                             Text(
-                                "Watch lessons in-app. Progress syncs to your account — same API as the Chrome extension.",
+                                "Watch lessons in-app. Progress syncs to your account.",
                                 style = MaterialTheme.typography.bodyMedium,
                             )
                         }
@@ -232,9 +181,9 @@ fun HomeScreen(
                                     shape = RoundedCornerShape(16.dp),
                                 ) {
                                     Column(modifier = Modifier.padding(16.dp)) {
-                                        Text("Sign in to save YouTube watch %", fontWeight = FontWeight.SemiBold, color = Ink)
+                                        Text("Sign in to save progress", fontWeight = FontWeight.SemiBold, color = Ink)
                                         Text(
-                                            "Browse paths as a guest. Sign in once so progress sticks across devices.",
+                                            "YouTube watch % and practice answers sync across devices.",
                                             style = MaterialTheme.typography.bodyMedium,
                                         )
                                         Spacer(modifier = Modifier.height(8.dp))
@@ -266,8 +215,16 @@ fun HomeScreen(
                             }
                         }
 
-                        items(state.catalog?.paths.orEmpty(), key = { it.id }) { path ->
+                        items(state.catalog?.paths.orEmpty().take(4), key = { it.id }) { path ->
                             PathCard(path = path, onClick = { onOpenPath(path.slug) })
+                        }
+
+                        if ((state.catalog?.paths?.size ?: 0) > 4) {
+                            item {
+                                TextButton(onClick = onOpenTrackers, modifier = Modifier.fillMaxWidth()) {
+                                    Text("See all trackers")
+                                }
+                            }
                         }
 
                         if (state.catalog?.paths.isNullOrEmpty() && state.error != null) {
@@ -299,7 +256,7 @@ private fun HeroSection(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
-            "EXAM PRACTICE · PATHS · YOUTUBE SYNC",
+            "EXAMS · PRACTICE · PATHS · YOUTUBE SYNC",
             style = MaterialTheme.typography.labelSmall,
             color = Muted,
             letterSpacing = 1.sp,
@@ -321,42 +278,20 @@ private fun HeroSection(
         )
         Spacer(modifier = Modifier.height(10.dp))
         Text(
-            "MCQs, timed mocks, OG Tracker paths, and in-app YouTube progress — one place that keeps your prep moving.",
+            "MCQs, timed mocks, OG Tracker paths, and in-app YouTube progress — one native app for your prep.",
             style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(horizontal = 8.dp),
         )
         Spacer(modifier = Modifier.height(18.dp))
 
-        PrimaryCta(
-            label = "Browse exams",
-            icon = Icons.AutoMirrored.Filled.MenuBook,
-            filled = true,
-            onClick = onBrowseExams,
-        )
+        PrimaryCta("Browse exams", Icons.AutoMirrored.Filled.MenuBook, filled = true, onBrowseExams)
         Spacer(modifier = Modifier.height(10.dp))
-        PrimaryCta(
-            label = "Explore paths",
-            icon = Icons.Default.Hub,
-            filled = false,
-            onClick = onExplorePaths,
-        )
+        PrimaryCta("Explore paths", Icons.Default.Hub, filled = false, onExplorePaths)
         if (!signedIn) {
             Spacer(modifier = Modifier.height(10.dp))
-            PrimaryCta(
-                label = "Sign in with Google",
-                icon = Icons.Default.AccountCircle,
-                filled = false,
-                onClick = onSignIn,
-            )
+            PrimaryCta("Sign in with Google", Icons.Default.AccountCircle, filled = false, onSignIn)
         }
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            "Save streaks, YouTube progress, and rankings in one tap",
-            style = MaterialTheme.typography.labelSmall,
-            color = Muted,
-            textAlign = TextAlign.Center,
-        )
     }
 }
 
@@ -371,9 +306,7 @@ private fun PrimaryCta(
     if (filled) {
         Button(
             onClick = onClick,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(52.dp),
+            modifier = Modifier.fillMaxWidth().height(52.dp),
             shape = shape,
             colors = ButtonDefaults.buttonColors(containerColor = Brand, contentColor = Color.White),
         ) {
@@ -386,9 +319,7 @@ private fun PrimaryCta(
     } else {
         OutlinedButton(
             onClick = onClick,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(52.dp),
+            modifier = Modifier.fillMaxWidth().height(52.dp),
             shape = shape,
             border = androidx.compose.foundation.BorderStroke(1.dp, Border),
             colors = ButtonDefaults.outlinedButtonColors(contentColor = Ink),
@@ -401,18 +332,22 @@ private fun PrimaryCta(
 }
 
 @Composable
-private fun FeatureChips(onOpenSite: (String) -> Unit, onPaths: () -> Unit) {
+private fun FeatureChips(
+    onExams: () -> Unit,
+    onPaths: () -> Unit,
+    onArticles: () -> Unit,
+    onMore: () -> Unit,
+) {
     val chips = listOf(
-        Chip("Exams", Icons.AutoMirrored.Filled.MenuBook) { onOpenSite("/exams") },
+        Chip("Exams", Icons.AutoMirrored.Filled.MenuBook, onExams),
         Chip("OG Trackers", Icons.Default.Hub, onPaths),
         Chip("YouTube sync", Icons.Default.PlayCircle, onPaths),
-        Chip("Mocks", Icons.Default.Description) { onOpenSite("/mock-test") },
-        Chip("Pricing", Icons.Default.CurrencyRupee) { onOpenSite("/pricing") },
+        Chip("Mocks", Icons.Default.Description, onExams),
+        Chip("Updates", Icons.Default.Description, onArticles),
+        Chip("Pricing", Icons.Default.AccountCircle, onMore),
     )
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState()),
+        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         chips.forEach { chip ->
@@ -444,7 +379,7 @@ private fun MiniStat(label: String, value: Int) {
 }
 
 @Composable
-private fun PathCard(path: OgPathSummary, onClick: () -> Unit) {
+fun PathCard(path: OgPathSummary, onClick: () -> Unit) {
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
@@ -469,10 +404,7 @@ private fun PathCard(path: OgPathSummary, onClick: () -> Unit) {
             )
             LinearProgressIndicator(
                 progress = { (path.percent / 100f).coerceIn(0f, 1f) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(6.dp)
-                    .clip(RoundedCornerShape(99.dp)),
+                modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(99.dp)),
                 color = Brand,
                 trackColor = BrandSoft,
             )
