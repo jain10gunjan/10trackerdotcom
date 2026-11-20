@@ -18,6 +18,7 @@ data class ExamsUiState(
     val categories: List<String> = listOf("All"),
     val selectedCategory: String = "All",
     val searchQuery: String = "",
+    val sortBy: String = "popular",
     val totalQuestions: Int = 0,
     val error: String? = null,
 )
@@ -37,7 +38,7 @@ class ExamsViewModel(private val api: ApiClient) : ViewModel() {
                 val res = api.getActiveExams()
                 val list = res.exams.filter { it.active || it.is_active }
                 val categories = listOf("All") + list
-                    .map { it.category?.takeIf { c -> c.isNotBlank() } ?: "General" }
+                    .map { it.category?.takeIf { c -> c.isNotBlank() } ?: "Other" }
                     .distinct()
                     .sorted()
                 val totalQuestions = list.sumOf { questionCount(it) }
@@ -71,10 +72,24 @@ class ExamsViewModel(private val api: ApiClient) : ViewModel() {
         }
     }
 
+    fun setSort(sortBy: String) {
+        _state.update { current ->
+            val next = current.copy(sortBy = sortBy)
+            next.copy(filtered = applyFilters(next))
+        }
+    }
+
+    fun resetFilters() {
+        _state.update { current ->
+            val next = current.copy(searchQuery = "", selectedCategory = "All", sortBy = "popular")
+            next.copy(filtered = applyFilters(next))
+        }
+    }
+
     private fun applyFilters(state: ExamsUiState): List<ActiveExam> {
         val q = state.searchQuery.trim().lowercase()
-        return state.exams.filter { exam ->
-            val category = exam.category?.takeIf { it.isNotBlank() } ?: "General"
+        val filtered = state.exams.filter { exam ->
+            val category = exam.category?.takeIf { it.isNotBlank() } ?: "Other"
             val categoryOk = state.selectedCategory == "All" || category == state.selectedCategory
             val searchOk = q.isEmpty() || listOf(
                 exam.name,
@@ -83,6 +98,11 @@ class ExamsViewModel(private val api: ApiClient) : ViewModel() {
                 category,
             ).any { it.lowercase().contains(q) }
             categoryOk && searchOk
+        }
+        return when (state.sortBy) {
+            "name" -> filtered.sortedBy { it.name.lowercase() }
+            "questions" -> filtered.sortedByDescending { questionCount(it) }
+            else -> filtered.sortedByDescending { questionCount(it) }
         }
     }
 
