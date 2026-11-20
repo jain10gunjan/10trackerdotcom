@@ -16,7 +16,12 @@ Jetpack Compose rebuild of [10tracker.com](https://10tracker.com) for Android.
 | More | Profile/sign-in, pricing overview, Custom Tabs for web extras |
 | Mocks | MOTD + catalog list; native attempt (HTML stem, options, timer, local score); Custom Tabs for web sync / checkout |
 
-Sign-in is a one-time WebView Google login; cookies power native OkHttp calls.
+**Sign-in** opens **Chrome Custom Tabs** (`/sign-in` or `/sign-up`) — there is **no WebView** in app source.
+Custom Tabs keep Auth.js cookies in the system browser, **not** in the app `CookieManager`, so after sign-in tap **“I've signed in”** (or return to the app) to probe `GET /api/auth/session`. Signed-in API calls only work when OkHttp holds session cookies (e.g. from a future token bridge or same-device cookie sync). This is a known limitation without WebView.
+
+**HTML + LaTeX** in practice, mocks, and articles uses `HtmlCompat.fromHtml` plus **JLatexMath** (`ru.noties:jlatexmath-android`) for `$…$` / `$$…$$` — no MathJax CDN.
+
+**YouTube** lessons use `android-youtube-player`, which still embeds a WebView internally; use **Open in YouTube** when embeds fail.
 
 ## Build
 

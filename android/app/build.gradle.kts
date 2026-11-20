@@ -77,5 +77,8 @@ dependencies {
     // In-app YouTube player — 12.1.2 + manual IFrame init (auto-init breaks in Compose)
     implementation("com.pierfrancescosoffritti.androidyoutubeplayer:core:12.1.2")
 
+    implementation("ru.noties:jlatexmath-android:0.2.0")
+    implementation("ru.noties:jlatexmath-android-font-greek:0.2.0")
+
     debugImplementation("androidx.compose.ui:ui-tooling")
 }

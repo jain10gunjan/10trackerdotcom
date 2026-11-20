@@ -936,6 +936,7 @@ private fun moduleProgressCaption(
 }
 
 @Composable
+// android-youtube-player embeds android.webkit.WebView internally (third-party; not app-owned).
 private fun YouTubePlayerBox(
     videoId: String,
     lifecycleOwner: LifecycleOwner,
