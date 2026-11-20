@@ -32,7 +32,30 @@ data class PracticeUiState(
     val error: String? = null,
     val saveHint: String? = null,
     val paletteExpanded: Boolean = false,
+    val listFilter: String = "all",
 ) {
+    fun filteredIndices(): List<Int> {
+        if (questions.isEmpty()) return emptyList()
+        return questions.mapIndexed { i, q ->
+            val id = q.id
+            val wrong = id in completedIds && id !in correctIds
+            when (listFilter) {
+                "wrong" -> if (wrong) i else null
+                "flagged" -> null
+                else -> i
+            }
+        }.filterNotNull()
+    }
+
+    fun currentQuestion(): PracticeQuestion? {
+        val visible = filteredIndices()
+        if (visible.isEmpty()) return null
+        val idx = if (index in visible) index else visible.first()
+        return questions.getOrNull(idx)
+    }
+
+    val filterEmpty: Boolean
+        get() = listFilter != "all" && filteredIndices().isEmpty() && questions.isNotEmpty()
     fun completedInChapter(): Int {
         if (questions.isEmpty()) return 0
         val loadedIds = questions.map { it.id }.toSet()
@@ -206,6 +229,21 @@ class PracticeViewModel(
         _state.update { it.copy(paletteExpanded = !it.paletteExpanded) }
     }
 
+    fun setListFilter(filter: String) {
+        if (filter == _state.value.listFilter) return
+        val st = _state.value
+        val visible = st.copy(listFilter = filter).filteredIndices()
+        val nextIndex = when {
+            visible.isEmpty() -> st.index
+            st.index in visible -> st.index
+            else -> visible.first()
+        }
+        _state.update { it.copy(listFilter = filter) }
+        if (nextIndex != st.index || filter != st.listFilter) {
+            jumpTo(nextIndex)
+        }
+    }
+
     fun jumpTo(index: Int) {
         val st = _state.value
         if (index < 0 || index >= st.questions.size) return
@@ -235,6 +273,15 @@ class PracticeViewModel(
 
     fun next() {
         val st = _state.value
+        val visible = st.filteredIndices()
+        if (visible.isNotEmpty() && st.listFilter != "all") {
+            val pos = visible.indexOf(st.index)
+            if (pos >= 0 && pos < visible.size - 1) {
+                jumpTo(visible[pos + 1])
+                return
+            }
+            return
+        }
         val nextIndex = st.index + 1
         if (nextIndex >= st.questions.size) {
             if (st.hasMore) load(page = st.page + 1, reset = false)
@@ -245,6 +292,14 @@ class PracticeViewModel(
 
     fun prev() {
         val st = _state.value
+        val visible = st.filteredIndices()
+        if (visible.isNotEmpty() && st.listFilter != "all") {
+            val pos = visible.indexOf(st.index)
+            if (pos > 0) {
+                jumpTo(visible[pos - 1])
+            }
+            return
+        }
         if (st.index <= 0) return
         jumpTo(st.index - 1)
     }
