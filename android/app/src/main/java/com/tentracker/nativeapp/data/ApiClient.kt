@@ -142,6 +142,19 @@ class ApiClient(private val sessionStore: SessionStore) {
     suspend fun getCreditsWallet(): CreditsWalletResponse =
         get("/api/credits/wallet", CreditsWalletResponse::class.java)
 
+    /** Signed-in home — mirrors web `useHomeDashboard` GET /api/user/dashboard. */
+    suspend fun getUserDashboard(
+        focusExam: String = "",
+        heatmapRange: String = "12mo",
+    ): UserDashboardResponse {
+        val parts = mutableListOf<String>()
+        val exam = focusExam.trim().lowercase()
+        if (exam.isNotEmpty()) parts.add("exam=${enc(exam)}")
+        if (heatmapRange == "90d") parts.add("heatmapRange=90d")
+        val qs = if (parts.isEmpty()) "" else "?${parts.joinToString("&")}"
+        return get("/api/user/dashboard$qs", UserDashboardResponse::class.java)
+    }
+
     suspend fun getRoadmaps(
         page: Int = 1,
         limit: Int = 24,
