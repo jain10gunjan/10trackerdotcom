@@ -51,6 +51,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -112,11 +113,32 @@ fun RoadmapsScreen(
                         Box(modifier = Modifier.fillMaxWidth()) {
                             Box(
                                 modifier = Modifier
-                                    .size(140.dp)
                                     .align(Alignment.TopEnd)
-                                    .offset(x = 40.dp, y = (-48).dp)
-                                    .clip(CircleShape)
-                                    .background(EmeraldSoft.copy(alpha = 0.65f)),
+                                    .offset(x = 32.dp, y = (-40).dp)
+                                    .size(180.dp)
+                                    .blur(64.dp)
+                                    .background(Color(0xFFA7F3D0).copy(alpha = 0.4f), CircleShape),
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.BottomStart)
+                                    .offset(x = (-32).dp, y = 40.dp)
+                                    .size(180.dp)
+                                    .blur(64.dp)
+                                    .background(Color(0xFFC4B5FD).copy(alpha = 0.25f), CircleShape),
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .background(
+                                        Brush.linearGradient(
+                                            colors = listOf(
+                                                Color.White,
+                                                Color.White,
+                                                Color(0xFFFAFAFA).copy(alpha = 0.85f),
+                                            ),
+                                        ),
+                                    ),
                             )
                             Column(modifier = Modifier.padding(20.dp)) {
                                 Row(
@@ -286,6 +308,7 @@ fun RoadmapsScreen(
 @Composable
 private fun RoadmapCatalogCard(roadmap: RoadmapSummary, onClick: () -> Unit) {
     Card(
+        onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -382,20 +405,29 @@ private fun RoadmapCatalogCard(roadmap: RoadmapSummary, onClick: () -> Unit) {
                 }
             }
             Spacer(modifier = Modifier.height(16.dp))
-            androidx.compose.material3.HorizontalDivider(color = Border.copy(alpha = 0.6f))
+            androidx.compose.material3.HorizontalDivider(color = Color(0xFFF5F5F5))
             Spacer(modifier = Modifier.height(14.dp))
-            Button(
-                onClick = onClick,
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = Ink),
-                shape = RoundedCornerShape(12.dp),
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Ink)
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
                     if (roadmap.freePreviewDays > 0) "Preview free days" else "View roadmap",
                     fontWeight = FontWeight.SemiBold,
+                    color = Color.White,
+                    fontSize = 14.sp,
                 )
-                Spacer(modifier = Modifier.width(8.dp))
-                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(18.dp))
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(18.dp),
+                )
             }
         }
     }
