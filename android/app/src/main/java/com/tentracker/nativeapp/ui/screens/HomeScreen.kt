@@ -54,8 +54,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tentracker.nativeapp.data.ActiveExam
 import com.tentracker.nativeapp.data.OgPathSummary
 import com.tentracker.nativeapp.ui.components.BrandLogo
+import com.tentracker.nativeapp.ui.screens.guest.GuestHomePage
+import com.tentracker.nativeapp.ui.screens.guest.GuestHomeStats
+import com.tentracker.nativeapp.ui.screens.guest.activeExamQuestionCount
+import com.tentracker.nativeapp.ui.screens.guest.pickFeaturedExams
+import com.tentracker.nativeapp.ui.screens.guest.pickFeaturedRoadmaps
 import com.tentracker.nativeapp.ui.theme.Bg
 import com.tentracker.nativeapp.ui.theme.Border
 import com.tentracker.nativeapp.ui.theme.Brand
@@ -84,11 +90,79 @@ fun HomeScreen(
     onOpenArticles: () -> Unit,
     onOpenMore: () -> Unit,
     onOpenRoadmaps: () -> Unit,
+    onOpenExam: (ActiveExam) -> Unit,
+    onOpenRoadmap: (String) -> Unit,
+    onOpenWeb: (pathOrUrl: String, title: String?) -> Unit,
     onSignIn: () -> Unit,
     onSignOut: () -> Unit,
 ) {
     val state by vm.state.collectAsState()
 
+    when {
+        !state.signedIn -> {
+            if (state.loading && state.activeExams.isEmpty() && state.catalog == null) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Bg),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator(color = Brand)
+                }
+            } else {
+                val active = state.activeExams
+                val examCount = active.size.takeIf { it > 0 } ?: state.exams.size
+                val roadmapCount = state.roadmaps.size
+                val questionCount = active.takeIf { it.isNotEmpty() }?.sumOf { activeExamQuestionCount(it) }
+                    ?: state.exams.sumOf { it.count }
+                GuestHomePage(
+                    stats = GuestHomeStats(
+                        examCount = examCount,
+                        roadmapCount = roadmapCount,
+                        questionCount = questionCount,
+                    ),
+                    featuredExams = pickFeaturedExams(active, limit = 4),
+                    featuredRoadmaps = pickFeaturedRoadmaps(state.roadmaps, limit = 3),
+                    onBrowseExams = onOpenExams,
+                    onExploreTrackers = onOpenTrackers,
+                    onViewAllPlans = onOpenRoadmaps,
+                    onOpenExam = onOpenExam,
+                    onOpenRoadmap = { onOpenRoadmap(it.slug) },
+                    onOpenArticles = onOpenArticles,
+                    onOpenWeb = onOpenWeb,
+                    onSignIn = onSignIn,
+                )
+            }
+        }
+        else -> SignedHomeScreen(
+            vm = vm,
+            state = state,
+            onOpenPath = onOpenPath,
+            onOpenExams = onOpenExams,
+            onOpenTrackers = onOpenTrackers,
+            onOpenArticles = onOpenArticles,
+            onOpenMore = onOpenMore,
+            onOpenRoadmaps = onOpenRoadmaps,
+            onSignIn = onSignIn,
+            onSignOut = onSignOut,
+        )
+    }
+}
+
+/** Signed-in home — polish owned separately; guest path uses [GuestHomePage]. */
+@Composable
+private fun SignedHomeScreen(
+    vm: HomeViewModel,
+    state: com.tentracker.nativeapp.ui.viewmodel.HomeUiState,
+    onOpenPath: (String) -> Unit,
+    onOpenExams: () -> Unit,
+    onOpenTrackers: () -> Unit,
+    onOpenArticles: () -> Unit,
+    onOpenMore: () -> Unit,
+    onOpenRoadmaps: () -> Unit,
+    onSignIn: () -> Unit,
+    onSignOut: () -> Unit,
+) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -125,7 +199,7 @@ fun HomeScreen(
                 ) {
                     item {
                         HomeTopChrome(
-                            signedIn = state.signedIn,
+                            signedIn = true,
                             onSignIn = onSignIn,
                             onSignOut = onSignOut,
                         )
@@ -133,7 +207,7 @@ fun HomeScreen(
 
                     item {
                         HomeHeroBlock(
-                            signedIn = state.signedIn,
+                            signedIn = true,
                             onBrowseExams = onOpenExams,
                             onExploreTrackers = onOpenTrackers,
                             onSignIn = onSignIn,
@@ -161,12 +235,6 @@ fun HomeScreen(
                             color = Muted,
                             style = MaterialTheme.typography.bodyMedium,
                         )
-                    }
-
-                    if (!state.signedIn) {
-                        item {
-                            SignInPromptCard(onSignIn = onSignIn)
-                        }
                     }
 
                     state.catalog?.stats?.let { stats ->
@@ -353,43 +421,6 @@ private fun HomeHeroBlock(
                     Text("OG Trackers", fontWeight = FontWeight.SemiBold, color = Ink)
                 }
             }
-        } else {
-            Text(
-                text = "Practice that sticks",
-                style = MaterialTheme.typography.headlineLarge.copy(
-                    fontSize = 28.sp,
-                    lineHeight = 34.sp,
-                    fontWeight = FontWeight.Black,
-                ),
-                color = Ink,
-            )
-            Text(
-                text = "MCQs, timed mocks, OG Tracker paths, and in-app YouTube progress — one app for your prep.",
-                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp, lineHeight = 20.sp),
-                color = Muted,
-            )
-            Button(
-                onClick = onBrowseExams,
-                modifier = Modifier.fillMaxWidth().height(50.dp),
-                shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Brand),
-            ) {
-                Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Browse exams", fontWeight = FontWeight.SemiBold)
-                Spacer(modifier = Modifier.weight(1f))
-                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null)
-            }
-            OutlinedButton(
-                onClick = onSignIn,
-                modifier = Modifier.fillMaxWidth().height(48.dp),
-                shape = RoundedCornerShape(14.dp),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Border),
-            ) {
-                Icon(Icons.Default.AccountCircle, contentDescription = null, tint = Brand)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Sign in with Google", fontWeight = FontWeight.SemiBold, color = Ink)
-            }
         }
     }
 }
@@ -464,30 +495,6 @@ private fun QuickHubTile(hub: Hub, modifier: Modifier = Modifier) {
                 Icon(hub.icon, contentDescription = null, tint = Brand, modifier = Modifier.size(20.dp))
             }
             Text(hub.label, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = Ink)
-        }
-    }
-}
-
-@Composable
-private fun SignInPromptCard(onSignIn: () -> Unit) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = BrandSoft),
-        shape = RoundedCornerShape(16.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Brand.copy(alpha = 0.15f)),
-    ) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Sign in to save progress", fontWeight = FontWeight.SemiBold, color = Ink)
-            Text(
-                "YouTube watch % and practice answers sync across devices.",
-                style = MaterialTheme.typography.bodyMedium,
-            )
-            Button(
-                onClick = onSignIn,
-                colors = ButtonDefaults.buttonColors(containerColor = Brand),
-                shape = RoundedCornerShape(12.dp),
-            ) {
-                Text("Sign in with Google")
-            }
         }
     }
 }

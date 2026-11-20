@@ -46,6 +46,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.tentracker.nativeapp.data.ActiveExam
 import com.tentracker.nativeapp.data.ApiClient
 import com.tentracker.nativeapp.data.SessionStore
 import com.tentracker.nativeapp.ui.screens.ArticlesScreen
@@ -142,6 +143,7 @@ fun MainShell(
     onOpenExam: (slug: String, name: String) -> Unit,
     onOpenArticle: (slug: String) -> Unit,
     onOpenRoadmaps: () -> Unit,
+    onOpenRoadmap: (String) -> Unit,
     onOpenWeb: (pathOrUrl: String, title: String?) -> Unit,
     onSignIn: () -> Unit,
     initialTab: String = "tab_home",
@@ -193,6 +195,9 @@ fun MainShell(
                     onOpenArticles = { goTab("tab_updates") },
                     onOpenMore = { goTab("tab_more") },
                     onOpenRoadmaps = onOpenRoadmaps,
+                    onOpenExam = { exam: ActiveExam -> onOpenExam(exam.slug, exam.name) },
+                    onOpenRoadmap = onOpenRoadmap,
+                    onOpenWeb = onOpenWeb,
                     onSignIn = onSignIn,
                     onSignOut = {
                         sessionStore.clear()

@@ -98,6 +98,7 @@ fun TenTrackerNav(
                 onOpenExam = { slug, name -> nav.navigate("exam/${enc(slug)}/${enc(name)}") },
                 onOpenArticle = { slug -> nav.navigate("article/${enc(slug)}") },
                 onOpenRoadmaps = { nav.navigate("roadmaps") },
+                onOpenRoadmap = { slug -> nav.navigate("roadmap/${enc(slug)}") },
                 onOpenWeb = { path, title -> openBrowser(path, title) },
                 onSignIn = { nav.navigate("login") },
             )
