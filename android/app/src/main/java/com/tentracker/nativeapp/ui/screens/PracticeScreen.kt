@@ -1,7 +1,14 @@
 package com.tentracker.nativeapp.ui.screens
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -210,13 +217,22 @@ fun PracticeScreen(
                             Spacer(modifier = Modifier.height(16.dp))
                             MobileScoreChips(state = state)
                             Spacer(modifier = Modifier.height(12.dp))
-                            QuestionCardBody(
-                                question = q,
-                                index = state.index,
-                                state = state,
-                                onSelect = { vm.selectOption(it) },
-                                onToggleSolution = { vm.toggleSolution() },
-                            )
+                            AnimatedContent(
+                                targetState = q.id,
+                                transitionSpec = {
+                                    fadeIn(animationSpec = tween(220)) togetherWith
+                                        fadeOut(animationSpec = tween(160))
+                                },
+                                label = "practice-question",
+                            ) { _ ->
+                                QuestionCardBody(
+                                    question = q,
+                                    index = state.index,
+                                    state = state,
+                                    onSelect = { vm.selectOption(it) },
+                                    onToggleSolution = { vm.toggleSolution() },
+                                )
+                            }
                             state.saveHint?.let { hint ->
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(hint, style = MaterialTheme.typography.labelSmall, color = Muted)
@@ -310,7 +326,12 @@ private fun StickyProgressStrip(
         val pos = visible.indexOf(state.index)
         if (pos >= 0) pos + 1 else 1
     }
-    val progressFrac = if (total > 0) state.completedInChapter().toFloat() / total else 0f
+    val progressTarget = if (total > 0) state.completedInChapter().toFloat() / total else 0f
+    val progressFrac by animateFloatAsState(
+        targetValue = progressTarget,
+        animationSpec = tween(durationMillis = 500),
+        label = "practice-progress",
+    )
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -351,7 +372,9 @@ private fun StickyProgressStrip(
             )
         }
         Row(
-            modifier = Modifier.padding(top = 10.dp),
+            modifier = Modifier
+                .padding(top = 10.dp)
+                .horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {

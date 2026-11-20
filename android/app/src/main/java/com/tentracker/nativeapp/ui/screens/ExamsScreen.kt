@@ -37,6 +37,12 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -539,11 +545,15 @@ private fun FilterPanel(
             }
         }
 
-        if (showMobileSort) {
-            Spacer(modifier = Modifier.height(10.dp))
+        AnimatedVisibility(
+            visible = showMobileSort,
+            enter = expandVertically(animationSpec = tween(200)) + fadeIn(animationSpec = tween(200)),
+            exit = shrinkVertically(animationSpec = tween(160)) + fadeOut(animationSpec = tween(120)),
+        ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .padding(top = 10.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .background(Neutral50)
                     .border(1.dp, Border, RoundedCornerShape(12.dp))
