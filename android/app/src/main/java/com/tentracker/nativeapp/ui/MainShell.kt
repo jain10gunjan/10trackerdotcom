@@ -57,6 +57,7 @@ import com.tentracker.nativeapp.ui.theme.Bg
 import com.tentracker.nativeapp.ui.theme.Border
 import com.tentracker.nativeapp.ui.theme.Brand
 import com.tentracker.nativeapp.ui.viewmodel.ArticlesViewModel
+import com.tentracker.nativeapp.ui.viewmodel.DashboardViewModel
 import com.tentracker.nativeapp.ui.viewmodel.ExamsViewModel
 import com.tentracker.nativeapp.ui.viewmodel.HomeViewModel
 import com.tentracker.nativeapp.ui.viewmodel.MoreViewModel
@@ -148,6 +149,7 @@ fun MainShell(
 ) {
     val tabNav = rememberNavController()
     val homeVm: HomeViewModel = viewModel(factory = HomeViewModel.factory(api, sessionStore))
+    val dashboardVm: DashboardViewModel = viewModel(factory = DashboardViewModel.factory(api, sessionStore))
     val homeState by homeVm.state.collectAsState()
     val backStack by tabNav.currentBackStackEntryAsState()
     val current = backStack?.destination?.route ?: initialTab
@@ -187,15 +189,20 @@ fun MainShell(
             composable("tab_home") {
                 HomeScreen(
                     vm = homeVm,
+                    dashboardVm = dashboardVm,
                     onOpenPath = onOpenPath,
                     onOpenExams = { goTab("tab_exams") },
+                    onOpenExam = onOpenExam,
                     onOpenTrackers = { goTab("tab_trackers") },
                     onOpenArticles = { goTab("tab_updates") },
+                    onOpenArticle = onOpenArticle,
                     onOpenMore = { goTab("tab_more") },
                     onOpenRoadmaps = onOpenRoadmaps,
+                    onOpenWeb = onOpenWeb,
                     onSignIn = onSignIn,
                     onSignOut = {
                         sessionStore.clear()
+                        dashboardVm.reset()
                         homeVm.refresh()
                     },
                 )

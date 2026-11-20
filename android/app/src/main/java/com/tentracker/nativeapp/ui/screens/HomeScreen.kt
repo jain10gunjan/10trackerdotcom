@@ -63,6 +63,8 @@ import com.tentracker.nativeapp.ui.theme.BrandDeep
 import com.tentracker.nativeapp.ui.theme.BrandSoft
 import com.tentracker.nativeapp.ui.theme.Ink
 import com.tentracker.nativeapp.ui.theme.Muted
+import com.tentracker.nativeapp.ui.screens.dashboard.StudentSignedHomeScreen
+import com.tentracker.nativeapp.ui.viewmodel.DashboardViewModel
 import com.tentracker.nativeapp.ui.viewmodel.HomeViewModel
 import java.util.Calendar
 
@@ -78,16 +80,43 @@ private fun greetingForHour(): String {
 @Composable
 fun HomeScreen(
     vm: HomeViewModel,
+    dashboardVm: DashboardViewModel,
     onOpenPath: (String) -> Unit,
     onOpenExams: () -> Unit,
+    onOpenExam: (slug: String, name: String) -> Unit,
     onOpenTrackers: () -> Unit,
     onOpenArticles: () -> Unit,
+    onOpenArticle: (slug: String) -> Unit,
     onOpenMore: () -> Unit,
     onOpenRoadmaps: () -> Unit,
+    onOpenWeb: (pathOrUrl: String, title: String?) -> Unit,
     onSignIn: () -> Unit,
     onSignOut: () -> Unit,
 ) {
     val state by vm.state.collectAsState()
+
+    if (state.signedIn) {
+        androidx.compose.runtime.LaunchedEffect(true) {
+            dashboardVm.setEnabled(true)
+        }
+        StudentSignedHomeScreen(
+            dashboardVm = dashboardVm,
+            onSignOut = onSignOut,
+            onOpenExams = onOpenExams,
+            onOpenExam = onOpenExam,
+            onOpenTrackers = onOpenTrackers,
+            onOpenArticles = onOpenArticles,
+            onOpenRoadmaps = onOpenRoadmaps,
+            onOpenWeb = onOpenWeb,
+            onOpenArticle = onOpenArticle,
+        )
+        return
+    }
+
+    androidx.compose.runtime.LaunchedEffect(state.signedIn) {
+        dashboardVm.setEnabled(false)
+        dashboardVm.reset()
+    }
 
     Box(
         modifier = Modifier
