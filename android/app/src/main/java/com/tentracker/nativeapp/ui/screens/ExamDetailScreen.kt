@@ -75,6 +75,8 @@ fun ExamDetailScreen(
     vm: ExamDetailViewModel,
     onBack: () -> Unit,
     onOpenChapter: (subject: String, chapter: String, chapterTitle: String) -> Unit,
+    onOpenMocks: () -> Unit = {},
+    onStartMock: (testId: String, name: String, durationMinutes: Int) -> Unit = { _, _, _ -> },
 ) {
     val state by vm.state.collectAsState()
     val context = LocalContext.current
@@ -132,14 +134,14 @@ fun ExamDetailScreen(
                                         "${mock.totalQuestions} Qs · ${mock.duration} min · ${mock.difficulty ?: "mixed"}",
                                         style = MaterialTheme.typography.bodyMedium,
                                     )
-                                    Button(
-                                        onClick = {
-                                            val href = mock.href ?: "/mock-test/$category/attempt/${mock.id}"
-                                            openSite(context, href)
-                                        },
-                                        colors = ButtonDefaults.buttonColors(containerColor = Brand),
-                                        shape = RoundedCornerShape(12.dp),
-                                    ) { Text("Start mock") }
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Button(
+                                            onClick = { onStartMock(mock.id, mock.name, mock.duration) },
+                                            colors = ButtonDefaults.buttonColors(containerColor = Brand),
+                                            shape = RoundedCornerShape(12.dp),
+                                        ) { Text("Start native") }
+                                        TextButton(onClick = onOpenMocks) { Text("All mocks") }
+                                    }
                                 }
                             }
                         }
@@ -177,6 +179,8 @@ fun ExamDetailScreen(
 private fun SubjectAccordion(
     group: SubjectGroup,
     onOpenChapter: (subject: String, chapter: String, chapterTitle: String) -> Unit,
+    onOpenMocks: () -> Unit = {},
+    onStartMock: (testId: String, name: String, durationMinutes: Int) -> Unit = { _, _, _ -> },
 ) {
     var expanded by rememberSaveable(group.subject) { mutableStateOf(false) }
     val subjectTitle = group.subject.replace('-', ' ').replaceFirstChar { it.uppercase() }

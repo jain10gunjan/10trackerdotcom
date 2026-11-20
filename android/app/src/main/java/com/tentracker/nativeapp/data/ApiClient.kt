@@ -139,6 +139,45 @@ class ApiClient(private val sessionStore: SessionStore) {
         val s = enc(slug)
         return get("/api/roadmaps/$s?dayLimit=$dayLimit", RoadmapDetailResponse::class.java)
     }
+    /**
+     * Public mock catalog for a category.
+     * Prefer leaderboard `tests` (any exam); fall back to legacy gate-cse available list.
+     */
+    suspend fun getMockTests(category: String): List<MockTestSummary> {
+        val fromLeaderboard = runCatching {
+            getMockLeaderboard(category).tests.map { it.toSummary() }
+        }.getOrDefault(emptyList())
+        if (fromLeaderboard.isNotEmpty()) return fromLeaderboard.distinctBy { it.id }
+
+        if (category.equals("gate-cse", ignoreCase = true)) {
+            return runCatching { getGateCseAvailableMocks().tests }.getOrDefault(emptyList())
+        }
+        return emptyList()
+    }
+
+    suspend fun getMockLeaderboard(category: String, limit: Int = 50): MockLeaderboardResponse {
+        val q = enc(category)
+        return get(
+            "/api/mock-test/leaderboard?category=$q&scope=overall&period=all&limit=$limit",
+            MockLeaderboardResponse::class.java,
+        )
+    }
+
+    suspend fun getGateCseAvailableMocks(): AvailableMocksResponse =
+        get("/api/gate-cse/mock-test/available", AvailableMocksResponse::class.java)
+
+    suspend fun getMockTest(testId: String): MockTestDetailResponse =
+        get("/api/gate-cse/mock-test/${enc(testId)}", MockTestDetailResponse::class.java)
+
+    suspend fun getMockTestQuestions(testId: String): MockTestQuestionsResponse =
+        get(
+            "/api/gate-cse/mock-test/${enc(testId)}/questions",
+            MockTestQuestionsResponse::class.java,
+        )
+
+    /** Legacy submit is deprecated (HTTP 410). Native attempt scores locally. */
+    suspend fun submitMockTestLegacy(payload: Map<String, Any?>): MockSubmitResponse =
+        post("/api/gate-cse/mock-test/submit", payload, MockSubmitResponse::class.java)
 
     suspend fun saveVideoProgress(
         resourceId: String,
