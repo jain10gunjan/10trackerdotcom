@@ -77,6 +77,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -120,8 +121,17 @@ private val SPEED_OPTIONS = listOf(
     SpeedOption("2x", PlayerConstants.PlaybackRate.RATE_2),
 )
 
+private val Neutral100 = Color(0xFFF5F5F5)
+private val Neutral300 = Color(0xFFD4D4D4)
+private val Neutral400 = Color(0xFFA3A3A3)
+private val Neutral500 = Color(0xFF737373)
+private val Neutral700 = Color(0xFF404040)
+private val Neutral800 = Color(0xFF262626)
+private val Neutral900 = Color(0xFF171717)
 private val Emerald600 = Color(0xFF059669)
 private val Amber500 = Color(0xFFF59E0B)
+private val CardBorder = Color(0xCCE5E5E5)
+private val SequenceMutedBg = Color(0xCCFAFAFA)
 
 private data class UpcomingSection(val label: String, val items: List<IndexedValue<OgResource>>)
 
@@ -298,7 +308,6 @@ fun VideoPlayerScreen(
     }
 
     val neutral50 = Color(0xFFFAFAFA)
-    val neutral900 = Color(0xFF171717)
 
     Scaffold(
         containerColor = neutral50,
@@ -483,8 +492,8 @@ fun VideoPlayerScreen(
                                     .padding(top = 6.dp)
                                     .height(6.dp)
                                     .clip(RoundedCornerShape(999.dp)),
-                                color = if (percent >= 90) Emerald600 else neutral900,
-                                trackColor = Color(0xFFF5F5F5),
+                                color = if (percent >= 90) Emerald600 else Neutral900,
+                                trackColor = Neutral100,
                             )
                             if (percent >= 90) {
                                 Text(
@@ -638,7 +647,7 @@ fun VideoPlayerScreen(
                         nextVideo?.let { next ->
                             Card(
                                 onClick = { switchToVideo(next) },
-                                colors = CardDefaults.cardColors(containerColor = neutral900),
+                                colors = CardDefaults.cardColors(containerColor = Neutral900),
                                 shape = RoundedCornerShape(14.dp),
                                 modifier = Modifier.fillMaxWidth(),
                             ) {
@@ -696,26 +705,28 @@ fun VideoPlayerScreen(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 20.dp, vertical = 8.dp),
+                                .padding(bottom = 8.dp, start = 20.dp, end = 20.dp, top = 8.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Text(section.label, fontWeight = FontWeight.SemiBold, color = Ink, fontSize = 14.sp)
-                            Text("$doneCount/${section.items.size} done", fontSize = 11.sp, color = Muted)
+                            Text(section.label, fontWeight = FontWeight.SemiBold, color = Neutral800, fontSize = 14.sp)
+                            Text("$doneCount/${section.items.size} done", fontSize = 11.sp, color = Neutral500)
                         }
                         Column(
                             modifier = Modifier
                                 .padding(horizontal = 16.dp)
                                 .fillMaxWidth()
+                                .shadow(2.dp, RoundedCornerShape(16.dp))
                                 .clip(RoundedCornerShape(16.dp))
                                 .background(Color.White)
-                                .border(1.dp, Border, RoundedCornerShape(16.dp)),
+                                .border(1.dp, CardBorder, RoundedCornerShape(16.dp)),
                         ) {
                             section.items.forEachIndexed { idx, indexed ->
                                 val resource = indexed.value
                                 ModuleRow(
                                     resource = resource,
                                     index = indexed.index,
+                                    mutedBg = resource.sequenceLocked,
                                     onClick = {
                                         when {
                                             resource.type.equals("VIDEO", true) &&
@@ -738,11 +749,11 @@ fun VideoPlayerScreen(
                                     },
                                 )
                                 if (idx < section.items.lastIndex) {
-                                    HorizontalDivider(color = Color(0xFFF5F5F5))
+                                    HorizontalDivider(color = Neutral100, thickness = 1.dp)
                                 }
                             }
                         }
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(20.dp))
                     }
                 }
 
@@ -752,18 +763,26 @@ fun VideoPlayerScreen(
 }
 
 @Composable
-private fun ModuleRow(resource: OgResource, index: Int, onClick: () -> Unit) {
+private fun ModuleRow(
+    resource: OgResource,
+    index: Int,
+    mutedBg: Boolean,
+    onClick: () -> Unit,
+) {
     val type = resource.type.uppercase()
     val pct = resource.progress?.percentWatched ?: 0
     val status = resource.progress?.status ?: "NOT_STARTED"
     val blocked = resource.locked || resource.sequenceLocked
     val enabled = !blocked
-    val showBar = !blocked && (type == "VIDEO" || type == "PRACTICE_CHAPTER" || (type == "MOCK_TEST" && pct > 0))
+    val done = status == "COMPLETED"
+    val showBar =
+        !blocked &&
+            (type == "VIDEO" || type == "PRACTICE_CHAPTER" || (type == "MOCK_TEST" && pct > 0))
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(if (resource.sequenceLocked) Color(0xFFFAFAFA) else Color.White)
+            .background(if (mutedBg) SequenceMutedBg else Color.White)
             .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.Top,
@@ -771,66 +790,77 @@ private fun ModuleRow(resource: OgResource, index: Int, onClick: () -> Unit) {
     ) {
         ModuleStatusDot(status = status)
         Column(modifier = Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.Top) {
+            Row(
+                verticalAlignment = Alignment.Top,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 Text(
                     "%02d".format(index + 1),
                     fontSize = 12.sp,
-                    color = Muted,
+                    color = Neutral400,
                     fontWeight = FontWeight.Medium,
-                    modifier = Modifier.padding(end = 8.dp, top = 2.dp),
                 )
                 Text(
                     resource.title,
                     fontWeight = FontWeight.SemiBold,
-                    color = if (enabled) Ink else Muted,
+                    color = if (enabled) Neutral900 else Neutral500,
                     fontSize = 14.sp,
+                    lineHeight = 20.sp,
                     modifier = Modifier.weight(1f),
                 )
             }
             Row(
-                modifier = Modifier.padding(top = 6.dp),
+                modifier = Modifier.padding(top = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     ModuleTypeIcon(type = type)
-                    Text(moduleTypeLabel(type), fontSize = 11.sp, color = Muted)
+                    Text(moduleTypeLabel(type), fontSize = 11.sp, color = Neutral500)
                 }
                 moduleProgressCaption(resource, type, pct, status)?.let { cap ->
-                    Text(cap, fontSize = 11.sp, color = Ink, fontWeight = FontWeight.Medium)
+                    Text(cap, fontSize = 11.sp, color = Neutral700, fontWeight = FontWeight.Medium)
                 }
                 if (resource.locked) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         Icon(Icons.Default.Lock, null, tint = Color(0xFFB45309), modifier = Modifier.size(12.dp))
                         Text("Premium", fontSize = 11.sp, color = Color(0xFFB45309))
                     }
                 } else if (resource.sequenceLocked) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
-                        Icon(Icons.Default.Lock, null, tint = Muted, modifier = Modifier.size(12.dp))
-                        Text("Finish previous step", fontSize = 11.sp, color = Muted)
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Icon(Icons.Default.Lock, null, tint = Neutral500, modifier = Modifier.size(12.dp))
+                        Text("Finish previous step", fontSize = 11.sp, color = Neutral500)
                     }
                 }
             }
             if (showBar) {
-                LinearProgressIndicator(
-                    progress = { (pct / 100f).coerceIn(0f, 1f) },
+                if (type == "VIDEO") {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text("Progress", fontSize = 12.sp, color = Neutral500)
+                        Text("$pct%", fontWeight = FontWeight.SemiBold, color = Neutral900, fontSize = 12.sp)
+                    }
+                }
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 8.dp)
-                        .height(4.dp)
-                        .clip(RoundedCornerShape(999.dp)),
-                    color = if (status == "COMPLETED") Emerald600 else Color(0xFF171717),
-                    trackColor = Color(0xFFF5F5F5),
-                )
+                        .padding(top = if (type == "VIDEO") 4.dp else 10.dp)
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(999.dp))
+                        .background(Neutral100),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth((pct / 100f).coerceIn(0f, 1f))
+                            .height(6.dp)
+                            .clip(RoundedCornerShape(999.dp))
+                            .background(if (done || pct >= 90) Emerald600 else Neutral900),
+                    )
+                }
             }
         }
     }
@@ -843,16 +873,16 @@ private fun ModuleStatusDot(status: String?) {
             Icons.Default.CheckCircle,
             contentDescription = null,
             tint = Emerald600,
-            modifier = Modifier.size(18.dp),
+            modifier = Modifier.size(16.dp),
         )
         "IN_PROGRESS" -> Box(
             modifier = Modifier
-                .size(18.dp)
+                .size(16.dp)
                 .clip(CircleShape)
                 .background(Color(0xFFFFFBEB))
                 .border(1.dp, Amber500, CircleShape),
         )
-        else -> Icon(Icons.Outlined.Circle, contentDescription = null, tint = Color(0xFFD4D4D4), modifier = Modifier.size(18.dp))
+        else -> Icon(Icons.Outlined.Circle, contentDescription = null, tint = Neutral300, modifier = Modifier.size(16.dp))
     }
 }
 
@@ -863,7 +893,7 @@ private fun ModuleTypeIcon(type: String) {
         "MOCK_TEST" -> Icons.Default.Quiz
         else -> Icons.Default.School
     }
-    Icon(icon, contentDescription = null, tint = Brand, modifier = Modifier.size(14.dp))
+    Icon(icon, contentDescription = null, tint = Brand, modifier = Modifier.size(12.dp))
 }
 
 private fun moduleTypeLabel(type: String): String = when (type) {
