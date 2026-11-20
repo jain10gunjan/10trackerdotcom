@@ -100,6 +100,19 @@ class ApiClient(private val sessionStore: SessionStore) {
         return get("/api/mock-test/mock-of-day?category=$q", MockOfDayResponse::class.java)
     }
 
+    suspend fun getExamHubProgress(category: String): ExamHubProgressResponse {
+        val q = enc(category)
+        return get("/api/exam-hub/$q/progress", ExamHubProgressResponse::class.java)
+    }
+
+    suspend fun getDailyPracticeSetCount(category: String): Int {
+        val q = enc(category)
+        val res = runCatching {
+            get("/api/daily-practice/sets?category=$q", DailyPracticeSetsResponse::class.java)
+        }.getOrNull() ?: return 0
+        return res.sets.size
+    }
+
     /** Auth.js session cookie → user email/name (or empty when signed out). */
     suspend fun getAuthSession(): AuthSessionResponse = withContext(Dispatchers.IO) {
         val request = Request.Builder()

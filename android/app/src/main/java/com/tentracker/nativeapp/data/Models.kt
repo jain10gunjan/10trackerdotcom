@@ -465,6 +465,43 @@ data class MockTestQuestionsResponse(
     val error: String? = null,
 )
 
+/** GET /api/exam-hub/{slug}/progress — signed-in hub progress + continue payload. */
+data class ExamHubProgressResponse(
+    val success: Boolean = false,
+    val overallPercent: Int = 0,
+    val subjects: List<ExamHubSubjectProgress> = emptyList(),
+    @com.google.gson.annotations.SerializedName("continue")
+    val continueItem: ExamHubContinue? = null,
+    val error: String? = null,
+)
+
+data class ExamHubSubjectProgress(
+    val name: String = "",
+    val slug: String = "",
+    val percent: Int = 0,
+    val totalQuestions: Int = 0,
+    val completedQuestions: Int = 0,
+)
+
+data class ExamHubContinue(
+    val subject: String? = null,
+    val topic: String? = null,
+    val href: String? = null,
+    val hasProgress: Boolean = false,
+)
+
+/** GET /api/daily-practice/sets?category=… */
+data class DailyPracticeSetsResponse(
+    val success: Boolean = false,
+    val sets: List<DailyPracticeSet> = emptyList(),
+    val error: String? = null,
+)
+
+data class DailyPracticeSet(
+    val id: String = "",
+    val title: String? = null,
+)
+
 data class MockAttemptQuestion(
     val id: String = "",
     val question: String = "",

@@ -4,6 +4,7 @@ import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -155,6 +156,15 @@ fun TenTrackerNav(
                         "mock-attempt/${enc(slug)}/${enc(testId)}/${enc(testName)}/$durationMinutes"
                     )
                 },
+                onGoToDashboard = {
+                    nav.navigate("main/tab_home") {
+                        popUpTo(nav.graph.findStartDestination().id) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                },
+                onSignIn = { nav.navigate("login") },
+                onOpenDailyPractice = { openBrowser("/$slug/daily-practice", "Daily practice") },
             )
         }
 
