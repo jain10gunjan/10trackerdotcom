@@ -16,8 +16,10 @@ import com.tentracker.nativeapp.data.ApiClient
 import com.tentracker.nativeapp.data.SessionStore
 import com.tentracker.nativeapp.ui.screens.ArticleDetailScreen
 import com.tentracker.nativeapp.ui.screens.ExamDetailScreen
-import com.tentracker.nativeapp.ui.screens.InAppBrowserScreen
+import com.tentracker.nativeapp.ui.screens.CustomTabsLauncherScreen
 import com.tentracker.nativeapp.ui.screens.LoginScreen
+import androidx.compose.ui.platform.LocalContext
+import com.tentracker.nativeapp.ui.util.openSite
 import com.tentracker.nativeapp.ui.screens.MockAttemptScreen
 import com.tentracker.nativeapp.ui.screens.MockListScreen
 import com.tentracker.nativeapp.ui.screens.PathScreen
@@ -48,6 +50,7 @@ fun TenTrackerNav(
     onDeepLinkConsumed: () -> Unit = {},
 ) {
     val nav = rememberNavController()
+    val context = LocalContext.current
 
     fun enc(value: String): String =
         URLEncoder.encode(value, StandardCharsets.UTF_8.toString())
@@ -59,8 +62,8 @@ fun TenTrackerNav(
         nav.navigate("practice/${enc(category)}/${enc(subject)}/${enc(chapter)}/${enc(title)}")
     }
 
-    fun openBrowser(pathOrUrl: String, title: String? = null) {
-        nav.navigate(browserRoute(absoluteOrSiteUrl(pathOrUrl), title))
+    fun openBrowser(pathOrUrl: String, @Suppress("UNUSED_PARAMETER") title: String? = null) {
+        openSite(context, absoluteOrSiteUrl(pathOrUrl))
     }
 
     LaunchedEffect(pendingDeepLink) {
@@ -72,6 +75,7 @@ fun TenTrackerNav(
     NavHost(navController = nav, startDestination = "main/tab_home") {
         composable("login") {
             LoginScreen(
+                api = api,
                 onSignedIn = {
                     sessionStore.markSignedInFromCookies()
                     nav.navigate("main/tab_home") {
@@ -321,10 +325,9 @@ fun TenTrackerNav(
         ) { entry ->
             val url = dec(entry.arguments?.getString("url"))
             val title = dec(entry.arguments?.getString("title")).ifBlank { null }
-            InAppBrowserScreen(
+            CustomTabsLauncherScreen(
                 url = url,
-                title = title,
-                onBack = { nav.popBackStack() },
+                onDone = { nav.popBackStack() },
             )
         }
     }

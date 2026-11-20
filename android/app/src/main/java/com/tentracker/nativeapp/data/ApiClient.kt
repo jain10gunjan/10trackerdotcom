@@ -19,7 +19,7 @@ import java.util.concurrent.TimeUnit
 
 /**
  * Talks to existing 10tracker.com APIs. No DB changes —
- * uses Auth.js session cookies from the login WebView.
+ * uses Auth.js session cookies stored in [CookieManager] via OkHttp responses.
  */
 class ApiClient(private val sessionStore: SessionStore) {
 
@@ -29,7 +29,7 @@ class ApiClient(private val sessionStore: SessionStore) {
     private val client: OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(45, TimeUnit.SECONDS)
-        .cookieJar(WebViewCookieJar())
+        .cookieJar(AppCookieJar())
         .addInterceptor(
             HttpLoggingInterceptor().apply {
                 level = HttpLoggingInterceptor.Level.BASIC
@@ -131,7 +131,7 @@ class ApiClient(private val sessionStore: SessionStore) {
             runCatching { gson.fromJson(text, AuthSessionResponse::class.java) }
                 .getOrElse { AuthSessionResponse() }
                 .also {
-                    if (it.user?.email != null) sessionStore.markSignedInFromCookies()
+                    if (it.user?.email != null) sessionStore.markSignedInFromApi()
                 }
         }
     }
@@ -264,8 +264,8 @@ class ApiClient(private val sessionStore: SessionStore) {
         }
     }
 
-    /** Bridge WebView CookieManager ↔ OkHttp so Auth.js cookies work natively. */
-    private class WebViewCookieJar : CookieJar {
+    /** Persists OkHttp Set-Cookie values in CookieManager (no WebView required). */
+    private class AppCookieJar : CookieJar {
         override fun loadForRequest(url: HttpUrl): List<Cookie> {
             val raw = CookieManager.getInstance().getCookie(url.toString()) ?: return emptyList()
             return raw.split(";")

@@ -22,6 +22,11 @@ class SessionStore(context: Context) {
         signedInHint = hasSessionCookie()
     }
 
+    /** After `/api/auth/session` returns a user (may not reflect Custom Tabs cookies). */
+    fun markSignedInFromApi() {
+        signedInHint = true
+    }
+
     fun clear() {
         signedInHint = false
         val cm = CookieManager.getInstance()

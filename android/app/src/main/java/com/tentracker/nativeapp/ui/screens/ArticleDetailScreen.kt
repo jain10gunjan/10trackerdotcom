@@ -53,7 +53,7 @@ import com.tentracker.nativeapp.ui.theme.Border
 import com.tentracker.nativeapp.ui.theme.Ink
 import com.tentracker.nativeapp.ui.theme.Muted
 import com.tentracker.nativeapp.ui.theme.SurfaceMuted
-import com.tentracker.nativeapp.ui.util.MathJaxHtmlContent
+import com.tentracker.nativeapp.ui.components.HtmlText
 import com.tentracker.nativeapp.ui.util.absoluteSiteUrl
 import java.time.Instant
 import java.time.ZoneId
@@ -182,7 +182,11 @@ fun ArticleDetailScreen(
                             }
                             HorizontalDivider(color = Border.copy(alpha = 0.6f))
                             Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 24.dp)) {
-                                ArticleBodyWebView(content = detail.content.orEmpty())
+                                HtmlText(
+                                    html = detail.content.orEmpty(),
+                                    modifier = Modifier.fillMaxWidth(),
+                                    textSizeSp = 16f,
+                                )
                             }
                         }
                     }
@@ -233,18 +237,6 @@ private fun ArticleDetailMeta(date: String, readMinutes: Int) {
     }
 }
 
-@Composable
-private fun ArticleBodyWebView(content: String) {
-    val wrapped = """<div class="article-prose"><div class="article-content">$content</div></div>"""
-    MathJaxHtmlContent(
-        rawHtml = wrapped,
-        modifier = Modifier.fillMaxWidth(),
-        textSizeSp = 16f,
-        bodyExtraCss = ARTICLE_CONTENT_CSS,
-        canonicalize = true,
-    )
-}
-
 private fun estimateReadMinutes(content: String): Int {
     val words = content.replace(Regex("<[^>]+>"), " ")
         .trim()
@@ -265,35 +257,3 @@ private fun formatArticleDetailDate(iso: String?): String {
         }
     }
 }
-
-// Mirrors src/styles/article-content.css (mobile breakpoints)
-private val ARTICLE_CONTENT_CSS = """
-.article-prose{width:100%;}
-.article-content{font-size:1rem;line-height:1.75;color:#404040;font-family:inherit;}
-.article-content,.article-content *{font-family:inherit;}
-.article-content > :first-child{margin-top:0!important;padding-top:0!important;}
-.article-content p:empty,.article-content div:empty,.article-content span:empty{display:none!important;margin:0!important;padding:0!important;height:0!important;min-height:0!important;}
-.article-content br + br{display:none;}
-.article-content p{margin-top:1rem;margin-bottom:0;}
-.article-content p + p{margin-top:1rem;}
-.article-content h1,.article-content h2,.article-content h3,.article-content h4{color:#171717;font-weight:600;line-height:1.3;margin-top:2rem;margin-bottom:0.75rem;}
-.article-content h1{font-size:1.375rem;}
-.article-content h2{font-size:1.25rem;margin-top:1.75rem;}
-.article-content h3{font-size:1.125rem;}
-.article-content ul,.article-content ol{margin-top:1rem;padding-left:1.5rem;}
-.article-content ul{list-style-type:disc;}
-.article-content ol{list-style-type:decimal;}
-.article-content li{margin-top:0.375rem;}
-.article-content a{color:#171717;text-decoration:underline;text-underline-offset:2px;}
-.article-content strong{color:#171717;font-weight:600;}
-.article-content blockquote{margin:1.5rem 0;padding:1rem 1.25rem;border-left:3px solid #171717;background:#fafafa;border-radius:0 0.75rem 0.75rem 0;color:#525252;}
-.article-content table{width:100%;border-collapse:collapse;margin:1.5rem 0;font-size:0.9375rem;border:1px solid #e5e5e5;border-radius:0.75rem;overflow:hidden;}
-.article-content th,.article-content td{border:1px solid #e5e5e5;padding:0.625rem 0.75rem;text-align:left;}
-.article-content th{background:#fafafa;font-weight:600;color:#171717;}
-.article-content tr:nth-child(even) td{background:#fafafa;}
-.article-content img{max-width:100%;width:auto!important;height:auto!important;max-height:min(420px,55vh);object-fit:contain;border-radius:0.75rem;margin:1rem 0;}
-.article-content iframe{max-width:100%;max-height:min(360px,50vh);margin:1rem 0;border:0;border-radius:0.75rem;}
-.article-content pre{margin:1.25rem 0;padding:1rem;background:#fafafa;border:1px solid #e5e5e5;border-radius:0.75rem;overflow-x:auto;font-size:0.875rem;}
-.article-content code{font-size:0.875em;background:#f5f5f5;padding:0.125rem 0.375rem;border-radius:0.25rem;}
-.article-content hr{border:none;border-top:1px solid #e5e5e5;margin:2rem 0;}
-""".trimIndent()

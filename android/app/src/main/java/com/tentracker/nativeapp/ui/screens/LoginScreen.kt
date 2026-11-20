@@ -1,11 +1,5 @@
 package com.tentracker.nativeapp.ui.screens
 
-import android.annotation.SuppressLint
-import android.graphics.Bitmap
-import android.webkit.CookieManager
-import android.webkit.WebResourceRequest
-import android.webkit.WebView
-import android.webkit.WebViewClient
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -30,11 +24,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -43,22 +38,26 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.vector.PathParser
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.tentracker.nativeapp.data.ApiClient
 import com.tentracker.nativeapp.ui.components.BrandLogo
 import com.tentracker.nativeapp.ui.theme.Border
@@ -66,37 +65,72 @@ import com.tentracker.nativeapp.ui.theme.Brand
 import com.tentracker.nativeapp.ui.theme.Emerald
 import com.tentracker.nativeapp.ui.theme.Ink
 import com.tentracker.nativeapp.ui.theme.Muted
+import com.tentracker.nativeapp.ui.util.openSite
+import kotlinx.coroutines.launch
 
 /**
- * Google sign-in — native shell matches web mobile sign-in; WebView runs the OAuth flow.
+ * Google sign-in via Chrome Custom Tabs (no WebView). Session cookies from the browser
+ * tab are not visible to the app CookieManager — user confirms with "I've signed in"
+ * and we probe `GET /api/auth/session`.
  */
 @OptIn(ExperimentalMaterial3Api::class)
-@SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun LoginScreen(
+    api: ApiClient,
     onSignedIn: () -> Unit,
     onBack: () -> Unit,
 ) {
-    var showAuthWeb by remember { mutableStateOf(false) }
-    var authPath by remember { mutableStateOf("/sign-in") }
-    var webLoading by remember { mutableStateOf(false) }
-    var finished by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    var checking by remember { mutableStateOf(false) }
+    var statusMessage by remember { mutableStateOf<String?>(null) }
+
+    suspend fun probeSession(quiet: Boolean): Boolean {
+        return try {
+            val session = api.getAuthSession()
+            val ok = !session.user?.email.isNullOrBlank()
+            if (ok) {
+                onSignedIn()
+                true
+            } else {
+                if (!quiet) {
+                    statusMessage =
+                        "No active session yet. Finish Google sign-in in the browser, then tap \"I've signed in\"."
+                }
+                false
+            }
+        } catch (e: Exception) {
+            if (!quiet) {
+                statusMessage = e.message ?: "Could not verify session"
+            }
+            false
+        }
+    }
+
+    fun openAuth(path: String) {
+        statusMessage =
+            "Complete sign-in in the browser tab. When done, return here and tap \"I've signed in\"."
+        openSite(context, "${ApiClient.BASE_URL}$path")
+    }
+
+    DisposableEffect(lifecycle) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME && !checking) {
+                scope.launch { probeSession(quiet = true) }
+            }
+        }
+        lifecycle.addObserver(observer)
+        onDispose { lifecycle.removeObserver(observer) }
+    }
 
     Scaffold(
         containerColor = Color(0xFFFAFAFA),
         topBar = {
             TopAppBar(
-                title = {
-                    if (!showAuthWeb) {
-                        BrandLogo(nameSize = 18.sp)
-                    } else {
-                        Text("Sign in", fontWeight = FontWeight.SemiBold, color = Ink)
-                    }
-                },
+                title = { BrandLogo(nameSize = 18.sp) },
                 navigationIcon = {
-                    IconButton(onClick = {
-                        if (showAuthWeb) showAuthWeb = false else onBack()
-                    }) {
+                    IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
@@ -108,80 +142,34 @@ fun LoginScreen(
             )
         },
     ) { padding ->
-        if (showAuthWeb) {
-            Column(
-                modifier = Modifier
-                    .padding(padding)
-                    .fillMaxSize(),
+        Box(
+            modifier = Modifier
+                .padding(padding)
+                .fillMaxSize()
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            contentAlignment = Alignment.TopCenter,
+        ) {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(24.dp),
+                color = Color.White,
+                border = BorderStroke(1.dp, Border),
+                shadowElevation = 2.dp,
             ) {
-                if (webLoading) {
-                    LinearProgressIndicator(
-                        modifier = Modifier.fillMaxWidth(),
-                        color = Brand,
+                Box {
+                    Box(
+                        modifier = Modifier
+                            .size(192.dp)
+                            .align(Alignment.TopEnd)
+                            .offset { IntOffset(64, -64) }
+                            .background(Emerald.copy(alpha = 0.25f), RoundedCornerShape(999.dp)),
                     )
-                }
-                key(authPath) {
-                    AndroidView(
-                        modifier = Modifier.fillMaxSize(),
-                        factory = { context ->
-                            WebView(context).apply {
-                                settings.javaScriptEnabled = true
-                                settings.domStorageEnabled = true
-                                CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
-                                webViewClient = object : WebViewClient() {
-                                    override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
-                                        webLoading = true
-                                    }
-
-                                    override fun onPageFinished(view: WebView?, url: String?) {
-                                        webLoading = false
-                                        CookieManager.getInstance().flush()
-                                        if (!finished && looksSignedIn(url)) {
-                                            finished = true
-                                            onSignedIn()
-                                        }
-                                    }
-
-                                    override fun shouldOverrideUrlLoading(
-                                        view: WebView?,
-                                        request: WebResourceRequest?,
-                                    ): Boolean = false
-                                }
-                                loadUrl("${ApiClient.BASE_URL}$authPath")
-                            }
-                        },
-                    )
-                }
-            }
-        } else {
-            Box(
-                modifier = Modifier
-                    .padding(padding)
-                    .fillMaxSize()
-                    .padding(horizontal = 20.dp, vertical = 16.dp),
-                contentAlignment = Alignment.TopCenter,
-            ) {
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(24.dp),
-                    color = Color.White,
-                    border = BorderStroke(1.dp, Border),
-                    shadowElevation = 2.dp,
-                ) {
-                    Box {
-                        Box(
-                            modifier = Modifier
-                                .size(192.dp)
-                                .align(Alignment.TopEnd)
-                                .offset { IntOffset(64, -64) }
-                                .background(Emerald.copy(alpha = 0.25f), RoundedCornerShape(999.dp)),
-                        )
-                        Column(
-                            modifier = Modifier
-                                .padding(horizontal = 24.dp, vertical = 32.dp)
-                                .verticalScroll(rememberScrollState()),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                        ) {
+                    Column(
+                        modifier = Modifier
+                            .padding(horizontal = 24.dp, vertical = 32.dp)
+                            .verticalScroll(rememberScrollState()),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
                         BrandLogo(nameSize = 22.sp)
                         Spacer(modifier = Modifier.height(20.dp))
                         Text(
@@ -199,11 +187,7 @@ fun LoginScreen(
                         )
                         Spacer(modifier = Modifier.height(24.dp))
                         OutlinedButton(
-                            onClick = {
-                                authPath = "/sign-in"
-                                finished = false
-                                showAuthWeb = true
-                            },
+                            onClick = { openAuth("/sign-in") },
                             modifier = Modifier.fillMaxWidth().height(52.dp),
                             shape = RoundedCornerShape(16.dp),
                             border = BorderStroke(1.dp, Border),
@@ -218,19 +202,46 @@ fun LoginScreen(
                                 fontSize = 15.sp,
                             )
                         }
-                        Spacer(modifier = Modifier.height(20.dp))
-                        SignUpPrompt(
-                            onSignUp = {
-                                authPath = "/sign-up"
-                                finished = false
-                                showAuthWeb = true
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Button(
+                            onClick = {
+                                checking = true
+                                scope.launch {
+                                    probeSession(quiet = false)
+                                    checking = false
+                                }
                             },
-                        )
+                            enabled = !checking,
+                            modifier = Modifier.fillMaxWidth().height(48.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Brand),
+                        ) {
+                            if (checking) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(22.dp),
+                                    color = Color.White,
+                                    strokeWidth = 2.dp,
+                                )
+                            } else {
+                                Text("I've signed in", fontWeight = FontWeight.SemiBold)
+                            }
+                        }
+                        statusMessage?.let { msg ->
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                msg,
+                                fontSize = 13.sp,
+                                color = Muted,
+                                textAlign = TextAlign.Center,
+                                lineHeight = 18.sp,
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                        SignUpPrompt(onSignUp = { openAuth("/sign-up") })
                         Spacer(modifier = Modifier.height(24.dp))
                         androidx.compose.material3.HorizontalDivider(color = Border.copy(alpha = 0.7f))
                         Spacer(modifier = Modifier.height(20.dp))
                         AuthTrustFooter()
-                        }
                     }
                 }
             }
@@ -251,6 +262,14 @@ private fun AuthTrustFooter() {
             TrustLine(Icons.Default.Shield, "Free to start")
             Text("No credit card required", fontSize = 12.sp, color = Muted)
         }
+        Text(
+            "Sign-in opens in Chrome Custom Tabs. The app cannot read that browser's cookies; " +
+                "use \"I've signed in\" after you finish.",
+            fontSize = 12.sp,
+            color = Muted,
+            textAlign = TextAlign.Center,
+            lineHeight = 18.sp,
+        )
         Text(
             "By continuing, you agree to our Terms of Service and Privacy Policy.",
             fontSize = 12.sp,
@@ -319,16 +338,4 @@ private fun GoogleMark() {
             }
         }
     }
-}
-
-private fun looksSignedIn(url: String?): Boolean {
-    if (url.isNullOrBlank() || !url.contains("10tracker.com")) return false
-    val cookies = CookieManager.getInstance().getCookie(ApiClient.BASE_URL).orEmpty()
-    val hasSession =
-        cookies.contains("authjs.session-token", true) ||
-            cookies.contains("next-auth.session-token", true) ||
-            cookies.contains("__Secure-authjs.session-token", true) ||
-            cookies.contains("__Secure-next-auth.session-token", true)
-    val notAuthPage = !url.contains("/api/auth") && !url.contains("accounts.google.com")
-    return hasSession && notAuthPage
 }
