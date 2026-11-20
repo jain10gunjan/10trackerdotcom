@@ -6,11 +6,15 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
@@ -52,7 +56,6 @@ import com.tentracker.nativeapp.ui.screens.TrackersScreen
 import com.tentracker.nativeapp.ui.theme.Bg
 import com.tentracker.nativeapp.ui.theme.Border
 import com.tentracker.nativeapp.ui.theme.Brand
-import com.tentracker.nativeapp.ui.theme.Muted
 import com.tentracker.nativeapp.ui.viewmodel.ArticlesViewModel
 import com.tentracker.nativeapp.ui.viewmodel.ExamsViewModel
 import com.tentracker.nativeapp.ui.viewmodel.HomeViewModel
@@ -68,27 +71,33 @@ private val tabs = listOf(
     Tab("tab_more", "More", Icons.Default.GridView),
 )
 
+private val TabInactive = Color(0xFF737373)
+
 @Composable
 private fun MobileBottomBar(
     current: String,
     onTabSelected: (String) -> Unit,
 ) {
-    Column(modifier = Modifier.fillMaxWidth()) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color.White.copy(alpha = 0.95f)),
+    ) {
         HorizontalDivider(color = Border.copy(alpha = 0.9f), thickness = 1.dp)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(64.dp)
-                .background(Color.White.copy(alpha = 0.97f))
                 .padding(horizontal = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             tabs.forEach { tab ->
                 val active = current == tab.route
-                val contentColor = if (active) Brand else Muted
+                val contentColor = if (active) Brand else TabInactive
                 Column(
                     modifier = Modifier
                         .weight(1f)
+                        .fillMaxHeight()
                         .clickable(onClick = { onTabSelected(tab.route) })
                         .padding(horizontal = 4.dp, vertical = 8.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -121,6 +130,7 @@ private fun MobileBottomBar(
                 }
             }
         }
+        Box(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
     }
 }
 
