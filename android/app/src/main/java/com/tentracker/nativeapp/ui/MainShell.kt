@@ -14,6 +14,7 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -60,6 +61,7 @@ fun MainShell(
     onOpenExam: (slug: String, name: String) -> Unit,
     onOpenArticle: (slug: String) -> Unit,
     onOpenRoadmaps: () -> Unit,
+    onOpenWeb: (pathOrUrl: String, title: String?) -> Unit,
     onSignIn: () -> Unit,
     initialTab: String = "tab_home",
 ) {
@@ -69,6 +71,24 @@ fun MainShell(
     val backStack by tabNav.currentBackStackEntryAsState()
     val current = backStack?.destination?.route ?: initialTab
 
+    LaunchedEffect(initialTab) {
+        if (current != initialTab) {
+            tabNav.navigate(initialTab) {
+                popUpTo(tabNav.graph.findStartDestination().id) { saveState = true }
+                launchSingleTop = true
+                restoreState = true
+            }
+        }
+    }
+
+    fun goTab(route: String) {
+        tabNav.navigate(route) {
+            popUpTo(tabNav.graph.findStartDestination().id) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
+        }
+    }
+
     Scaffold(
         containerColor = Color.White,
         bottomBar = {
@@ -76,13 +96,7 @@ fun MainShell(
                 tabs.forEach { tab ->
                     NavigationBarItem(
                         selected = current == tab.route,
-                        onClick = {
-                            tabNav.navigate(tab.route) {
-                                popUpTo(tabNav.graph.findStartDestination().id) { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        },
+                        onClick = { goTab(tab.route) },
                         icon = { Icon(tab.icon, contentDescription = tab.label) },
                         label = { Text(tab.label, fontSize = 10.sp) },
                         colors = NavigationBarItemDefaults.colors(
@@ -103,13 +117,6 @@ fun MainShell(
             modifier = Modifier.padding(padding),
         ) {
             composable("tab_home") {
-                fun goTab(route: String) {
-                    tabNav.navigate(route) {
-                        popUpTo(tabNav.graph.findStartDestination().id) { saveState = true }
-                        launchSingleTop = true
-                        restoreState = true
-                    }
-                }
                 HomeScreen(
                     vm = homeVm,
                     onOpenPath = onOpenPath,
@@ -144,13 +151,6 @@ fun MainShell(
             }
             composable("tab_more") {
                 val moreVm: MoreViewModel = viewModel(factory = MoreViewModel.factory(api, sessionStore))
-                fun goTab(route: String) {
-                    tabNav.navigate(route) {
-                        popUpTo(tabNav.graph.findStartDestination().id) { saveState = true }
-                        launchSingleTop = true
-                        restoreState = true
-                    }
-                }
                 MoreScreen(
                     vm = moreVm,
                     signedInHint = homeState.signedIn,
@@ -164,6 +164,7 @@ fun MainShell(
                     onOpenExams = { goTab("tab_exams") },
                     onOpenTrackers = { goTab("tab_trackers") },
                     onOpenArticles = { goTab("tab_updates") },
+                    onOpenWeb = onOpenWeb,
                 )
             }
         }

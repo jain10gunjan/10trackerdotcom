@@ -35,7 +35,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.tentracker.nativeapp.ui.theme.Border
@@ -43,7 +42,6 @@ import com.tentracker.nativeapp.ui.theme.Brand
 import com.tentracker.nativeapp.ui.theme.BrandSoft
 import com.tentracker.nativeapp.ui.theme.Ink
 import com.tentracker.nativeapp.ui.theme.Muted
-import com.tentracker.nativeapp.ui.util.openSite
 import com.tentracker.nativeapp.ui.viewmodel.MoreUiState
 import com.tentracker.nativeapp.ui.viewmodel.MoreViewModel
 
@@ -57,9 +55,9 @@ fun MoreScreen(
     onOpenExams: () -> Unit,
     onOpenTrackers: () -> Unit,
     onOpenArticles: () -> Unit,
+    onOpenWeb: (pathOrUrl: String, title: String?) -> Unit = { _, _ -> },
 ) {
     val state by vm.state.collectAsState()
-    val context = LocalContext.current
 
     LaunchedEffect(signedInHint) {
         vm.refresh(silent = state.email != null || !signedInHint)
@@ -97,7 +95,7 @@ fun MoreScreen(
 
         Text("Pricing", fontWeight = FontWeight.Bold, color = Ink)
         Text(
-            "Plans stay on 10tracker.com — checkout opens in a secure browser tab.",
+            "Plans stay on 10tracker.com — checkout opens in the in-app browser.",
             style = MaterialTheme.typography.bodyMedium,
             color = Muted,
         )
@@ -117,7 +115,7 @@ fun MoreScreen(
             }
         }
         Button(
-            onClick = { openSite(context, "/pricing") },
+            onClick = { onOpenWeb("/pricing", "Pricing") },
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(containerColor = Brand),
             shape = RoundedCornerShape(12.dp),
@@ -127,9 +125,10 @@ fun MoreScreen(
         }
 
         Text("Also on the web", fontWeight = FontWeight.Bold, color = Ink)
-        LinkRow("Mock tests hub", "/mock-test") { openSite(context, it) }
-        LinkRow("Leaderboard", "/mock-test/leaderboard") { openSite(context, it) }
-        LinkRow("10tracker.com", "/") { openSite(context, it) }
+        LinkRow("Mock tests hub", "/mock-test", "Mock tests", onOpenWeb)
+        LinkRow("Leaderboard", "/mock-test/leaderboard", "Leaderboard", onOpenWeb)
+        LinkRow("Checkout / credits", "/checkout", "Checkout", onOpenWeb)
+        LinkRow("10tracker.com", "/", "10tracker", onOpenWeb)
 
         Spacer(modifier = Modifier.height(24.dp))
     }
@@ -288,9 +287,14 @@ private fun NativeLinkRow(label: String, onClick: () -> Unit) {
 }
 
 @Composable
-private fun LinkRow(label: String, path: String, onOpen: (String) -> Unit) {
+private fun LinkRow(
+    label: String,
+    path: String,
+    title: String,
+    onOpenWeb: (pathOrUrl: String, title: String?) -> Unit,
+) {
     OutlinedButton(
-        onClick = { onOpen(path) },
+        onClick = { onOpenWeb(path, title) },
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         border = androidx.compose.foundation.BorderStroke(1.dp, Border),

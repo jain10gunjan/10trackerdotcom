@@ -39,7 +39,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.tentracker.nativeapp.data.MockTestSummary
@@ -48,7 +47,6 @@ import com.tentracker.nativeapp.ui.theme.Brand
 import com.tentracker.nativeapp.ui.theme.BrandSoft
 import com.tentracker.nativeapp.ui.theme.Ink
 import com.tentracker.nativeapp.ui.theme.Muted
-import com.tentracker.nativeapp.ui.util.openSite
 import com.tentracker.nativeapp.ui.viewmodel.MockListViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -59,9 +57,9 @@ fun MockListScreen(
     vm: MockListViewModel,
     onBack: () -> Unit,
     onStartNative: (test: MockTestSummary) -> Unit,
+    onOpenWeb: (pathOrUrl: String, title: String?) -> Unit = { _, _ -> },
 ) {
     val state by vm.state.collectAsState()
-    val context = LocalContext.current
 
     Scaffold(
         containerColor = Color.White,
@@ -79,7 +77,7 @@ fun MockListScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { openSite(context, "/mock-test/$category") }) {
+                    IconButton(onClick = { onOpenWeb("/mock-test/$category", "Mock tests") }) {
                         Icon(Icons.Default.OpenInBrowser, contentDescription = "Open on web")
                     }
                 },
@@ -98,7 +96,7 @@ fun MockListScreen(
                 Column(modifier = Modifier.padding(padding).padding(16.dp)) {
                     Text(state.error ?: "Error", color = Muted)
                     TextButton(onClick = { vm.refresh() }) { Text("Retry") }
-                    TextButton(onClick = { openSite(context, "/mock-test/$category") }) {
+                    TextButton(onClick = { onOpenWeb("/mock-test/$category", "Mock tests") }) {
                         Text("Browse on web")
                     }
                 }
@@ -121,14 +119,14 @@ fun MockListScreen(
                             test = test,
                             onStart = { onStartNative(test) },
                             onOpenWeb = {
-                                openSite(context, "/mock-test/$category/attempt/${test.id}")
+                                onOpenWeb("/mock-test/$category/attempt/${test.id}", test.name)
                             },
                         )
                     }
                     item {
                         Spacer(modifier = Modifier.height(8.dp))
                         OutlinedButton(
-                            onClick = { openSite(context, "/mock-test/$category") },
+                            onClick = { onOpenWeb("/mock-test/$category", "Mock tests") },
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(12.dp),
                         ) {

@@ -1,7 +1,10 @@
 package com.tentracker.nativeapp.ui
 
+import android.net.Uri
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -11,6 +14,7 @@ import com.tentracker.nativeapp.data.ApiClient
 import com.tentracker.nativeapp.data.SessionStore
 import com.tentracker.nativeapp.ui.screens.ArticleDetailScreen
 import com.tentracker.nativeapp.ui.screens.ExamDetailScreen
+import com.tentracker.nativeapp.ui.screens.InAppBrowserScreen
 import com.tentracker.nativeapp.ui.screens.LoginScreen
 import com.tentracker.nativeapp.ui.screens.MockAttemptScreen
 import com.tentracker.nativeapp.ui.screens.MockListScreen
@@ -19,6 +23,10 @@ import com.tentracker.nativeapp.ui.screens.PracticeScreen
 import com.tentracker.nativeapp.ui.screens.RoadmapDetailScreen
 import com.tentracker.nativeapp.ui.screens.RoadmapsScreen
 import com.tentracker.nativeapp.ui.screens.VideoPlayerScreen
+import com.tentracker.nativeapp.ui.util.AppDestination
+import com.tentracker.nativeapp.ui.util.absoluteOrSiteUrl
+import com.tentracker.nativeapp.ui.util.browserRoute
+import com.tentracker.nativeapp.ui.util.resolveDeepLink
 import com.tentracker.nativeapp.ui.viewmodel.ExamDetailViewModel
 import com.tentracker.nativeapp.ui.viewmodel.MockAttemptViewModel
 import com.tentracker.nativeapp.ui.viewmodel.MockListViewModel
@@ -31,7 +39,12 @@ import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 
 @Composable
-fun TenTrackerNav(api: ApiClient, sessionStore: SessionStore) {
+fun TenTrackerNav(
+    api: ApiClient,
+    sessionStore: SessionStore,
+    pendingDeepLink: Uri? = null,
+    onDeepLinkConsumed: () -> Unit = {},
+) {
     val nav = rememberNavController()
 
     fun enc(value: String): String =
@@ -44,25 +57,48 @@ fun TenTrackerNav(api: ApiClient, sessionStore: SessionStore) {
         nav.navigate("practice/${enc(category)}/${enc(subject)}/${enc(chapter)}/${enc(title)}")
     }
 
-    NavHost(navController = nav, startDestination = "main") {
+    fun openBrowser(pathOrUrl: String, title: String? = null) {
+        nav.navigate(browserRoute(absoluteOrSiteUrl(pathOrUrl), title))
+    }
+
+    LaunchedEffect(pendingDeepLink) {
+        val dest = resolveDeepLink(pendingDeepLink) ?: return@LaunchedEffect
+        navigateDestination(nav, dest, ::enc)
+        onDeepLinkConsumed()
+    }
+
+    NavHost(navController = nav, startDestination = "main/tab_home") {
         composable("login") {
             LoginScreen(
                 onSignedIn = {
                     sessionStore.markSignedInFromCookies()
-                    nav.navigate("main") { popUpTo("login") { inclusive = true } }
+                    nav.navigate("main/tab_home") {
+                        popUpTo("login") { inclusive = true }
+                    }
                 },
                 onBack = { nav.popBackStack() },
             )
         }
 
-        composable("main") {
+        composable(
+            route = "main/{tab}",
+            arguments = listOf(
+                navArgument("tab") {
+                    type = NavType.StringType
+                    defaultValue = "tab_home"
+                },
+            ),
+        ) { entry ->
+            val tab = entry.arguments?.getString("tab") ?: "tab_home"
             MainShell(
                 api = api,
                 sessionStore = sessionStore,
+                initialTab = tab,
                 onOpenPath = { slug -> nav.navigate("path/$slug") },
                 onOpenExam = { slug, name -> nav.navigate("exam/${enc(slug)}/${enc(name)}") },
                 onOpenArticle = { slug -> nav.navigate("article/${enc(slug)}") },
                 onOpenRoadmaps = { nav.navigate("roadmaps") },
+                onOpenWeb = { path, title -> openBrowser(path, title) },
                 onSignIn = { nav.navigate("login") },
             )
         }
@@ -145,6 +181,7 @@ fun TenTrackerNav(api: ApiClient, sessionStore: SessionStore) {
                         "mock-attempt/${enc(category)}/${enc(test.id)}/${enc(test.name)}/${test.duration}"
                     )
                 },
+                onOpenWeb = { path, t -> openBrowser(path, t) },
             )
         }
 
@@ -214,6 +251,7 @@ fun TenTrackerNav(api: ApiClient, sessionStore: SessionStore) {
                 onPlayVideo = { resourceId, youtubeId, title ->
                     nav.navigate("video/${enc(slug)}/${enc(resourceId)}/${enc(youtubeId)}/${enc(title)}")
                 },
+                onOpenWeb = { url, title -> openBrowser(url, title) },
             )
         }
 
@@ -253,5 +291,53 @@ fun TenTrackerNav(api: ApiClient, sessionStore: SessionStore) {
                 onBack = { nav.popBackStack() },
             )
         }
+
+        composable(
+            route = "browser/{url}/{title}",
+            arguments = listOf(
+                navArgument("url") { type = NavType.StringType },
+                navArgument("title") {
+                    type = NavType.StringType
+                    defaultValue = ""
+                },
+            ),
+        ) { entry ->
+            val url = dec(entry.arguments?.getString("url"))
+            val title = dec(entry.arguments?.getString("title")).ifBlank { null }
+            InAppBrowserScreen(
+                url = url,
+                title = title,
+                onBack = { nav.popBackStack() },
+            )
+        }
+    }
+}
+
+private fun navigateDestination(
+    nav: NavHostController,
+    dest: AppDestination,
+    enc: (String) -> String,
+) {
+    when (dest) {
+        AppDestination.MainHome -> nav.navigate("main/tab_home") {
+            launchSingleTop = true
+            popUpTo("main/tab_home") { inclusive = false }
+        }
+        AppDestination.MainExams -> nav.navigate("main/tab_exams") { launchSingleTop = true }
+        AppDestination.MainTrackers -> nav.navigate("main/tab_trackers") { launchSingleTop = true }
+        AppDestination.MainUpdates -> nav.navigate("main/tab_updates") { launchSingleTop = true }
+        AppDestination.MainMore -> nav.navigate("main/tab_more") { launchSingleTop = true }
+        AppDestination.Login -> nav.navigate("login")
+        AppDestination.Roadmaps -> nav.navigate("roadmaps")
+        is AppDestination.Path -> nav.navigate("path/${dest.slug}")
+        is AppDestination.Exam -> nav.navigate("exam/${enc(dest.slug)}/${enc(dest.name)}")
+        is AppDestination.Article -> nav.navigate("article/${enc(dest.slug)}")
+        is AppDestination.Practice -> nav.navigate(
+            "practice/${enc(dest.category)}/${enc(dest.subject)}/${enc(dest.chapter)}/${enc(dest.title)}"
+        )
+        is AppDestination.Mocks -> nav.navigate(
+            "mocks/${enc(dest.category)}/${enc(dest.title)}"
+        )
+        is AppDestination.Browser -> nav.navigate(browserRoute(dest.url, dest.title))
     }
 }
