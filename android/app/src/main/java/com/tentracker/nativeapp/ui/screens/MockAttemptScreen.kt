@@ -26,10 +26,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.TrackChanges
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -802,9 +805,13 @@ private fun MockPreflightContent(
     onStart: () -> Unit,
 ) {
     val test = state.test
+    val questionCount = state.questions.size
+    val durationMin = test?.duration ?: 0
+    val categoryLabel = category.uppercase().replace('-', ' ')
     Column(
         modifier = modifier
             .fillMaxSize()
+            .background(AttemptPageBg)
             .padding(16.dp)
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -812,53 +819,210 @@ private fun MockPreflightContent(
         Card(
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = Color.White),
-            border = androidx.compose.foundation.BorderStroke(1.dp, Border),
+            border = androidx.compose.foundation.BorderStroke(1.dp, Border.copy(alpha = 0.9f)),
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(test?.name ?: "Mock test", fontWeight = FontWeight.Bold, color = Ink, style = MaterialTheme.typography.titleLarge)
-                test?.description?.takeIf { it.isNotBlank() }?.let {
+            Box {
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .background(
+                            Brush.linearGradient(
+                                colors = listOf(EmeraldSoft.copy(alpha = 0.25f), Color.Transparent),
+                            ),
+                        ),
+                )
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = Emerald, modifier = Modifier.size(12.dp))
+                        Text(
+                            "MOCK TEST",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = EmeraldDark,
+                            letterSpacing = 0.6.sp,
+                        )
+                    }
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text(it, color = Muted)
+                    Text(
+                        test?.name ?: "Mock test",
+                        fontWeight = FontWeight.Bold,
+                        color = Ink,
+                        style = MaterialTheme.typography.titleLarge,
+                    )
+                    val subtitle = buildList {
+                        add(categoryLabel)
+                        add("$questionCount questions")
+                        if (durationMin > 0) add(formatMockDurationList(durationMin)) else add("Untimed")
+                    }.joinToString(" · ")
+                    Text(subtitle, color = Muted, fontSize = 14.sp)
                 }
-                Spacer(modifier = Modifier.height(12.dp))
-                val durationLabel = test?.duration?.takeIf { d -> d > 0 }?.let { d ->
-                    formatMockDurationPreflight(d)
-                } ?: "Untimed"
-                Text("${state.questions.size} questions · $durationLabel", fontWeight = FontWeight.Medium, color = Ink)
             }
         }
+
         Card(
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = Color.White),
-            border = androidx.compose.foundation.BorderStroke(1.dp, Border),
+            border = androidx.compose.foundation.BorderStroke(1.dp, Border.copy(alpha = 0.9f)),
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text("Before you begin", color = EmeraldDark, fontWeight = FontWeight.Bold, fontSize = 11.sp)
-                Text("Instructions", fontWeight = FontWeight.Bold, color = Ink)
-                Spacer(modifier = Modifier.height(8.dp))
-                listOf(
-                    "Use the grid or footer to jump between questions",
-                    "Answers are saved on this device",
-                    "Open the web attempt after submit to sync credits",
-                ).forEach { line ->
-                    Text("• $line", style = MaterialTheme.typography.bodyMedium, color = Muted)
+            Column {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 14.dp)
+                        .border(
+                            width = androidx.compose.ui.unit.Dp.Hairline,
+                            color = Border,
+                            shape = RoundedCornerShape(0.dp),
+                        ),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = EmeraldSoft,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, EmeraldBorder),
+                        modifier = Modifier.size(24.dp),
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text("01", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = EmeraldDark)
+                        }
+                    }
+                    Column {
+                        Text("OVERVIEW", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = EmeraldDark, letterSpacing = 0.6.sp)
+                        Text("Test details", fontWeight = FontWeight.Bold, color = Ink, fontSize = 14.sp)
+                    }
+                }
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                        PreflightStatTile(
+                            icon = Icons.Default.TrackChanges,
+                            label = "Questions",
+                            value = "$questionCount",
+                            modifier = Modifier.weight(1f),
+                        )
+                        PreflightStatTile(
+                            icon = Icons.Default.Timer,
+                            label = "Duration",
+                            value = if (durationMin > 0) formatMockDurationList(durationMin) else "—",
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                        PreflightStatTile(
+                            icon = Icons.Default.Warning,
+                            label = "Difficulty",
+                            value = test?.difficulty?.replaceFirstChar { it.uppercase() } ?: "Mixed",
+                            modifier = Modifier.weight(1f),
+                        )
+                        PreflightStatTile(
+                            icon = Icons.Default.CheckCircle,
+                            label = "Type",
+                            value = "MCQ",
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
                 }
             }
         }
-        Button(
-            onClick = onStart,
-            enabled = state.questions.isNotEmpty(),
-            colors = ButtonDefaults.buttonColors(containerColor = Emerald700),
-            shape = RoundedCornerShape(12.dp),
-            modifier = Modifier.fillMaxWidth(),
+
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            border = androidx.compose.foundation.BorderStroke(1.dp, Border.copy(alpha = 0.9f)),
         ) {
-            Text("Start ${state.questions.size} question test", fontWeight = FontWeight.SemiBold)
+            Column {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 14.dp)
+                        .border(
+                            width = androidx.compose.ui.unit.Dp.Hairline,
+                            color = Border,
+                            shape = RoundedCornerShape(0.dp),
+                        ),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = EmeraldSoft,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, EmeraldBorder),
+                        modifier = Modifier.size(24.dp),
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text("02", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = EmeraldDark)
+                        }
+                    }
+                    Column {
+                        Text("BEFORE YOU BEGIN", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = EmeraldDark, letterSpacing = 0.6.sp)
+                        Text("Instructions", fontWeight = FontWeight.Bold, color = Ink, fontSize = 14.sp)
+                    }
+                }
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    listOf(
+                        "Use nav or grid to move between questions",
+                        "Answers auto-saved on this device",
+                        "Open web after submit to sync credits & rank",
+                    ).forEach { line ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Emerald, modifier = Modifier.size(16.dp))
+                            Text(line, style = MaterialTheme.typography.bodyMedium, color = Muted, fontSize = 14.sp)
+                        }
+                    }
+                }
+            }
         }
-        TextButton(
-            onClick = {
-                openSite(context, "/mock-test/$category/attempt/${test?.id.orEmpty()}")
-            },
-        ) { Text("Prefer full web attempt") }
+
+        Surface(
+            color = Color.White.copy(alpha = 0.95f),
+            shadowElevation = 8.dp,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            border = androidx.compose.foundation.BorderStroke(1.dp, Border),
+        ) {
+            Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    onClick = onStart,
+                    enabled = state.questions.isNotEmpty(),
+                    colors = ButtonDefaults.buttonColors(containerColor = Emerald700),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("Start $questionCount question test", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                }
+                TextButton(
+                    onClick = {
+                        openSite(context, "/mock-test/$category/attempt/${test?.id.orEmpty()}")
+                    },
+                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                ) { Text("Prefer full web attempt", fontSize = 13.sp) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PreflightStatTile(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(12.dp),
+        color = Neutral50.copy(alpha = 0.8f),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Border.copy(alpha = 0.6f)),
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(icon, contentDescription = null, tint = Emerald700, modifier = Modifier.size(20.dp))
+            Column {
+                Text(label, fontSize = 11.sp, color = Muted)
+                Text(value, fontWeight = FontWeight.Bold, color = Ink, fontSize = 18.sp)
+            }
+        }
     }
 }
 
@@ -874,25 +1038,37 @@ private fun MockScoreContent(
     Column(
         modifier = modifier
             .fillMaxSize()
+            .background(AttemptPageBg)
             .padding(16.dp)
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text("Your score", style = MaterialTheme.typography.headlineSmall, color = Ink, fontWeight = FontWeight.Bold)
-        Text(
-            "${r.percent}%",
-            fontWeight = FontWeight.Black,
-            color = Emerald,
-            style = MaterialTheme.typography.displaySmall,
-        )
-        Text("${r.correct} of ${r.total} correct", fontWeight = FontWeight.SemiBold, color = Ink)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            ScoreStat("${r.attempted}", "Attempted", Modifier.weight(1f))
-            ScoreStat("${r.incorrect}", "Incorrect", Modifier.weight(1f))
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            ScoreStat("${r.skipped}", "Skipped", Modifier.weight(1f))
-            ScoreStat(formatClock(r.secondsUsed), "Time", Modifier.weight(1f))
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            border = androidx.compose.foundation.BorderStroke(1.dp, Border.copy(alpha = 0.9f)),
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text("Your score", style = MaterialTheme.typography.titleLarge, color = Ink, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    "${r.percent}%",
+                    fontWeight = FontWeight.Black,
+                    color = Emerald,
+                    style = MaterialTheme.typography.displaySmall,
+                )
+                Text("${r.correct} of ${r.total} correct", fontWeight = FontWeight.SemiBold, color = Ink)
+                Spacer(modifier = Modifier.height(14.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    ScoreStat("${r.percent}%", "Percentage", Modifier.weight(1f))
+                    ScoreStat("${r.attempted}", "Attempted", Modifier.weight(1f))
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    ScoreStat("${r.incorrect}", "Incorrect", Modifier.weight(1f))
+                    ScoreStat(formatClock(r.secondsUsed), "Time", Modifier.weight(1f))
+                }
+            }
         }
         state.submitHint?.let {
             Text(it, style = MaterialTheme.typography.bodyMedium, color = Muted)
@@ -902,7 +1078,7 @@ private fun MockScoreContent(
                 val id = state.test?.id.orEmpty()
                 openSite(context, "/mock-test/$category/attempt/$id")
             },
-            colors = ButtonDefaults.buttonColors(containerColor = Emerald700),
+            colors = ButtonDefaults.buttonColors(containerColor = Ink),
             shape = RoundedCornerShape(12.dp),
             modifier = Modifier.fillMaxWidth(),
         ) { Text("Save / sync on web", fontWeight = FontWeight.SemiBold) }
@@ -932,9 +1108,16 @@ private fun ScoreStat(value: String, label: String, modifier: Modifier = Modifie
     }
 }
 
-private fun formatMockDurationPreflight(minutes: Int): String {
+private fun formatMockDurationList(minutes: Int): String {
     val m = minutes.coerceAtLeast(0)
-    return if (m > 0) "$m min timer" else "Untimed"
+    val hours = m / 60
+    val mins = m % 60
+    return when {
+        hours > 0 && mins > 0 -> "${hours}h ${mins}m"
+        hours > 0 -> "${hours}h"
+        m > 0 -> "${mins}m"
+        else -> "Untimed"
+    }
 }
 
 private fun formatClock(totalSeconds: Int): String {

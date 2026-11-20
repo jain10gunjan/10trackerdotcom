@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -49,6 +50,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.graphics.Color
@@ -81,7 +83,7 @@ fun LoginScreen(
     var finished by remember { mutableStateOf(false) }
 
     Scaffold(
-        containerColor = Color(0xFFF8FAFC),
+        containerColor = Color(0xFFFAFAFA),
         topBar = {
             TopAppBar(
                 title = {
@@ -169,13 +171,14 @@ fun LoginScreen(
                     Box {
                         Box(
                             modifier = Modifier
-                                .size(120.dp)
+                                .size(192.dp)
                                 .align(Alignment.TopEnd)
-                                .background(Emerald.copy(alpha = 0.12f), RoundedCornerShape(999.dp)),
+                                .offset { IntOffset(64, -64) }
+                                .background(Emerald.copy(alpha = 0.25f), RoundedCornerShape(999.dp)),
                         )
                         Column(
                             modifier = Modifier
-                                .padding(horizontal = 24.dp, vertical = 28.dp)
+                                .padding(horizontal = 24.dp, vertical = 32.dp)
                                 .verticalScroll(rememberScrollState()),
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
@@ -201,7 +204,7 @@ fun LoginScreen(
                                 finished = false
                                 showAuthWeb = true
                             },
-                            modifier = Modifier.fillMaxWidth().height(54.dp),
+                            modifier = Modifier.fillMaxWidth().height(52.dp),
                             shape = RoundedCornerShape(16.dp),
                             border = BorderStroke(1.dp, Border),
                             colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White),
@@ -249,7 +252,7 @@ private fun AuthTrustFooter() {
             Text("No credit card required", fontSize = 12.sp, color = Muted)
         }
         Text(
-            "By continuing, you agree to our Terms of Service and Privacy Policy on 10tracker.com.",
+            "By continuing, you agree to our Terms of Service and Privacy Policy.",
             fontSize = 12.sp,
             color = Muted,
             textAlign = TextAlign.Center,

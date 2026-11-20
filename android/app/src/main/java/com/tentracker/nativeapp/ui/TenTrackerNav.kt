@@ -3,6 +3,7 @@ package com.tentracker.nativeapp.ui
 import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -171,10 +172,14 @@ fun TenTrackerNav(
                 key = "mocks/$category",
                 factory = MockListViewModel.factory(api, category),
             )
+            val mocksSignedIn = remember {
+                sessionStore.signedInHint || sessionStore.hasSessionCookie()
+            }
             MockListScreen(
                 title = title,
                 category = category,
                 vm = vm,
+                isSignedIn = mocksSignedIn,
                 onBack = { nav.popBackStack() },
                 onStartNative = { test ->
                     nav.navigate(
@@ -182,6 +187,7 @@ fun TenTrackerNav(
                     )
                 },
                 onOpenWeb = { path, t -> openBrowser(path, t) },
+                onSignIn = { nav.navigate("login") },
             )
         }
 
