@@ -19,14 +19,69 @@ data class PracticeUiState(
     val index: Int = 0,
     val selected: String? = null,
     val revealed: Boolean = false,
+    val lastCorrect: Boolean? = null,
+    val showSolution: Boolean = false,
     val completedIds: Set<String> = emptySet(),
     val correctIds: Set<String> = emptySet(),
+    /** In-session answers so jump-back can highlight the chosen option. */
+    val selectedById: Map<String, String> = emptyMap(),
+    val points: Int = 0,
     val hasMore: Boolean = false,
     val page: Int = 1,
     val totalCount: Int = 0,
     val error: String? = null,
     val saveHint: String? = null,
-)
+    val paletteExpanded: Boolean = true,
+) {
+    fun completedInChapter(): Int {
+        if (questions.isEmpty()) return 0
+        val loadedIds = questions.map { it.id }.toSet()
+        val inLoaded = completedIds.count { it in loadedIds }
+        // Progress API returns chapter-scoped IDs; prefer that count when paginated.
+        return if (totalCount > questions.size) {
+            completedIds.size.coerceAtMost(totalCount).coerceAtLeast(inLoaded)
+        } else {
+            inLoaded
+        }
+    }
+
+    fun correctInChapter(): Int {
+        if (questions.isEmpty()) return 0
+        val loadedIds = questions.map { it.id }.toSet()
+        val inLoaded = correctIds.count { it in loadedIds }
+        return if (totalCount > questions.size) {
+            correctIds.size.coerceAtMost(completedInChapter()).coerceAtLeast(inLoaded)
+        } else {
+            inLoaded
+        }
+    }
+
+    val wrongInChapter: Int
+        get() = (completedInChapter() - correctInChapter()).coerceAtLeast(0)
+
+    val pendingInChapter: Int
+        get() {
+            val total = if (totalCount > 0) totalCount else questions.size
+            return (total - completedInChapter()).coerceAtLeast(0)
+        }
+
+    val progressPct: Int
+        get() {
+            val total = if (totalCount > 0) totalCount else questions.size
+            if (total <= 0) return 0
+            return ((completedInChapter().toDouble() / total) * 100).toInt().coerceIn(0, 100)
+        }
+
+    val accuracyPct: Int
+        get() {
+            val c = completedInChapter()
+            if (c <= 0) return 0
+            return ((correctInChapter().toDouble() / c) * 100).toInt().coerceIn(0, 100)
+        }
+
+    val firstPendingIndex: Int
+        get() = questions.indexOfFirst { it.id !in completedIds }
+}
 
 class PracticeViewModel(
     private val api: ApiClient,
@@ -39,6 +94,7 @@ class PracticeViewModel(
     val state: StateFlow<PracticeUiState> = _state.asStateFlow()
 
     private val pendingEntries = linkedMapOf<String, Map<String, Any?>>()
+    private var didResume = false
 
     init {
         load(page = 1, reset = true)
@@ -60,6 +116,24 @@ class PracticeViewModel(
                 }.getOrNull()
                 _state.update { st ->
                     val merged = if (reset) res.questions else st.questions + res.questions
+                    val completed = progress?.completed?.toSet().orEmpty() + st.completedIds
+                    val correct = progress?.correct?.toSet().orEmpty() + st.correctIds
+                    val points = when {
+                        reset && progress != null -> progress.points
+                        else -> maxOf(st.points, progress?.points ?: 0)
+                    }
+
+                    val resumeIndex = if (reset && !didResume && merged.isNotEmpty()) {
+                        val firstOpen = merged.indexOfFirst { it.id !in completed }
+                        if (firstOpen >= 0) firstOpen else 0
+                    } else {
+                        if (reset) 0 else st.index.coerceAtMost((merged.size - 1).coerceAtLeast(0))
+                    }
+                    if (reset && merged.isNotEmpty()) didResume = true
+
+                    val q = merged.getOrNull(resumeIndex)
+                    val restored = restoreAttempt(q, completed, correct, st.selectedById)
+
                     st.copy(
                         loading = false,
                         loadingMore = false,
@@ -67,12 +141,15 @@ class PracticeViewModel(
                         page = page,
                         hasMore = res.hasMore,
                         totalCount = res.totalCount,
-                        completedIds = progress?.completed?.toSet().orEmpty() + st.completedIds,
-                        correctIds = progress?.correct?.toSet().orEmpty() + st.correctIds,
+                        completedIds = completed,
+                        correctIds = correct,
+                        points = points,
                         error = if (merged.isEmpty()) (res.error ?: "No questions found") else null,
-                        index = if (reset) 0 else st.index.coerceAtMost((merged.size - 1).coerceAtLeast(0)),
-                        selected = if (reset) null else st.selected,
-                        revealed = if (reset) false else st.revealed,
+                        index = resumeIndex,
+                        selected = if (reset) restored.selected else st.selected,
+                        revealed = if (reset) restored.revealed else st.revealed,
+                        lastCorrect = if (reset) restored.lastCorrect else st.lastCorrect,
+                        showSolution = if (reset) false else st.showSolution,
                     )
                 }
             } catch (e: Exception) {
@@ -93,6 +170,10 @@ class PracticeViewModel(
         val st = _state.value
         val q = st.questions.getOrNull(st.index) ?: return
         val selected = st.selected ?: return
+        if (q.id in st.completedIds) {
+            applyRestored(q)
+            return
+        }
         val correctLetter = q.correct_option?.trim()?.uppercase()?.take(1)
         val isCorrect = correctLetter != null && selected.equals(correctLetter, ignoreCase = true)
         pendingEntries[q.id] = mapOf(
@@ -104,11 +185,52 @@ class PracticeViewModel(
         _state.update {
             it.copy(
                 revealed = true,
+                lastCorrect = isCorrect,
+                showSolution = false,
                 completedIds = it.completedIds + q.id,
-                correctIds = if (isCorrect) it.correctIds + q.id else it.correctIds,
+                correctIds = if (isCorrect) it.correctIds + q.id else it.correctIds - q.id,
+                selectedById = it.selectedById + (q.id to selected),
+                points = it.points + if (isCorrect) 100 else 0,
             )
         }
         flushProgress()
+    }
+
+    fun toggleSolution() {
+        val st = _state.value
+        if (!st.revealed) return
+        _state.update { it.copy(showSolution = !it.showSolution) }
+    }
+
+    fun togglePalette() {
+        _state.update { it.copy(paletteExpanded = !it.paletteExpanded) }
+    }
+
+    fun jumpTo(index: Int) {
+        val st = _state.value
+        if (index < 0 || index >= st.questions.size) return
+        val q = st.questions[index]
+        val restored = restoreAttempt(q, st.completedIds, st.correctIds, st.selectedById)
+        _state.update {
+            it.copy(
+                index = index,
+                selected = restored.selected,
+                revealed = restored.revealed,
+                lastCorrect = restored.lastCorrect,
+                showSolution = false,
+                saveHint = null,
+            )
+        }
+        // Prefetch next page near the end (mirrors web goToLoaded)
+        if (index >= st.questions.size - 3 && st.hasMore && !st.loadingMore) {
+            load(page = st.page + 1, reset = false)
+        }
+    }
+
+    fun jumpToFirstOpen() {
+        val st = _state.value
+        val idx = st.firstPendingIndex
+        if (idx >= 0) jumpTo(idx)
     }
 
     fun next() {
@@ -118,13 +240,47 @@ class PracticeViewModel(
             if (st.hasMore) load(page = st.page + 1, reset = false)
             return
         }
-        _state.update { it.copy(index = nextIndex, selected = null, revealed = false, saveHint = null) }
+        jumpTo(nextIndex)
     }
 
     fun prev() {
         val st = _state.value
         if (st.index <= 0) return
-        _state.update { it.copy(index = st.index - 1, selected = null, revealed = false) }
+        jumpTo(st.index - 1)
+    }
+
+    private data class RestoredAttempt(
+        val selected: String?,
+        val revealed: Boolean,
+        val lastCorrect: Boolean?,
+    )
+
+    private fun restoreAttempt(
+        q: PracticeQuestion?,
+        completed: Set<String>,
+        correct: Set<String>,
+        selectedById: Map<String, String>,
+    ): RestoredAttempt {
+        if (q == null) return RestoredAttempt(null, false, null)
+        val done = q.id in completed
+        if (!done) return RestoredAttempt(null, false, null)
+        val wasCorrect = q.id in correct
+        val remembered = selectedById[q.id]
+        val correctLetter = q.correct_option?.trim()?.uppercase()?.take(1)
+        val selected = remembered ?: if (wasCorrect) correctLetter else null
+        return RestoredAttempt(selected, revealed = true, lastCorrect = wasCorrect)
+    }
+
+    private fun applyRestored(q: PracticeQuestion) {
+        val st = _state.value
+        val restored = restoreAttempt(q, st.completedIds, st.correctIds, st.selectedById)
+        _state.update {
+            it.copy(
+                selected = restored.selected,
+                revealed = restored.revealed,
+                lastCorrect = restored.lastCorrect,
+            )
+        }
     }
 
     private fun flushProgress() {
