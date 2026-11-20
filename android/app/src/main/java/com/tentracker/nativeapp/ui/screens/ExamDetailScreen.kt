@@ -179,8 +179,6 @@ fun ExamDetailScreen(
 private fun SubjectAccordion(
     group: SubjectGroup,
     onOpenChapter: (subject: String, chapter: String, chapterTitle: String) -> Unit,
-    onOpenMocks: () -> Unit = {},
-    onStartMock: (testId: String, name: String, durationMinutes: Int) -> Unit = { _, _, _ -> },
 ) {
     var expanded by rememberSaveable(group.subject) { mutableStateOf(false) }
     val subjectTitle = group.subject.replace('-', ' ').replaceFirstChar { it.uppercase() }
