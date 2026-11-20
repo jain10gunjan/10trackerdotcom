@@ -10,10 +10,8 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -22,28 +20,23 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.automirrored.filled.OpenInNew
-import androidx.compose.material.icons.filled.Article
-import androidx.compose.material.icons.filled.Book
+import androidx.compose.material.icons.filled.AllInclusive
+import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.CardGiftcard
-import androidx.compose.material.icons.filled.CurrencyRupee
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Logout
-import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Route
 import androidx.compose.material.icons.filled.Stars
-import androidx.compose.material.icons.filled.Timeline
-import androidx.compose.material.icons.filled.AllInclusive
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -68,7 +61,6 @@ import com.tentracker.nativeapp.ui.theme.EmeraldSoft
 import com.tentracker.nativeapp.ui.theme.Ink
 import com.tentracker.nativeapp.ui.theme.Muted
 import com.tentracker.nativeapp.ui.theme.SheetActiveText
-import com.tentracker.nativeapp.ui.theme.SurfaceMuted
 import com.tentracker.nativeapp.ui.viewmodel.MoreUiState
 import com.tentracker.nativeapp.ui.viewmodel.MoreViewModel
 
@@ -76,13 +68,54 @@ import com.tentracker.nativeapp.ui.viewmodel.MoreViewModel
 fun MoreScreen(
     vm: MoreViewModel,
     signedInHint: Boolean,
+    activeTabRoute: String,
     onSignIn: () -> Unit,
     onSignOut: () -> Unit,
-    onOpenRoadmaps: () -> Unit,
-    onOpenExams: () -> Unit,
     onOpenTrackers: () -> Unit,
-    onOpenArticles: () -> Unit,
-    onOpenWeb: (pathOrUrl: String, title: String?) -> Unit = { _, _ -> },
+    onOpenHome: () -> Unit,
+    onOpenWeb: (pathOrUrl: String, title: String?) -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                "Explore",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = Ink,
+            )
+        }
+        MoreSheetScrollContent(
+            vm = vm,
+            signedInHint = signedInHint,
+            activeTabRoute = activeTabRoute,
+            onSignIn = onSignIn,
+            onSignOut = onSignOut,
+            onOpenTrackers = onOpenTrackers,
+            onOpenHome = onOpenHome,
+            onOpenWeb = onOpenWeb,
+            dismissOnNavigate = false,
+        )
+    }
+}
+
+@Composable
+fun MoreSheetScrollContent(
+    vm: MoreViewModel,
+    signedInHint: Boolean,
+    activeTabRoute: String,
+    onSignIn: () -> Unit,
+    onSignOut: () -> Unit,
+    onOpenTrackers: () -> Unit,
+    onOpenHome: () -> Unit,
+    onOpenWeb: (pathOrUrl: String, title: String?) -> Unit,
+    dismissOnNavigate: Boolean,
+    onDismiss: (() -> Unit)? = null,
 ) {
     val state by vm.state.collectAsState()
 
@@ -90,119 +123,178 @@ fun MoreScreen(
         vm.refresh(silent = state.email != null || !signedInHint)
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(SurfaceMuted)
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Spacer(modifier = Modifier.height(8.dp))
+    val dismiss = {
+        if (dismissOnNavigate) onDismiss?.invoke()
+    }
+
+    MoreExploreBody(
+        state = state,
+        activeTabRoute = activeTabRoute,
+        onSignIn = {
+            onSignIn()
+            if (dismissOnNavigate) onDismiss?.invoke()
+        },
+        onSignOut = {
+            onSignOut()
+            vm.onSignedOut()
+            if (dismissOnNavigate) onDismiss?.invoke()
+        },
+        onOpenTrackers = {
+            onOpenTrackers()
+            dismiss()
+        },
+        onOpenHome = {
+            onOpenHome()
+            dismiss()
+        },
+        onOpenWeb = { path, title ->
+            onOpenWeb(path, title)
+            dismiss()
+        },
+        onOpenPricing = {
+            onOpenWeb("/pricing", "Pricing")
+            dismiss()
+        },
+        modifier = Modifier.padding(horizontal = 16.dp),
+    )
+}
+
+@Composable
+fun MoreSheetChrome(onDismiss: () -> Unit) {
+    Column {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 12.dp, bottom = 4.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(40.dp)
+                    .height(4.dp)
+                    .clip(RoundedCornerShape(99.dp))
+                    .background(Border),
+            )
+        }
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 12.dp, top = 4.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("Explore", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, color = Ink)
+            Text(
+                "Explore",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Ink,
+            )
+            IconButton(onClick = onDismiss) {
+                Icon(Icons.Default.Close, contentDescription = "Close", tint = Muted, modifier = Modifier.size(20.dp))
+            }
         }
+        HorizontalDivider(color = Color(0xFFF5F5F5))
+    }
+}
 
+@Composable
+private fun MoreExploreBody(
+    state: MoreUiState,
+    activeTabRoute: String,
+    onSignIn: () -> Unit,
+    onSignOut: () -> Unit,
+    onOpenTrackers: () -> Unit,
+    onOpenHome: () -> Unit,
+    onOpenWeb: (pathOrUrl: String, title: String?) -> Unit,
+    onOpenPricing: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .verticalScroll(rememberScrollState())
+            .padding(vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
         if (state.signedIn) {
             SignedInAccountHeader(
                 state = state,
-                onOpenPricing = { onOpenWeb("/pricing", "Pricing") },
+                onOpenPricing = onOpenPricing,
             )
-        } else {
-            GuestAccountCard(onSignIn = onSignIn)
+            Spacer(modifier = Modifier.height(8.dp))
         }
 
         SectionLabel("Practice")
-        SheetLinkRow("Exams & practice", Icons.Default.Book, onClick = onOpenExams)
-        SheetLinkRow("OG Trackers", Icons.Default.Timeline, onClick = onOpenTrackers)
-        SheetLinkRow("Roadmaps", Icons.Default.Map, onClick = onOpenRoadmaps)
-        SheetLinkRow("Updates", Icons.Default.Article, onClick = onOpenArticles)
+        SheetNavRow(
+            label = "OG Trackers",
+            icon = Icons.Default.Route,
+            active = activeTabRoute == "tab_trackers",
+            onClick = onOpenTrackers,
+        )
+        if (state.signedIn) {
+            SheetNavRow(
+                label = "My progress",
+                icon = Icons.Default.BarChart,
+                active = activeTabRoute == "tab_home",
+                onClick = onOpenHome,
+            )
+        }
 
+        Spacer(modifier = Modifier.height(8.dp))
         SectionLabel("More")
-        SheetLinkRow("Jobs", Icons.Default.CardGiftcard) { onOpenWeb("/article/latest-jobs", "Jobs") }
-        SheetLinkRow("About", Icons.Default.Info) { onOpenWeb("/about-us", "About") }
-        SheetLinkRow("Contact", Icons.Default.Email) { onOpenWeb("/contact-us", "Contact") }
-
-        SectionLabel("Pricing")
-        Text(
-            "Unlimited practice plans",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            color = Ink,
-            fontSize = 18.sp,
+        SheetNavRow(
+            label = "Jobs",
+            icon = Icons.Default.CardGiftcard,
+            active = false,
+            onClick = { onOpenWeb("/article/latest-jobs", "Jobs") },
         )
-        Text(
-            "One-time purchase · no auto-renewal · practice & mock tests for the plan duration",
-            style = MaterialTheme.typography.bodyMedium,
-            color = Muted,
+        SheetNavRow(
+            label = "About",
+            icon = Icons.Default.Info,
+            active = false,
+            onClick = { onOpenWeb("/about-us", "About") },
         )
-        listOf(
-            PlanCard(
-                name = "24-Hour Unlimited",
-                description = "Unlimited practice & mock tests for exactly 24 hours from purchase",
-                price = "₹5",
-                badge = "Try unlimited",
-            ),
-            PlanCard(
-                name = "3 Months Unlimited",
-                description = "Full access for 90 days — best for serious prep",
-                price = "₹100",
-                badge = "Popular",
-                highlighted = true,
-            ),
-            PlanCard(
-                name = "6 Months Unlimited",
-                description = "Full access for 180 days — maximum savings",
-                price = "₹149",
-                badge = "Best value",
-            ),
-        ).forEach { plan ->
-            PricingPlanCard(plan)
-        }
-        Button(
-            onClick = { onOpenWeb("/pricing", "Pricing") },
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(containerColor = Ink),
-            shape = RoundedCornerShape(12.dp),
-        ) {
-            Icon(Icons.Default.CurrencyRupee, contentDescription = null, modifier = Modifier.size(18.dp))
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Open full pricing", fontWeight = FontWeight.SemiBold)
-        }
-
-        SectionLabel("Also on the web")
-        SheetLinkRow("Mock tests hub", Icons.AutoMirrored.Filled.OpenInNew) { onOpenWeb("/mock-test", "Mock tests") }
-        SheetLinkRow("Leaderboard", Icons.AutoMirrored.Filled.OpenInNew) { onOpenWeb("/mock-test/leaderboard", "Leaderboard") }
-        SheetLinkRow("Checkout / credits", Icons.AutoMirrored.Filled.OpenInNew) { onOpenWeb("/checkout", "Checkout") }
-        SheetLinkRow("10tracker.com", Icons.AutoMirrored.Filled.OpenInNew) { onOpenWeb("/", "10tracker") }
+        SheetNavRow(
+            label = "Contact",
+            icon = Icons.Default.Email,
+            active = false,
+            onClick = { onOpenWeb("/contact-us", "Contact") },
+        )
 
         if (state.signedIn) {
-            Spacer(modifier = Modifier.height(4.dp))
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .clickable {
-                        onSignOut()
-                        vm.onSignedOut()
-                    }
-                    .padding(vertical = 10.dp, horizontal = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            Spacer(modifier = Modifier.height(8.dp))
+            HorizontalDivider(color = Color(0xFFF5F5F5), modifier = Modifier.padding(vertical = 8.dp))
+            SheetNavRow(
+                label = "Edit profile",
+                icon = Icons.Default.Person,
+                active = false,
+                onClick = { onOpenWeb("/profile?redirect=/", "Profile") },
+            )
+            SheetNavRow(
+                label = "Sign out",
+                icon = Icons.Default.Logout,
+                active = false,
+                destructive = true,
+                onClick = onSignOut,
+            )
+        } else {
+            Spacer(modifier = Modifier.height(8.dp))
+            HorizontalDivider(color = Color(0xFFF5F5F5), modifier = Modifier.padding(vertical = 8.dp))
+            OutlinedButton(
+                onClick = onSignIn,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Border),
+                colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White),
             ) {
-                Icon(Icons.Default.Logout, contentDescription = null, tint = Color(0xFFDC2626), modifier = Modifier.size(18.dp))
-                Text("Sign out", color = Color(0xFFDC2626), fontWeight = FontWeight.Medium, fontSize = 14.sp)
+                Text("Sign in with Google", color = Ink, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
             }
         }
 
+        Spacer(modifier = Modifier.height(8.dp))
         SectionLabel("Legal")
         LegalChips(onOpenWeb)
-
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(8.dp))
     }
 }
 
@@ -210,11 +302,11 @@ fun MoreScreen(
 private fun SectionLabel(text: String) {
     Text(
         text.uppercase(),
-        style = MaterialTheme.typography.labelSmall,
+        fontSize = 11.sp,
         fontWeight = FontWeight.SemiBold,
         color = Muted,
         letterSpacing = 1.2.sp,
-        modifier = Modifier.padding(start = 4.dp, top = 4.dp),
+        modifier = Modifier.padding(start = 4.dp, bottom = 4.dp, top = 4.dp),
     )
 }
 
@@ -225,7 +317,7 @@ private fun SignedInAccountHeader(
 ) {
     val label = when {
         state.loading && state.signedIn -> "Loading account…"
-        else -> state.displayName ?: "Signed in"
+        else -> state.displayName ?: "Account"
     }
     val initial = (label.firstOrNull() ?: 'U').uppercaseChar().toString()
     Row(
@@ -248,24 +340,16 @@ private fun SignedInAccountHeader(
             Text(initial, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
         }
         Column(modifier = Modifier.weight(1f)) {
-            Text(label, fontWeight = FontWeight.SemiBold, color = Ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(label, fontWeight = FontWeight.SemiBold, color = Ink, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 14.sp)
             state.email?.let {
-                Text(it, style = MaterialTheme.typography.bodySmall, color = Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-            if (state.needsProfile) {
-                Text(
-                    "Finish your profile on the web for full mocks & credits.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Muted,
-                    modifier = Modifier.padding(top = 4.dp),
-                )
+                Text(it, fontSize = 12.sp, color = Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
         when {
             state.loading && state.credits == null && !state.unlimited ->
                 Box(
                     modifier = Modifier
-                        .size(width = 72.dp, height = 32.dp)
+                        .size(width = 80.dp, height = 32.dp)
                         .clip(RoundedCornerShape(999.dp))
                         .background(Color(0xFFF5F5F5)),
                 )
@@ -273,34 +357,6 @@ private fun SignedInAccountHeader(
         }
         if (state.refreshing) {
             CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = Brand)
-        }
-    }
-}
-
-@Composable
-private fun GuestAccountCard(onSignIn: () -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        shape = RoundedCornerShape(16.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Border),
-    ) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("Guest mode", fontWeight = FontWeight.Bold, color = Ink)
-            Text(
-                "Sign in with Google to save streaks, practice, and watch %.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = Muted,
-            )
-            OutlinedButton(
-                onClick = onSignIn,
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.fillMaxWidth(),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Border),
-                colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White),
-            ) {
-                Text("Sign in with Google", color = Ink, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-            }
         }
     }
 }
@@ -346,91 +402,32 @@ private fun CompactWalletChip(state: MoreUiState, onClick: () -> Unit) {
 }
 
 @Composable
-private fun SheetLinkRow(
+private fun SheetNavRow(
     label: String,
     icon: ImageVector,
+    active: Boolean,
     onClick: () -> Unit,
+    destructive: Boolean = false,
 ) {
+    val bg = if (active) BrandSoft else Color.Transparent
+    val textColor = when {
+        destructive -> Color(0xFFDC2626)
+        active -> SheetActiveText
+        else -> Color(0xFF404040)
+    }
+    val iconTint = if (destructive) Color(0xFFDC2626) else Muted
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
+            .background(bg)
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Icon(icon, contentDescription = null, tint = Muted, modifier = Modifier.size(18.dp))
-        Text(label, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Ink, modifier = Modifier.weight(1f))
-        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = Muted, modifier = Modifier.size(16.dp))
-    }
-}
-
-private data class PlanCard(
-    val name: String,
-    val description: String,
-    val price: String,
-    val badge: String? = null,
-    val highlighted: Boolean = false,
-)
-
-@Composable
-private fun PricingPlanCard(plan: PlanCard) {
-    val durationSuffix = when (plan.name) {
-        "24-Hour Unlimited" -> "/ 24h"
-        "3 Months Unlimited" -> "/ 90d"
-        "6 Months Unlimited" -> "/ 180d"
-        else -> ""
-    }
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
-            .background(if (plan.highlighted) BrandSoft else Color.White)
-            .border(1.dp, if (plan.highlighted) Brand else Border, RoundedCornerShape(24.dp))
-            .padding(20.dp),
-    ) {
-        plan.badge?.let { badge ->
-            Text(
-                badge.uppercase(),
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
-                letterSpacing = 0.6.sp,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .offset(y = (-28).dp)
-                    .clip(RoundedCornerShape(999.dp))
-                    .background(Ink)
-                    .padding(horizontal = 10.dp, vertical = 4.dp),
-            )
-        }
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(plan.name, fontWeight = FontWeight.SemiBold, color = Ink, fontSize = 18.sp)
-            Row(verticalAlignment = Alignment.Bottom) {
-                Text(plan.price, fontWeight = FontWeight.Bold, color = Ink, fontSize = 28.sp)
-                Text(
-                    durationSuffix,
-                    fontSize = 14.sp,
-                    color = Muted,
-                    modifier = Modifier.padding(start = 4.dp, bottom = 4.dp),
-                )
-            }
-            Text(plan.description, style = MaterialTheme.typography.bodyMedium, color = Muted)
-            listOf(
-                "Unlimited practice",
-                "Unlimited mock tests",
-                "Progress & analytics",
-            ).forEach { perk ->
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Icon(Icons.Default.Check, contentDescription = null, tint = EmeraldDark, modifier = Modifier.size(16.dp))
-                    Text(perk, fontSize = 14.sp, color = Ink)
-                }
-            }
-        }
+        Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(18.dp))
+        Text(label, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = textColor)
     }
 }
 
@@ -453,7 +450,7 @@ private fun LegalChips(onOpenWeb: (pathOrUrl: String, title: String?) -> Unit) {
                     .clickable { onOpenWeb(path, label) }
                     .background(Color(0xFFFAFAFA))
                     .border(1.dp, Border, RoundedCornerShape(999.dp))
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
             )
         }
     }
