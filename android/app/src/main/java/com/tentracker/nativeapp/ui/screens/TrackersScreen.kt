@@ -86,6 +86,7 @@ fun TrackersScreen(
             (stats?.practiceCompleted ?: 0) +
             (stats?.mocksCompleted ?: 0)
     }
+    val showInlineError = state.error != null && (exams.isNotEmpty() || paths.isNotEmpty())
 
     LazyColumn(
         modifier = Modifier
@@ -102,6 +103,25 @@ fun TrackersScreen(
                 userClears = userCompleted,
                 isPremium = catalog?.isPremium == true,
             )
+        }
+
+        if (showInlineError) {
+            item {
+                Text(
+                    state.error.orEmpty(),
+                    modifier = Modifier
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 12.dp)
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color(0xFFFEF2F2))
+                        .border(1.dp, Color(0xFFFECACA), RoundedCornerShape(12.dp))
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFFB91C1C),
+                    lineHeight = 20.sp,
+                )
+            }
         }
 
         catalog?.setupHint?.takeIf { catalog.setupRequired }?.let { hint ->
