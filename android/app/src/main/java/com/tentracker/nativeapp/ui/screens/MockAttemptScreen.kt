@@ -192,10 +192,8 @@ fun MockAttemptScreen(
                     test?.description?.takeIf { it.isNotBlank() }?.let {
                         Text(it, color = Muted)
                     }
-                    Text(
-                        "${state.questions.size} questions" +
-                            (test?.duration?.takeIf { it > 0 }?.let { " · $it min timer" } ?: " · no timed limit"),
-                    )
+                    val durationLabel = test?.duration?.takeIf { d -> d > 0 }?.let { d -> " · $d min timer" } ?: " · no timed limit"
+                    Text("${state.questions.size} questions$durationLabel")
                     Text(
                         "Answers stay on device until you open the web attempt to sync (credits / profile).",
                         style = MaterialTheme.typography.bodyMedium,

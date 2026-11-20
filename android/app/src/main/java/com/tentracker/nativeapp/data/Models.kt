@@ -401,6 +401,8 @@ data class RoadmapTask(
     val task: String = "",
     val task_id: String? = null,
     val resources: String? = null,
+)
+
 /** Unified mock row for native list UI. */
 data class MockTestSummary(
     val id: String = "",
