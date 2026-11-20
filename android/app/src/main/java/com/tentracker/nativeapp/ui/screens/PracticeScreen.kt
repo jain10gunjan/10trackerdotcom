@@ -54,9 +54,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -120,9 +117,10 @@ fun PracticeScreen(
     onBack: () -> Unit,
 ) {
     val state by vm.state.collectAsState()
-    val q = state.questions.getOrNull(state.index)
+    val q = state.currentQuestion()
     val totalLabel = if (state.totalCount > 0) state.totalCount else state.questions.size
-    var listFilter by remember { mutableStateOf("all") }
+    val listFilter = state.listFilter
+    val visibleCount = state.filteredIndices().size
 
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
@@ -147,10 +145,36 @@ fun PracticeScreen(
                         CircularProgressIndicator(color = Brand)
                     }
                 }
-                state.error != null && q == null -> {
+                state.error != null && state.questions.isEmpty() -> {
                     Column(modifier = Modifier.padding(innerPadding).padding(16.dp)) {
                         Text(state.error ?: "Error", color = Muted)
                         TextButton(onClick = { vm.load(1, reset = true) }) { Text("Retry") }
+                    }
+                }
+                state.filterEmpty -> {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding)
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                    ) {
+                        Text("Nothing in this filter", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Neutral900)
+                        Text(
+                            "Try All, or clear Wrong / Flagged.",
+                            fontSize = 14.sp,
+                            color = Neutral500,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(top = 8.dp, bottom = 16.dp),
+                        )
+                        Button(
+                            onClick = { vm.setListFilter("all") },
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Neutral900),
+                        ) {
+                            Text("Show all", fontWeight = FontWeight.SemiBold)
+                        }
                     }
                 }
                 q != null -> {
@@ -178,7 +202,8 @@ fun PracticeScreen(
                             StickyProgressStrip(
                                 state = state,
                                 listFilter = listFilter,
-                                onFilter = { listFilter = it },
+                                visibleCount = visibleCount,
+                                onFilter = vm::setListFilter,
                             )
                         }
                         item {
@@ -273,10 +298,19 @@ private fun PracticeSubpageHeader(
 private fun StickyProgressStrip(
     state: PracticeUiState,
     listFilter: String,
+    visibleCount: Int,
     onFilter: (String) -> Unit,
 ) {
     val total = if (state.totalCount > 0) state.totalCount else state.questions.size
-  val progressFrac = if (total > 0) state.completedInChapter().toFloat() / total else 0f
+    val positionTotal = if (listFilter == "all") total else visibleCount.coerceAtLeast(1)
+    val position = if (listFilter == "all") {
+        state.index + 1
+    } else {
+        val visible = state.filteredIndices()
+        val pos = visible.indexOf(state.index)
+        if (pos >= 0) pos + 1 else 1
+    }
+    val progressFrac = if (total > 0) state.completedInChapter().toFloat() / total else 0f
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -290,9 +324,9 @@ private fun StickyProgressStrip(
         ) {
             Text(
                 buildAnnotatedString {
-                    append("${state.index + 1}")
+                    append("$position")
                     withStyle(SpanStyle(color = Neutral400, fontWeight = FontWeight.Medium)) {
-                        append("/$total")
+                        append("/$positionTotal")
                     }
                 },
                 fontWeight = FontWeight.Bold,
@@ -308,6 +342,12 @@ private fun StickyProgressStrip(
                     .clip(RoundedCornerShape(999.dp)),
                 color = Emerald500,
                 trackColor = Neutral200,
+            )
+            Text(
+                "${state.progressPct}% done",
+                fontSize = 10.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Neutral500,
             )
         }
         Row(
