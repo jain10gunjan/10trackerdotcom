@@ -3,6 +3,7 @@ package com.tentracker.nativeapp.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.tentracker.nativeapp.data.ActiveExam
 import com.tentracker.nativeapp.data.ApiClient
 import com.tentracker.nativeapp.data.MockOfDayMock
 import com.tentracker.nativeapp.data.SubjectGroup
@@ -16,6 +17,7 @@ data class ExamDetailUiState(
     val loading: Boolean = true,
     val subjects: List<SubjectGroup> = emptyList(),
     val mock: MockOfDayMock? = null,
+    val exam: ActiveExam? = null,
     val error: String? = null,
 )
 
@@ -36,12 +38,23 @@ class ExamDetailViewModel(
             try {
                 val subjects = api.getSubjects(category)
                 val mock = runCatching { api.getMockOfDay(category).mockOfTheDay?.mock }.getOrNull()
+                val exam = runCatching {
+                    api.getActiveExams().exams.firstOrNull {
+                        it.slug.equals(category, ignoreCase = true)
+                    }
+                }.getOrNull()
+                val subjectList = subjects.subjectsData
                 _state.update {
                     it.copy(
                         loading = false,
-                        subjects = subjects.subjectsData,
+                        subjects = subjectList,
                         mock = mock,
-                        error = if (subjects.subjectsData.isEmpty()) "No subjects yet for this exam" else null,
+                        exam = exam,
+                        error = if (subjectList.isEmpty() && mock == null) {
+                            "No subjects yet for this exam"
+                        } else {
+                            null
+                        },
                     )
                 }
             } catch (e: Exception) {
