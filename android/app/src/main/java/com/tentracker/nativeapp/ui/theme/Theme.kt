@@ -14,7 +14,20 @@ val Brand = Color(0xFF3F5EB9)
 val BrandSoft = Color(0xFFE8EDF8)
 val BrandDeep = Color(0xFF1E2F6B)
 val SheetActiveText = BrandDeep
-val Bg = Color(0xFFFAFAFA)
+
+/** Tailwind default neutral scale (matches web `neutral-*` utilities). */
+val Neutral50 = Color(0xFFFAFAFA)
+val Neutral100 = Color(0xFFF5F5F5)
+val Neutral200 = Color(0xFFE5E5E5)
+val Neutral300 = Color(0xFFD4D4D4)
+val Neutral400 = Color(0xFFA3A3A3)
+val Neutral500 = Color(0xFF737373)
+val Neutral600 = Color(0xFF525252)
+val Neutral700 = Color(0xFF404040)
+val Neutral800 = Color(0xFF262626)
+val Neutral900 = Color(0xFF171717)
+
+val Bg = Neutral50
 val SurfaceMuted = Color(0xFFF8FAFC)
 val Ink = Color(0xFF171717)
 val Muted = Color(0xFF737373)
