@@ -27,6 +27,7 @@ import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Hub
+import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -72,6 +73,7 @@ fun HomeScreen(
     onOpenTrackers: () -> Unit,
     onOpenArticles: () -> Unit,
     onOpenMore: () -> Unit,
+    onOpenRoadmaps: () -> Unit,
     onSignIn: () -> Unit,
     onSignOut: () -> Unit,
 ) {
@@ -143,6 +145,7 @@ fun HomeScreen(
                                 onExams = onOpenExams,
                                 onPaths = onOpenTrackers,
                                 onArticles = onOpenArticles,
+                                onRoadmaps = onOpenRoadmaps,
                                 onMore = onOpenMore,
                             )
                         }
@@ -336,11 +339,13 @@ private fun FeatureChips(
     onExams: () -> Unit,
     onPaths: () -> Unit,
     onArticles: () -> Unit,
+    onRoadmaps: () -> Unit,
     onMore: () -> Unit,
 ) {
     val chips = listOf(
         Chip("Exams", Icons.AutoMirrored.Filled.MenuBook, onExams),
         Chip("OG Trackers", Icons.Default.Hub, onPaths),
+        Chip("Roadmaps", Icons.Default.Map, onRoadmaps),
         Chip("YouTube sync", Icons.Default.PlayCircle, onPaths),
         Chip("Mocks", Icons.Default.Description, onExams),
         Chip("Updates", Icons.Default.Description, onArticles),

@@ -91,6 +91,26 @@ class ApiClient(private val sessionStore: SessionStore) {
         return get("/api/mock-test/mock-of-day?category=$q", MockOfDayResponse::class.java)
     }
 
+    suspend fun getRoadmaps(
+        page: Int = 1,
+        limit: Int = 24,
+        search: String = "",
+        category: String = "All",
+        sort: String = "featured",
+    ): RoadmapsResponse {
+        val q = buildString {
+            append("/api/roadmaps?page=$page&limit=$limit&sort=${enc(sort)}")
+            if (search.isNotBlank()) append("&search=${enc(search)}")
+            if (category.isNotBlank() && category != "All") append("&category=${enc(category)}")
+        }
+        return get(q, RoadmapsResponse::class.java)
+    }
+
+    suspend fun getRoadmap(slug: String, dayLimit: Int = 14): RoadmapDetailResponse {
+        val s = enc(slug)
+        return get("/api/roadmaps/$s?dayLimit=$dayLimit", RoadmapDetailResponse::class.java)
+    }
+
     suspend fun saveVideoProgress(
         resourceId: String,
         percentWatched: Int,

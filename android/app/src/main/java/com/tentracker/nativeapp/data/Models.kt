@@ -241,3 +241,101 @@ data class MockOfDayMock(
     val href: String? = null,
     val isActive: Boolean = true,
 )
+
+data class RoadmapsResponse(
+    val success: Boolean = false,
+    val roadmaps: List<RoadmapSummary> = emptyList(),
+    val pagination: RoadmapsPagination? = null,
+    val disclaimer: String? = null,
+    val error: String? = null,
+    val setupHint: String? = null,
+)
+
+data class RoadmapsPagination(
+    val page: Int = 1,
+    val limit: Int = 12,
+    val total: Int = 0,
+    val totalPages: Int = 1,
+    val hasMore: Boolean = false,
+)
+
+data class RoadmapSummary(
+    val id: String = "",
+    val slug: String = "",
+    val title: String = "",
+    val description: String? = null,
+    val priceInr: Int = 0,
+    val freePreviewDays: Int = 0,
+    val sortOrder: Int = 0,
+    val totalDays: Int = 0,
+    val examSlug: String? = null,
+    val examLabel: String? = null,
+)
+
+data class RoadmapDetailResponse(
+    val success: Boolean = false,
+    val roadmap: RoadmapDetail? = null,
+    val purchased: Boolean = false,
+    val progress: RoadmapProgress? = null,
+    val totalDays: Int = 0,
+    val unlockedDayCount: Int = 0,
+    val daySummaries: List<RoadmapDaySummary> = emptyList(),
+    val focusAreas: List<String> = emptyList(),
+    val days: List<RoadmapDay> = emptyList(),
+    val isAuthenticated: Boolean = false,
+    val noRefundsNotice: String? = null,
+    val error: String? = null,
+    val setupHint: String? = null,
+)
+
+data class RoadmapDetail(
+    val id: String = "",
+    val slug: String = "",
+    val title: String = "",
+    val description: String? = null,
+    val price_inr: Int = 0,
+    val free_preview_days: Int = 0,
+    val is_active: Boolean = true,
+)
+
+data class RoadmapProgress(
+    val totalTasks: Int = 0,
+    val completedTasks: Int = 0,
+    val percent: Int = 0,
+)
+
+data class RoadmapDaySummary(
+    val id: String = "",
+    val day_number: Int = 0,
+    val time_required: String? = null,
+    val notes: String? = null,
+    val locked: Boolean = true,
+    val focus_area_labels: List<String> = emptyList(),
+    val taskCount: Int = 0,
+    val task_count: Int = 0,
+    val completedCount: Int = 0,
+    val progress: Int = 0,
+    val week: Int = 0,
+) {
+    val tasks: Int get() = taskCount.takeIf { it > 0 } ?: task_count
+}
+
+data class RoadmapDay(
+    val id: String = "",
+    val day_number: Int = 0,
+    val time_required: String? = null,
+    val notes: String? = null,
+    val locked: Boolean = true,
+    val focus_areas: List<RoadmapFocusArea> = emptyList(),
+)
+
+data class RoadmapFocusArea(
+    val focus_area: String? = null,
+    val tasks: List<RoadmapTask> = emptyList(),
+)
+
+data class RoadmapTask(
+    val task: String = "",
+    val task_id: String? = null,
+    val resources: String? = null,
+)

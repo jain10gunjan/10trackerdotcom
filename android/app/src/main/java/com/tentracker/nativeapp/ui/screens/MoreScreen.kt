@@ -12,6 +12,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.CurrencyRupee
 import androidx.compose.material.icons.filled.OpenInNew
@@ -25,7 +26,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -41,6 +41,10 @@ fun MoreScreen(
     signedIn: Boolean,
     onSignIn: () -> Unit,
     onSignOut: () -> Unit,
+    onOpenRoadmaps: () -> Unit,
+    onOpenExams: () -> Unit,
+    onOpenTrackers: () -> Unit,
+    onOpenArticles: () -> Unit,
 ) {
     val context = LocalContext.current
 
@@ -53,7 +57,7 @@ fun MoreScreen(
     ) {
         Spacer(modifier = Modifier.height(12.dp))
         Text("More", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = Ink)
-        Text("Account, pricing, and web tools.", style = MaterialTheme.typography.bodyMedium, color = Muted)
+        Text("Account, pricing, and native hubs.", style = MaterialTheme.typography.bodyMedium, color = Muted)
 
         Card(
             colors = CardDefaults.cardColors(containerColor = BrandSoft),
@@ -88,6 +92,12 @@ fun MoreScreen(
             }
         }
 
+        Text("In the app", fontWeight = FontWeight.Bold, color = Ink)
+        NativeLinkRow("Exams & practice", onOpenExams)
+        NativeLinkRow("OG Trackers", onOpenTrackers)
+        NativeLinkRow("Roadmaps", onOpenRoadmaps)
+        NativeLinkRow("Updates / articles", onOpenArticles)
+
         Text("Pricing", fontWeight = FontWeight.Bold, color = Ink)
         listOf(
             Plan("Free", "Browse exams, limited practice, guest trackers"),
@@ -116,7 +126,6 @@ fun MoreScreen(
 
         Text("Also on the web", fontWeight = FontWeight.Bold, color = Ink)
         LinkRow("Mock tests hub", "/mock-test") { openSite(context, it) }
-        LinkRow("Roadmaps", "/roadmaps") { openSite(context, it) }
         LinkRow("Leaderboard", "/mock-test/leaderboard") { openSite(context, it) }
         LinkRow("10tracker.com", "/") { openSite(context, it) }
 
@@ -125,6 +134,19 @@ fun MoreScreen(
 }
 
 private data class Plan(val name: String, val blurb: String)
+
+@Composable
+private fun NativeLinkRow(label: String, onClick: () -> Unit) {
+    OutlinedButton(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Border),
+    ) {
+        Text(label, modifier = Modifier.weight(1f), color = Ink)
+        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = Brand)
+    }
+}
 
 @Composable
 private fun LinkRow(label: String, path: String, onOpen: (String) -> Unit) {

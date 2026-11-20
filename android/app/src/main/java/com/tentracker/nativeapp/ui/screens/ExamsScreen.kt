@@ -1,5 +1,9 @@
 package com.tentracker.nativeapp.ui.screens
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,16 +18,19 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -34,6 +41,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.tentracker.nativeapp.data.ActiveExam
 import com.tentracker.nativeapp.ui.theme.Border
@@ -59,6 +67,50 @@ fun ExamsScreen(
         )
         Spacer(modifier = Modifier.height(12.dp))
 
+        OutlinedTextField(
+            value = state.searchQuery,
+            onValueChange = vm::setSearch,
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            placeholder = { Text("Search exams") },
+            leadingIcon = {
+                Icon(Icons.Default.Search, contentDescription = null, tint = Muted)
+            },
+            shape = RoundedCornerShape(14.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = Brand,
+                unfocusedBorderColor = Border,
+            ),
+        )
+
+        if (state.categories.size > 1) {
+            Spacer(modifier = Modifier.height(10.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                state.categories.forEach { category ->
+                    val selected = category == state.selectedCategory
+                    Text(
+                        text = category,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(999.dp))
+                            .background(if (selected) Brand else Color.White)
+                            .border(1.dp, if (selected) Brand else Border, RoundedCornerShape(999.dp))
+                            .clickable { vm.setCategory(category) }
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        color = if (selected) Color.White else Ink,
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 13.sp,
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
         when {
             state.loading && state.exams.isEmpty() -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -66,17 +118,51 @@ fun ExamsScreen(
                 }
             }
             state.error != null && state.exams.isEmpty() -> {
-                Column {
-                    Text(state.error ?: "Error", color = Muted)
-                    TextButton(onClick = { vm.refresh() }) { Text("Retry") }
-                }
+                EmptyOrErrorPanel(
+                    title = "Couldn't load exams",
+                    message = state.error ?: "Check your connection and try again.",
+                    actionLabel = "Retry",
+                    onAction = { vm.refresh() },
+                )
+            }
+            state.filtered.isEmpty() -> {
+                EmptyOrErrorPanel(
+                    title = "No exams match",
+                    message = if (state.searchQuery.isNotBlank() || state.selectedCategory != "All") {
+                        "Try another search or category filter."
+                    } else {
+                        "Active exams will appear here."
+                    },
+                    actionLabel = if (state.searchQuery.isNotBlank() || state.selectedCategory != "All") {
+                        "Clear filters"
+                    } else {
+                        "Retry"
+                    },
+                    onAction = {
+                        if (state.searchQuery.isNotBlank() || state.selectedCategory != "All") {
+                            vm.setSearch("")
+                            vm.setCategory("All")
+                        } else {
+                            vm.refresh()
+                        }
+                    },
+                )
             }
             else -> {
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     contentPadding = PaddingValues(bottom = 24.dp),
                 ) {
-                    items(state.exams, key = { it.slug }) { exam ->
+                    item {
+                        val shownQuestions = state.filtered.sumOf { ExamsViewModel.questionCount(it) }
+                        Text(
+                            "${state.filtered.size} exam${if (state.filtered.size == 1) "" else "s"} · " +
+                                "%,d questions".format(shownQuestions),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Muted,
+                        )
+                    }
+                    items(state.filtered, key = { it.slug }) { exam ->
                         ExamCard(exam = exam, onClick = { onOpenExam(exam) })
                     }
                 }
@@ -87,7 +173,7 @@ fun ExamsScreen(
 
 @Composable
 private fun ExamCard(exam: ActiveExam, onClick: () -> Unit) {
-    val qCount = exam.question_count.takeIf { it > 0 } ?: exam.count
+    val qCount = ExamsViewModel.questionCount(exam)
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
@@ -120,7 +206,7 @@ private fun ExamCard(exam: ActiveExam, onClick: () -> Unit) {
                     Text(exam.description!!, style = MaterialTheme.typography.bodyMedium, maxLines = 2)
                 }
                 Text(
-                    "$qCount questions",
+                    "%,d questions".format(qCount),
                     style = MaterialTheme.typography.labelSmall,
                     color = Brand,
                     fontWeight = FontWeight.SemiBold,
