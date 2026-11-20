@@ -1,7 +1,6 @@
 package com.tentracker.nativeapp.ui
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -23,11 +22,9 @@ import java.nio.charset.StandardCharsets
 @Composable
 fun TenTrackerNav(api: ApiClient, sessionStore: SessionStore) {
     val nav = rememberNavController()
-    val start = remember {
-        if (sessionStore.hasSessionCookie() || sessionStore.signedInHint) "home" else "login"
-    }
 
-    NavHost(navController = nav, startDestination = start) {
+    // Always land on native home (web-like). Sign-in is a separate screen.
+    NavHost(navController = nav, startDestination = "home") {
         composable("login") {
             LoginScreen(
                 onSignedIn = {
@@ -35,7 +32,8 @@ fun TenTrackerNav(api: ApiClient, sessionStore: SessionStore) {
                     nav.navigate("home") {
                         popUpTo("login") { inclusive = true }
                     }
-                }
+                },
+                onBack = { nav.popBackStack() }
             )
         }
         composable("home") {
@@ -43,12 +41,15 @@ fun TenTrackerNav(api: ApiClient, sessionStore: SessionStore) {
             HomeScreen(
                 vm = vm,
                 onOpenPath = { slug -> nav.navigate("path/$slug") },
+                onOpenPathsTab = {
+                    // Paths list is on the same home screen below the hero.
+                    // Refresh so the YouTube trackers section is current.
+                    vm.refresh(silent = true)
+                },
                 onSignIn = { nav.navigate("login") },
                 onSignOut = {
                     sessionStore.clear()
-                    nav.navigate("login") {
-                        popUpTo(0) { inclusive = true }
-                    }
+                    vm.refresh()
                 }
             )
         }

@@ -6,50 +6,76 @@ import android.webkit.CookieManager
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import com.tentracker.nativeapp.data.ApiClient
+import com.tentracker.nativeapp.ui.components.BrandLogo
+import com.tentracker.nativeapp.ui.theme.Brand
+import com.tentracker.nativeapp.ui.theme.Ink
 
 /**
- * One-time Google sign-in via the live site. Cookies then power native API calls.
- * No DB / auth schema changes required.
+ * Google sign-in only — opened from the native home CTA.
+ * Cookies sync into OkHttp; no DB changes.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
-fun LoginScreen(onSignedIn: () -> Unit) {
+fun LoginScreen(
+    onSignedIn: () -> Unit,
+    onBack: () -> Unit,
+) {
     var loading by remember { mutableStateOf(true) }
     var finished by remember { mutableStateOf(false) }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        Text(
-            text = "Sign in to 10Tracker",
-            style = MaterialTheme.typography.titleLarge,
-            modifier = Modifier.padding(16.dp)
-        )
-        Text(
-            text = "Use Google on the site once. Progress (including YouTube watch %) syncs to your account — same DB, no changes.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-            modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp)
-        )
-        if (loading) {
-            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+    Scaffold(
+        containerColor = Color.White,
+        topBar = {
+            TopAppBar(
+                title = { BrandLogo(nameSize = 18.sp) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.White,
+                    titleContentColor = Ink,
+                    navigationIconContentColor = Ink,
+                )
+            )
         }
-        Box(modifier = Modifier.fillMaxSize()) {
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .padding(padding)
+                .fillMaxSize()
+        ) {
+            if (loading) {
+                LinearProgressIndicator(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = Brand,
+                )
+            }
             AndroidView(
                 modifier = Modifier.fillMaxSize(),
                 factory = { context ->
@@ -85,12 +111,8 @@ fun LoginScreen(onSignedIn: () -> Unit) {
 }
 
 private fun looksSignedIn(url: String?): Boolean {
-    if (url.isNullOrBlank()) return false
-    val hostOk = url.contains("10tracker.com")
-    if (!hostOk) return false
-    // After OAuth callback users land back on first-party pages with a session cookie.
-    val cm = CookieManager.getInstance()
-    val cookies = cm.getCookie(ApiClient.BASE_URL).orEmpty()
+    if (url.isNullOrBlank() || !url.contains("10tracker.com")) return false
+    val cookies = CookieManager.getInstance().getCookie(ApiClient.BASE_URL).orEmpty()
     val hasSession =
         cookies.contains("authjs.session-token", true) ||
             cookies.contains("next-auth.session-token", true) ||
