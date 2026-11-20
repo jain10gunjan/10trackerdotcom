@@ -1,8 +1,12 @@
 package com.tentracker.nativeapp.ui.screens.dashboard
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,14 +36,14 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.MonetizationOn
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -50,8 +54,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -162,6 +168,9 @@ fun StudentSignedHomeScreen(
 
     val showExamSwitcher = !limitedMode && examsPreparing.size > 1
     val showFullDashboard = dashState.error == null || dashState.partialError
+    val heroContentReady = showFullDashboard && !dashState.initialLoading
+    val walletUnlimited = wallet?.unlimited == true
+    val walletCredits = wallet?.credits
 
     Box(
         modifier = Modifier
@@ -172,10 +181,23 @@ fun StudentSignedHomeScreen(
             modifier = Modifier
                 .matchParentSize()
                 .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color(0xFFF8FAFC),
+                            Color(0xFFF1F5F9),
+                            Bg,
+                        ),
+                    ),
+                ),
+        )
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(
                     Brush.radialGradient(
                         colors = listOf(BrandSoft.copy(alpha = 0.55f), Color.Transparent),
-                        center = Offset(280f, 0f),
-                        radius = 480f,
+                        center = Offset(900f, 120f),
+                        radius = 520f,
                     ),
                 ),
         )
@@ -187,25 +209,32 @@ fun StudentSignedHomeScreen(
             showFullDashboard -> {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(20.dp),
+                    contentPadding = PaddingValues(horizontal = StudentGutter),
+                    verticalArrangement = Arrangement.spacedBy(StudentSectionSpacing),
                 ) {
                     item {
-                        SignedHomeTopChrome(onSignOut = onSignOut)
-                    }
-
-                    if (dashState.partialError) {
-                        item {
-                            DashboardPartialErrorBanner(
-                                message = dashState.error.orEmpty(),
-                                partialErrors = dashboard?.partialErrors.orEmpty(),
-                                onRetry = dashboardVm::reload,
+                        Column(
+                            modifier = Modifier.padding(top = 12.dp),
+                            verticalArrangement = Arrangement.spacedBy(20.dp),
+                        ) {
+                            SignedHomeTopChrome(
+                                displayName = displayName,
+                                streak = streak.currentStreak,
+                                credits = walletCredits,
+                                unlimited = walletUnlimited,
+                                loading = dashState.initialLoading,
+                                onSignOut = onSignOut,
                             )
-                        }
-                    }
 
-                    item {
-                        DashboardHeroSection(
+                            if (dashState.partialError) {
+                                DashboardPartialErrorBanner(
+                                    message = dashState.error.orEmpty(),
+                                    partialErrors = dashboard?.partialErrors.orEmpty(),
+                                    onRetry = dashboardVm::reload,
+                                )
+                            }
+
+                            DashboardHeroSection(
                             firstName = firstName,
                             examName = examName,
                             examSlug = examSlug,
@@ -219,10 +248,12 @@ fun StudentSignedHomeScreen(
                             practiceHref = practiceHref,
                             mockHref = mockHref,
                             topicMockCount = topicMocks.size,
-                            onExamChange = dashboardVm::changeFocusExam,
-                            onOpenPath = { href, title -> openDashboardHref(href, title, onOpenExams, onOpenExam, onOpenWeb) },
-                            onBrowseExams = onOpenExams,
-                        )
+                                onExamChange = dashboardVm::changeFocusExam,
+                                onOpenPath = { href, title -> openDashboardHref(href, title, onOpenExams, onOpenExam, onOpenWeb) },
+                                onBrowseExams = onOpenExams,
+                                animateEntrance = heroContentReady,
+                            )
+                        }
                     }
 
                     if (!limitedMode) {
@@ -233,13 +264,15 @@ fun StudentSignedHomeScreen(
                                 mocks = catalog.mockCount,
                                 topics = syllabusTopics,
                                 loading = dashState.initialLoading,
+                                animateEntrance = heroContentReady,
                             )
                         }
                     }
 
                     if (!limitedMode && !dashState.initialLoading) {
                         item {
-                            DashboardActivityInsight(
+                            StudentRevealBlock(visible = true) {
+                                DashboardActivityInsight(
                                 summary = summary,
                                 streak = streak,
                                 examName = examName,
@@ -259,10 +292,12 @@ fun StudentSignedHomeScreen(
                                         onOpenExams()
                                     }
                                 },
-                            )
+                                )
+                            }
                         }
 
                         item {
+                            StudentRevealBlock(visible = true, delayMillis = 60) {
                             DashboardSection(
                                 eyebrow = "Plan",
                                 title = "Access & exam date",
@@ -285,9 +320,11 @@ fun StudentSignedHomeScreen(
                                     )
                                 }
                             }
+                            }
                         }
 
                         item {
+                            StudentRevealBlock(visible = true, delayMillis = 60) {
                             DashboardSection(
                                 eyebrow = "Mocks",
                                 title = examName?.let { "$it mocks" } ?: "Mocks",
@@ -312,9 +349,13 @@ fun StudentSignedHomeScreen(
                                     }
 
                                     if (fullMocks.isNotEmpty()) {
-                                        MockCardGrid(mocks = fullMocks, onOpen = { m ->
-                                            m.href?.let { openDashboardHref(it, m.name, onOpenExams, onOpenExam, onOpenWeb) }
-                                        })
+                                        MockCardGrid(
+                                            mocks = fullMocks,
+                                            animateEntrance = true,
+                                            onOpen = { m ->
+                                                m.href?.let { openDashboardHref(it, m.name, onOpenExams, onOpenExam, onOpenWeb) }
+                                            },
+                                        )
                                     }
 
                                     if (topicMocks.isNotEmpty()) {
@@ -339,9 +380,13 @@ fun StudentSignedHomeScreen(
                                                 Text("Browse all", fontSize = 12.sp, color = Muted)
                                             }
                                         }
-                                        MockCardGrid(mocks = topicMocks, onOpen = { m ->
-                                            m.href?.let { openDashboardHref(it, m.name, onOpenExams, onOpenExam, onOpenWeb) }
-                                        })
+                                        MockCardGrid(
+                                            mocks = topicMocks,
+                                            animateEntrance = true,
+                                            onOpen = { m ->
+                                                m.href?.let { openDashboardHref(it, m.name, onOpenExams, onOpenExam, onOpenWeb) }
+                                            },
+                                        )
                                     }
 
                                     if (fullMocks.isEmpty() && topicMocks.isEmpty()) {
@@ -352,9 +397,11 @@ fun StudentSignedHomeScreen(
                                     }
                                 }
                             }
+                            }
                         }
 
                         item {
+                            StudentRevealBlock(visible = true, delayMillis = 60) {
                             DashboardSection(
                                 eyebrow = "Practice",
                                 title = examName?.let { "$it topics" } ?: "Your topics",
@@ -375,10 +422,12 @@ fun StudentSignedHomeScreen(
                                     },
                                 )
                             }
+                            }
                         }
 
                         if (updates.isNotEmpty()) {
                             item {
+                                StudentRevealBlock(visible = true, delayMillis = 60) {
                                 DashboardSection(
                                     eyebrow = "Updates",
                                     title = examName?.let { "$it news" } ?: "Exam updates",
@@ -400,12 +449,14 @@ fun StudentSignedHomeScreen(
                                         }
                                     }
                                 }
+                                }
                             }
                         }
 
                         val roadmaps = dashboard?.myRoadmaps.orEmpty()
                         if (roadmaps.isNotEmpty()) {
                             item {
+                                StudentRevealBlock(visible = true, delayMillis = 60) {
                                 DashboardSection(
                                     eyebrow = "Study plans",
                                     title = "Roadmaps",
@@ -432,6 +483,7 @@ fun StudentSignedHomeScreen(
                                         }
                                     }
                                 }
+                                }
                             }
                         }
                     }
@@ -442,7 +494,7 @@ fun StudentSignedHomeScreen(
                         }
                     }
 
-                    item { Spacer(modifier = Modifier.height(8.dp)) }
+                    item { Spacer(modifier = Modifier.height(24.dp)) }
                 }
             }
         }
@@ -485,38 +537,106 @@ private fun openDashboardHref(
 }
 
 @Composable
-private fun SignedHomeTopChrome(onSignOut: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        BrandLogo(nameSize = 20.sp)
-        Row(
-            modifier = Modifier
-                .clip(RoundedCornerShape(16.dp))
-                .border(1.dp, Border, RoundedCornerShape(16.dp))
-                .background(Color.White)
-                .clickable(onClick = onSignOut)
-                .padding(horizontal = 10.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(28.dp)
-                    .clip(CircleShape)
-                    .background(Ink),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text("U", color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+private fun SignedHomeTopChrome(
+    displayName: String,
+    streak: Int,
+    credits: Int?,
+    unlimited: Boolean,
+    loading: Boolean,
+    onSignOut: () -> Unit,
+) {
+    val initials = remember(displayName) {
+        displayName.trim().split(Regex("\\s+")).let { parts ->
+            when {
+                parts.size >= 2 -> "${parts[0].first()}${parts[1].first()}".uppercase(Locale.getDefault())
+                parts.firstOrNull().orEmpty().length >= 2 -> parts.first().take(2).uppercase(Locale.getDefault())
+                else -> "ST"
             }
-            Spacer(modifier = Modifier.width(8.dp))
-            Column {
-                Text("Account", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = Ink)
-                Text("Signed in", fontSize = 11.sp, color = Muted)
+        }
+    }
+
+    StudentFadeInUp(play = !loading, delayMillis = 0) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            BrandLogo(nameSize = 20.sp)
+            if (loading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(72.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color.White)
+                        .border(1.dp, Border, RoundedCornerShape(16.dp)),
+                )
+            } else {
+                Card(
+                    onClick = onSignOut,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Border),
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color(0xFFF5F5F5))
+                                .border(1.dp, Border, RoundedCornerShape(12.dp)),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(initials, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = Muted)
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                displayName,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 14.sp,
+                                color = Ink,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                modifier = Modifier.padding(top = 2.dp),
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        Icons.Default.LocalFireDepartment,
+                                        contentDescription = null,
+                                        tint = Color(0xFFF97316),
+                                        modifier = Modifier.size(14.dp),
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        if (streak > 0) "$streak day streak" else "Start your streak",
+                                        fontSize = 12.sp,
+                                        color = Muted,
+                                    )
+                                }
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        Icons.Default.MonetizationOn,
+                                        contentDescription = null,
+                                        tint = if (unlimited) Color(0xFF059669) else Color(0xFFD97706),
+                                        modifier = Modifier.size(14.dp),
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        if (unlimited) "Unlimited" else "${credits ?: 0} credits",
+                                        fontSize = 12.sp,
+                                        color = Muted,
+                                    )
+                                }
+                            }
+                        }
+                        Icon(Icons.Default.ChevronRight, contentDescription = "Account", tint = Muted, modifier = Modifier.size(18.dp))
+                    }
+                }
             }
-            Spacer(modifier = Modifier.width(6.dp))
-            Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Sign out", tint = Muted, modifier = Modifier.size(16.dp))
         }
     }
 }
@@ -605,35 +725,66 @@ private fun DashboardHeroSection(
     onExamChange: (String) -> Unit,
     onOpenPath: (String, String?) -> Unit,
     onBrowseExams: () -> Unit,
+    animateEntrance: Boolean,
 ) {
+  val switchAlpha by animateFloatAsState(
+        targetValue = if (switchingExam) 0.7f else 1f,
+        animationSpec = tween(200),
+        label = "heroSwitchAlpha",
+    )
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .then(if (switchingExam) Modifier else Modifier),
+            .padding(bottom = StudentHeroBottomPad)
+            .alpha(switchAlpha),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         if (showExamSwitcher) {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    "FOCUS EXAM",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    letterSpacing = 1.2.sp,
-                    color = Muted,
-                )
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    examsPreparing.forEach { exam ->
-                        val active = exam.slug == examSlug
-                        FilterChip(
-                            selected = active,
-                            onClick = { if (!active) onExamChange(exam.slug) },
-                            enabled = !switchingExam || active,
-                            label = { Text(exam.name, fontSize = 12.sp) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = Brand,
-                                selectedLabelColor = Color.White,
-                            ),
+            StudentFadeInUp(play = animateEntrance, delayMillis = 0) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Column {
+                        Text(
+                            "Focus exam",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            letterSpacing = 1.6.sp,
+                            color = Muted,
                         )
+                        Text(
+                            "Switch to personalize mocks, updates, and countdown.",
+                            fontSize = 14.sp,
+                            color = Muted,
+                            modifier = Modifier.padding(top = 2.dp),
+                        )
+                    }
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(16.dp))
+                            .border(1.dp, Border.copy(alpha = 0.8f), RoundedCornerShape(16.dp))
+                            .background(Color.White.copy(alpha = 0.9f))
+                            .padding(4.dp)
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        examsPreparing.forEach { exam ->
+                            val active = exam.slug == examSlug
+                            val shape = RoundedCornerShape(12.dp)
+                            Box(
+                                modifier = Modifier
+                                    .clip(shape)
+                                    .background(if (active) Brand else Color.Transparent)
+                                    .clickable(enabled = !active && !switchingExam) { onExamChange(exam.slug) }
+                                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                            ) {
+                                Text(
+                                    exam.name,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = if (active) Color.White else Muted,
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -644,116 +795,133 @@ private fun DashboardHeroSection(
             return
         }
 
-        Row(
-            modifier = Modifier
-                .clip(RoundedCornerShape(999.dp))
-                .border(1.dp, Brand.copy(alpha = 0.2f), RoundedCornerShape(999.dp))
-                .background(BrandSoft.copy(alpha = 0.92f))
-                .padding(horizontal = 12.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            Icon(Icons.Default.Star, contentDescription = null, tint = Brand, modifier = Modifier.size(14.dp))
+        StudentFadeInUp(play = animateEntrance, delayMillis = 40) {
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(999.dp))
+                    .border(1.dp, Brand.copy(alpha = 0.2f), RoundedCornerShape(999.dp))
+                    .background(BrandSoft.copy(alpha = 0.92f))
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Icon(Icons.Default.Star, contentDescription = null, tint = Brand, modifier = Modifier.size(14.dp))
+                Text(
+                    text = examName?.let { "Preparing for $it" } ?: "10Tracker · Your study home",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = BrandDeep,
+                )
+            }
+        }
+
+        StudentFadeInUp(play = animateEntrance, delayMillis = 80) {
             Text(
-                text = examName?.let { "Preparing for $it" } ?: "10Tracker · Your study home",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
-                color = BrandDeep,
+                text = "${greetingForHour()}, $firstName",
+                style = MaterialTheme.typography.headlineLarge.copy(
+                    fontSize = 30.sp,
+                    lineHeight = 34.sp,
+                    fontWeight = FontWeight.Black,
+                ),
+                color = Ink,
+                modifier = Modifier.padding(top = 4.dp),
             )
         }
 
-        Text(
-            text = "${greetingForHour()}, $firstName",
-            style = MaterialTheme.typography.headlineLarge.copy(
-                fontSize = 28.sp,
-                lineHeight = 32.sp,
-                fontWeight = FontWeight.Black,
-            ),
-            color = Ink,
-        )
-
-        Text(
-            text = when {
-                hasContinue ->
-                    "One clear next step — continue practice or a mock, then explore what's new for your exam."
-                examName != null ->
-                    "Your $examName home: practice, mocks, updates, and a countdown to exam day."
-                else ->
-                    "Choose an exam to practice. Your personalized home will build around it."
-            },
-            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp, lineHeight = 20.sp),
-            color = Muted,
-        )
-
-        Text(
-            "CONTINUE",
-            fontSize = 10.sp,
-            fontWeight = FontWeight.SemiBold,
-            letterSpacing = 1.4.sp,
-            color = Brand,
-        )
-        DashboardContinueBlock(
-            options = continueOptions,
-            emptyHref = practiceHref,
-            emptyLabel = examName?.let { "Start $it practice" } ?: "Browse exams",
-            onOpen = onOpenPath,
-            onBrowseExams = onBrowseExams,
-        )
-
-        if (!limitedMode) {
+        StudentFadeInUp(play = animateEntrance, delayMillis = 120) {
             Text(
-                "START A SESSION",
-                fontSize = 10.sp,
-                fontWeight = FontWeight.SemiBold,
-                letterSpacing = 1.4.sp,
-                color = Brand,
+                text = when {
+                    hasContinue ->
+                        "One clear next step — continue practice or a mock, then explore what's new for your exam."
+                    examName != null ->
+                        "Your $examName home: practice, mocks, updates, and a countdown to exam day."
+                    else ->
+                        "Choose an exam to practice. Your personalized home will build around it."
+                },
+                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp, lineHeight = 22.sp),
+                color = Muted,
+                modifier = Modifier.padding(top = 4.dp),
             )
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                DashboardPathwayCard(
-                    title = "Practice",
-                    description = examName?.let { "Chapter-wise MCQs for $it." }
-                        ?: "Topic-wise MCQs across your exams.",
-                    icon = Icons.AutoMirrored.Filled.MenuBook,
-                    onClick = {
-                        if (!practiceHref.isNullOrBlank()) onOpenPath(practiceHref, "Practice")
-                        else onBrowseExams()
-                    },
+        }
+
+        StudentFadeInUp(play = animateEntrance, delayMillis = 160) {
+            Column(modifier = Modifier.padding(top = 12.dp)) {
+                Text(
+                    "Continue",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 1.6.sp,
+                    color = Brand,
+                    modifier = Modifier.padding(bottom = 12.dp),
                 )
-                DashboardPathwayCard(
-                    title = "Mock tests",
-                    description = examName?.let { "Timed mocks for $it." }
-                        ?: "Full-length timed tests when you are ready.",
-                    icon = Icons.Default.Timer,
-                    onClick = {
-                        if (!mockHref.isNullOrBlank()) onOpenPath(mockHref, "Mocks")
-                        else onBrowseExams()
-                    },
-                )
-                DashboardPathwayCard(
-                    title = "Topic mocks",
-                    description = when {
-                        topicMockCount > 0 -> "$topicMockCount topic-wise mock${if (topicMockCount == 1) "" else "s"} ready."
-                        examName != null -> "Shorter topic-scoped mocks for $examName."
-                        else -> "Shorter mocks scoped to a chapter or topic."
-                    },
-                    icon = Icons.Default.Layers,
-                    onClick = {
-                        val href = examSlug.takeIf { it.isNotBlank() }?.let { "/mock-test/$it?type=topic" }
-                            ?: mockHref
-                        if (!href.isNullOrBlank()) onOpenPath(href, "Topic mocks")
-                        else onBrowseExams()
-                    },
+                DashboardContinueBlock(
+                    options = continueOptions,
+                    emptyHref = practiceHref,
+                    emptyLabel = examName?.let { "Start $it practice" } ?: "Browse exams",
+                    onOpen = onOpenPath,
+                    onBrowseExams = onBrowseExams,
                 )
             }
+        }
+
+        if (!limitedMode) {
+            StudentFadeInUp(play = animateEntrance, delayMillis = 200) {
+                Column(modifier = Modifier.padding(top = 16.dp)) {
+                    Text(
+                        "Start a session",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        letterSpacing = 1.6.sp,
+                        color = Brand,
+                        modifier = Modifier.padding(bottom = 12.dp),
+                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        val pathways = listOf(
+                            Triple("Practice", examName?.let { "Chapter-wise MCQs for $it." } ?: "Topic-wise MCQs across your exams.", Icons.AutoMirrored.Filled.MenuBook) to {
+                                if (!practiceHref.isNullOrBlank()) onOpenPath(practiceHref, "Practice") else onBrowseExams()
+                            },
+                            Triple("Mock tests", examName?.let { "Timed mocks for $it." } ?: "Full-length timed tests when you are ready.", Icons.Default.Timer) to {
+                                if (!mockHref.isNullOrBlank()) onOpenPath(mockHref, "Mocks") else onBrowseExams()
+                            },
+                            Triple(
+                                "Topic mocks",
+                                when {
+                                    topicMockCount > 0 -> "$topicMockCount topic-wise mock${if (topicMockCount == 1) "" else "s"} ready."
+                                    examName != null -> "Shorter topic-scoped mocks for $examName."
+                                    else -> "Shorter mocks scoped to a chapter or topic."
+                                },
+                                Icons.Default.Layers,
+                            ) to {
+                                val href = examSlug.takeIf { it.isNotBlank() }?.let { "/mock-test/$it?type=topic" } ?: mockHref
+                                if (!href.isNullOrBlank()) onOpenPath(href, "Topic mocks") else onBrowseExams()
+                            },
+                        )
+                        pathways.forEachIndexed { index, (meta, onClick) ->
+                            val (title, description, icon) = meta
+                            StudentStaggerItem(index = index, play = animateEntrance) {
+                                DashboardPathwayCard(
+                                    title = title,
+                                    description = description,
+                                    icon = icon,
+                                    onClick = onClick,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         } else {
-            Button(
-                onClick = onBrowseExams,
-                shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Brand),
-            ) {
-                Text("Browse exams")
-                Spacer(modifier = Modifier.width(8.dp))
-                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null)
+            StudentFadeInUp(play = animateEntrance, delayMillis = 200) {
+                Button(
+                    onClick = onBrowseExams,
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Brand),
+                    modifier = Modifier.padding(top = 8.dp),
+                ) {
+                    Text("Browse exams")
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null)
+                }
             }
         }
     }
@@ -796,12 +964,21 @@ private fun DashboardContinueBlock(
         )
         else -> Card(
             shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = BrandSoft.copy(alpha = 0.9f)),
+            colors = CardDefaults.cardColors(containerColor = Color.Transparent),
             border = androidx.compose.foundation.BorderStroke(1.dp, Brand.copy(alpha = 0.25f)),
         ) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(
+                modifier = Modifier
+                    .background(
+                        Brush.linearGradient(
+                            colors = listOf(BrandSoft.copy(alpha = 0.9f), Color.White),
+                        ),
+                    )
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 Text("READY WHEN YOU ARE", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = BrandDeep)
-                Text("No session in progress", fontWeight = FontWeight.Bold, color = Ink)
+                Text("No session in progress", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Ink)
                 Text("Start practicing and we'll save your place for next time.", fontSize = 14.sp, color = Muted)
                 Button(
                     onClick = {
@@ -855,27 +1032,28 @@ private fun DashboardPathwayCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Border),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Border.copy(alpha = 0.9f)),
     ) {
-        Row(
-            modifier = Modifier.padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(BrandSoft),
-                contentAlignment = Alignment.Center,
+        Column(modifier = Modifier.padding(20.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(icon, contentDescription = null, tint = Brand)
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Brand),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                }
+                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = Color(0xFFD4D4D4))
             }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(title, fontWeight = FontWeight.Bold, color = Ink)
-                Text(description, fontSize = 12.sp, color = Muted, lineHeight = 16.sp)
-            }
-            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = Muted)
+            Text(title, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Ink, modifier = Modifier.padding(top = 16.dp))
+            Text(description, fontSize = 14.sp, color = Muted, lineHeight = 20.sp, modifier = Modifier.padding(top = 6.dp))
+            Text("Open", color = Brand, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, modifier = Modifier.padding(top = 16.dp))
         }
     }
 }
@@ -887,6 +1065,7 @@ private fun DashboardPulseRow(
     mocks: Int,
     topics: Int,
     loading: Boolean,
+    animateEntrance: Boolean,
 ) {
     if (loading) {
         Box(
@@ -899,39 +1078,62 @@ private fun DashboardPulseRow(
         )
         return
     }
-    val stats = listOf(
+    val rawStats = listOf(
         "Day streak" to streak,
         "Questions" to questions,
         "Mocks" to mocks,
         "Topics" to topics,
     )
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.95f)),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Border),
-    ) {
-        Row(modifier = Modifier.fillMaxWidth()) {
-            stats.forEachIndexed { index, (label, value) ->
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(vertical = 16.dp, horizontal = 8.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Text(
-                        value.toString(),
-                        fontWeight = FontWeight.Black,
-                        fontSize = if (index == 0) 26.sp else 22.sp,
-                        color = if (index == 0) Brand else Ink,
-                    )
-                    Text(
-                        label.uppercase(),
-                        fontSize = 10.sp,
-                        letterSpacing = 1.sp,
-                        color = Muted,
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                    )
+    StudentRevealBlock(visible = animateEntrance, modifier = Modifier.padding(bottom = StudentPulseBottomPad)) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.9f)),
+            border = androidx.compose.foundation.BorderStroke(1.dp, Border.copy(alpha = 0.9f)),
+        ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                rawStats.chunked(2).forEachIndexed { rowIndex, row ->
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        row.forEachIndexed { colIndex, (label, value) ->
+                            val index = rowIndex * 2 + colIndex
+                            val displayValue = rememberStudentCountUp(value, animateEntrance)
+                            StudentStaggerItem(
+                                index = index,
+                                play = animateEntrance,
+                                modifier = Modifier.weight(1f),
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 20.dp, horizontal = 12.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                ) {
+                                    Text(
+                                        displayValue.toString(),
+                                        fontWeight = FontWeight.Black,
+                                        fontSize = if (index == 0) 28.sp else 24.sp,
+                                        color = if (index == 0) Brand else Ink,
+                                    )
+                                    Text(
+                                        label.uppercase(),
+                                        fontSize = 11.sp,
+                                        letterSpacing = 1.4.sp,
+                                        color = Muted,
+                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                        modifier = Modifier.padding(top = 8.dp),
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    if (rowIndex == 0) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(1.dp)
+                                .background(Border.copy(alpha = 0.35f)),
+                        )
+                    }
                 }
             }
         }
@@ -1029,11 +1231,11 @@ private fun DashboardSection(
     onLink: (() -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Column {
-            Text(eyebrow.uppercase(), fontSize = 10.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.4.sp, color = Brand)
-            Text(title, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Ink)
-            Text(description, fontSize = 14.sp, color = Muted, lineHeight = 20.sp)
+            Text(eyebrow.uppercase(), fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.6.sp, color = Brand)
+            Text(title, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Ink, modifier = Modifier.padding(top = 6.dp))
+            Text(description, fontSize = 14.sp, color = Muted, lineHeight = 22.sp, modifier = Modifier.padding(top = 6.dp))
         }
         if (linkLabel != null && onLink != null) {
             OutlinedButton(
@@ -1163,22 +1365,36 @@ private fun DashboardComingSoonCard(title: String, description: String) {
 }
 
 @Composable
-private fun MockCardGrid(mocks: List<DashboardMockCard>, onOpen: (DashboardMockCard) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        mocks.forEach { mock ->
-            Card(
-                onClick = { onOpen(mock) },
-                shape = RoundedCornerShape(14.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Border),
-            ) {
-                Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(mock.name, fontWeight = FontWeight.SemiBold, color = Ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(
-                        "${mock.totalQuestions} Q · ${mock.duration} min",
-                        fontSize = 12.sp,
-                        color = Muted,
-                    )
+private fun MockCardGrid(
+    mocks: List<DashboardMockCard>,
+    animateEntrance: Boolean,
+    onOpen: (DashboardMockCard) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        mocks.forEachIndexed { index, mock ->
+            StudentStaggerItem(index = index, play = animateEntrance) {
+                Card(
+                    onClick = { onOpen(mock) },
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Border.copy(alpha = 0.9f)),
+                ) {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(mock.name, fontWeight = FontWeight.SemiBold, color = Ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        mock.description?.takeIf { it.isNotBlank() }?.let {
+                            Text(it, fontSize = 12.sp, color = Muted, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        }
+                        Text(
+                            listOfNotNull(
+                                mock.totalQuestions.takeIf { it > 0 }?.let { "$it Qs" },
+                                mock.duration.takeIf { it > 0 }?.let { "$it min" },
+                                mock.difficulty?.takeIf { it.isNotBlank() },
+                            ).joinToString(" · "),
+                            fontSize = 11.sp,
+                            color = Muted,
+                        )
+                        Text("Start mock", color = Brand, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                    }
                 }
             }
         }
