@@ -68,7 +68,6 @@ private val articleDetailDateFormatter: DateTimeFormatter =
     DateTimeFormatter.ofPattern("d MMM yyyy", Locale.forLanguageTag("en-IN"))
 
 @OptIn(ExperimentalMaterial3Api::class)
-@SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun ArticleDetailScreen(
     slug: String,
