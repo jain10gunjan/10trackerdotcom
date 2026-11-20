@@ -74,6 +74,7 @@ fun MoreScreen(
     onOpenTrackers: () -> Unit,
     onOpenHome: () -> Unit,
     onOpenWeb: (pathOrUrl: String, title: String?) -> Unit,
+    onOpenPricing: () -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
@@ -99,6 +100,7 @@ fun MoreScreen(
             onOpenTrackers = onOpenTrackers,
             onOpenHome = onOpenHome,
             onOpenWeb = onOpenWeb,
+            onOpenPricing = onOpenPricing,
             dismissOnNavigate = false,
         )
     }
@@ -114,6 +116,7 @@ fun MoreSheetScrollContent(
     onOpenTrackers: () -> Unit,
     onOpenHome: () -> Unit,
     onOpenWeb: (pathOrUrl: String, title: String?) -> Unit,
+    onOpenPricing: () -> Unit,
     dismissOnNavigate: Boolean,
     onDismiss: (() -> Unit)? = null,
 ) {
@@ -152,7 +155,7 @@ fun MoreSheetScrollContent(
             dismiss()
         },
         onOpenPricing = {
-            onOpenWeb("/pricing", "Pricing")
+            onOpenPricing()
             dismiss()
         },
         modifier = Modifier.padding(horizontal = 16.dp),

@@ -1,5 +1,13 @@
 package com.tentracker.nativeapp.ui
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.spring
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -40,6 +48,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -48,8 +57,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -70,6 +77,7 @@ import com.tentracker.nativeapp.ui.screens.TrackersScreen
 import com.tentracker.nativeapp.ui.theme.Bg
 import com.tentracker.nativeapp.ui.theme.Border
 import com.tentracker.nativeapp.ui.theme.Brand
+import com.tentracker.nativeapp.ui.util.openSite
 import com.tentracker.nativeapp.ui.viewmodel.ArticlesViewModel
 import com.tentracker.nativeapp.ui.viewmodel.DashboardViewModel
 import com.tentracker.nativeapp.ui.viewmodel.ExamsViewModel
@@ -95,6 +103,7 @@ private fun isMoreNavActive(route: String?): Boolean =
 private fun MobileBottomBar(
     current: String,
     moreSheetOpen: Boolean,
+    barEnabled: Boolean,
     onTabSelected: (String) -> Unit,
     onOpenPricing: () -> Unit,
     onMoreClick: () -> Unit,
@@ -121,7 +130,7 @@ private fun MobileBottomBar(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight()
-                        .clickable {
+                        .clickable(enabled = barEnabled) {
                             if (tab.route != null) {
                                 onTabSelected(tab.route)
                             } else {
@@ -163,7 +172,7 @@ private fun MobileBottomBar(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight()
-                    .clickable(onClick = onMoreClick)
+                    .clickable(enabled = barEnabled, onClick = onMoreClick)
                     .padding(horizontal = 4.dp, vertical = 8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
@@ -197,8 +206,15 @@ private fun MobileBottomBar(
     }
 }
 
+/** Framer spring on web More sheet: damping 28, stiffness 320 (mass 1). */
+private val moreSheetSpring = spring<IntOffset>(
+    dampingRatio = 28f / (2f * kotlin.math.sqrt(320f)),
+    stiffness = 320f,
+)
+
 @Composable
 private fun MoreBottomSheet(
+    visible: Boolean,
     vm: MoreViewModel,
     signedInHint: Boolean,
     activeTabRoute: String,
@@ -208,24 +224,44 @@ private fun MoreBottomSheet(
     onOpenTrackers: () -> Unit,
     onOpenHome: () -> Unit,
     onOpenWeb: (pathOrUrl: String, title: String?) -> Unit,
+    onOpenPricing: () -> Unit,
 ) {
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
-    ) {
-        Box(Modifier.fillMaxSize()) {
+    BackHandler(enabled = visible) { onDismiss() }
+
+    Box(Modifier.fillMaxSize()) {
+        AnimatedVisibility(
+            visible = visible,
+            modifier = Modifier
+                .fillMaxSize()
+                .zIndex(60f),
+            enter = fadeIn(),
+            exit = fadeOut(),
+        ) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(Color(0x4D171717))
                     .clickable(onClick = onDismiss),
             )
+        }
+        AnimatedVisibility(
+            visible = visible,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .zIndex(70f),
+            enter = slideInVertically(
+                initialOffsetY = { it },
+                animationSpec = moreSheetSpring,
+            ),
+            exit = slideOutVertically(
+                targetOffsetY = { it },
+                animationSpec = moreSheetSpring,
+            ),
+        ) {
             Surface(
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .heightIn(max = 640.dp)
-                    .zIndex(1f),
+                    .heightIn(max = 640.dp),
                 shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
                 color = Color.White,
                 shadowElevation = 16.dp,
@@ -246,6 +282,7 @@ private fun MoreBottomSheet(
                         onOpenTrackers = onOpenTrackers,
                         onOpenHome = onOpenHome,
                         onOpenWeb = onOpenWeb,
+                        onOpenPricing = onOpenPricing,
                         dismissOnNavigate = true,
                         onDismiss = onDismiss,
                     )
@@ -276,6 +313,8 @@ fun MainShell(
     val backStack by tabNav.currentBackStackEntryAsState()
     val current = backStack?.destination?.route ?: initialTab
     var moreSheetOpen by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val openPricing: () -> Unit = { openSite(context, "/pricing") }
 
     LaunchedEffect(initialTab) {
         if (current != initialTab) {
@@ -288,8 +327,9 @@ fun MainShell(
     }
 
     LaunchedEffect(current) {
-        if (current == "tab_more") {
-            moreSheetOpen = true
+        when (current) {
+            "tab_more" -> moreSheetOpen = true
+            else -> moreSheetOpen = false
         }
     }
 
@@ -312,17 +352,14 @@ fun MainShell(
         Scaffold(
             containerColor = Bg,
             bottomBar = {
-                if (!moreSheetOpen) {
-                    MobileBottomBar(
-                        current = current,
-                        moreSheetOpen = moreSheetOpen,
-                        onTabSelected = { goTab(it) },
-                        onOpenPricing = { onOpenWeb("/pricing", "Pricing") },
-                        onMoreClick = { moreSheetOpen = true },
-                    )
-                } else {
-                    Box(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
-                }
+                MobileBottomBar(
+                    current = current,
+                    moreSheetOpen = moreSheetOpen,
+                    barEnabled = !moreSheetOpen,
+                    onTabSelected = { goTab(it) },
+                    onOpenPricing = openPricing,
+                    onMoreClick = { moreSheetOpen = !moreSheetOpen },
+                )
             },
         ) { padding ->
             NavHost(
@@ -379,28 +416,29 @@ fun MainShell(
                         onOpenTrackers = { goTab("tab_trackers") },
                         onOpenHome = { goTab("tab_home") },
                         onOpenWeb = onOpenWeb,
+                        onOpenPricing = openPricing,
                     )
                 }
             }
         }
 
-        if (moreSheetOpen) {
-            MoreBottomSheet(
-                vm = moreVm,
-                signedInHint = homeState.signedIn,
-                activeTabRoute = current,
-                onDismiss = {
-                    moreSheetOpen = false
-                    if (current == "tab_more") {
-                        goTab("tab_home")
-                    }
-                },
-                onSignIn = onSignIn,
-                onSignOut = { signOut() },
-                onOpenTrackers = { goTab("tab_trackers") },
-                onOpenHome = { goTab("tab_home") },
-                onOpenWeb = onOpenWeb,
-            )
-        }
+        MoreBottomSheet(
+            visible = moreSheetOpen,
+            vm = moreVm,
+            signedInHint = homeState.signedIn,
+            activeTabRoute = current,
+            onDismiss = {
+                moreSheetOpen = false
+                if (current == "tab_more") {
+                    goTab("tab_home")
+                }
+            },
+            onSignIn = onSignIn,
+            onSignOut = { signOut() },
+            onOpenTrackers = { goTab("tab_trackers") },
+            onOpenHome = { goTab("tab_home") },
+            onOpenWeb = onOpenWeb,
+            onOpenPricing = openPricing,
+        )
     }
 }
