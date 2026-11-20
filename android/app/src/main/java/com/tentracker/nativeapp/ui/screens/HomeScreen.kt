@@ -80,8 +80,10 @@ fun HomeScreen(
     val active = state.activeExams
     val examCount = active.size.takeIf { it > 0 } ?: state.exams.size
     val roadmapCount = state.roadmaps.size
-    val questionCount = active.takeIf { it.isNotEmpty() }?.sumOf { activeExamQuestionCount(it) }
-        ?: state.exams.sumOf { it.count }
+    val questionCount = when {
+        active.isNotEmpty() -> active.sumOf { activeExamQuestionCount(it) }
+        else -> state.exams.sumOf { it.count }
+    }
 
     GuestHomePage(
         stats = GuestHomeStats(
@@ -89,7 +91,7 @@ fun HomeScreen(
             roadmapCount = roadmapCount,
             questionCount = questionCount,
         ),
-        featuredExams = active.ifEmpty { state.exams }.take(4),
+        featuredExams = active.take(4),
         featuredRoadmaps = state.roadmaps.take(3),
         onBrowseExams = onOpenExams,
         onExploreTrackers = onOpenTrackers,
