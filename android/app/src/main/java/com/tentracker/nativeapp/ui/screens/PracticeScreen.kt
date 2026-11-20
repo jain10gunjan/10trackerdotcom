@@ -1,10 +1,16 @@
 package com.tentracker.nativeapp.ui.screens
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -24,6 +30,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -59,10 +66,15 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
@@ -80,11 +92,13 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.tentracker.nativeapp.data.PracticeQuestion
 import com.tentracker.nativeapp.ui.components.HtmlText
+import com.tentracker.nativeapp.ui.motion.PracticeSheetSpring
 import com.tentracker.nativeapp.ui.theme.Border
 import com.tentracker.nativeapp.ui.theme.Brand
 import com.tentracker.nativeapp.ui.theme.BrandSoft
 import com.tentracker.nativeapp.ui.theme.Ink
 import com.tentracker.nativeapp.ui.theme.Muted
+import com.tentracker.nativeapp.ui.theme.Tw
 import com.tentracker.nativeapp.ui.viewmodel.PracticeUiState
 import com.tentracker.nativeapp.ui.viewmodel.PracticeViewModel
 import kotlin.math.min
@@ -217,11 +231,23 @@ fun PracticeScreen(
                             Spacer(modifier = Modifier.height(16.dp))
                             MobileScoreChips(state = state)
                             Spacer(modifier = Modifier.height(12.dp))
+                            // QuestionCard embedded remount: opacity + y 10 → 0 @ 200ms
                             AnimatedContent(
                                 targetState = q.id,
                                 transitionSpec = {
-                                    fadeIn(animationSpec = tween(220)) togetherWith
-                                        fadeOut(animationSpec = tween(160))
+                                    (
+                                        fadeIn(animationSpec = tween(200)) +
+                                            slideInVertically(
+                                                animationSpec = tween(200),
+                                                initialOffsetY = { 10 },
+                                            )
+                                        ) togetherWith (
+                                        fadeOut(animationSpec = tween(160)) +
+                                            slideOutVertically(
+                                                animationSpec = tween(160),
+                                                targetOffsetY = { -6 },
+                                            )
+                                        )
                                 },
                                 label = "practice-question",
                             ) { _ ->
@@ -243,7 +269,36 @@ fun PracticeScreen(
             }
         }
 
-        if (state.paletteExpanded && q != null) {
+        // SubjectPractice / ChapterPractice mobile sheet: scrim fade + spring y 100%→0
+        AnimatedVisibility(
+            visible = state.paletteExpanded && q != null,
+            enter = fadeIn(animationSpec = tween(200)),
+            exit = fadeOut(animationSpec = tween(160)),
+            modifier = Modifier
+                .fillMaxSize()
+                .zIndex(50f),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.4f))
+                    .clickable { vm.togglePalette() },
+            )
+        }
+        AnimatedVisibility(
+            visible = state.paletteExpanded && q != null,
+            enter = slideInVertically(
+                initialOffsetY = { it },
+                animationSpec = PracticeSheetSpring,
+            ),
+            exit = slideOutVertically(
+                targetOffsetY = { it },
+                animationSpec = PracticeSheetSpring,
+            ),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .zIndex(60f),
+        ) {
             ChapterNavSheet(
                 state = state,
                 listFilter = listFilter,
@@ -585,21 +640,31 @@ private fun QuestionMapDotStrip(state: PracticeUiState, modifier: Modifier = Mod
             val cur = i == state.index
             val ok = id != null && id in state.correctIds
             val bad = id != null && id in state.completedIds && !ok
-            val (w, color) = when {
-                cur -> 16.dp to Emerald500
-                ok -> 6.dp to Color(0xFF34D399)
-                bad -> 6.dp to Color(0xFFFB7185)
-                else -> 6.dp to Neutral300
-            }
-            Box(
-                modifier = Modifier
-                    .width(w)
-                    .height(6.dp)
-                    .clip(RoundedCornerShape(999.dp))
-                    .background(color),
-            )
+            QuestionMapDot(current = cur, correct = ok, wrong = bad)
         }
     }
+}
+
+@Composable
+private fun QuestionMapDot(current: Boolean, correct: Boolean, wrong: Boolean) {
+    val animatedW by androidx.compose.animation.core.animateDpAsState(
+        targetValue = if (current) 16.dp else 6.dp,
+        animationSpec = tween(200),
+        label = "mapDotW",
+    )
+    val color = when {
+        current -> Emerald500
+        correct -> Color(0xFF34D399)
+        wrong -> Color(0xFFFB7185)
+        else -> Neutral300
+    }
+    Box(
+        modifier = Modifier
+            .width(animatedW)
+            .height(6.dp)
+            .clip(RoundedCornerShape(999.dp))
+            .background(color),
+    )
 }
 
 @Composable
@@ -610,27 +675,15 @@ private fun ChapterNavSheet(
     onJump: (Int) -> Unit,
     onJumpOpen: () -> Unit,
 ) {
-    Box(
+    Column(
         modifier = Modifier
-            .fillMaxSize()
-            .zIndex(50f),
+            .fillMaxWidth()
+            .height(520.dp)
+            .clip(RoundedCornerShape(topStart = Tw.Radius.r3xl, topEnd = Tw.Radius.r3xl))
+            .background(Color.White)
+            .border(1.dp, Neutral200, RoundedCornerShape(topStart = Tw.Radius.r3xl, topEnd = Tw.Radius.r3xl))
+            .windowInsetsPadding(WindowInsets.navigationBars),
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.4f))
-                .clickable(onClick = onClose),
-        )
-        Column(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .height(520.dp)
-                .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
-                .background(Color.White)
-                .border(1.dp, Neutral200, RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
-                .windowInsetsPadding(WindowInsets.navigationBars),
-        ) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -746,7 +799,6 @@ private fun ChapterNavSheet(
                     )
                 }
             }
-        }
     }
 }
 
@@ -765,7 +817,11 @@ private fun LegendDot(color: Color, label: String) {
 
 @Composable
 private fun ProgressRing(pct: Int, sizeDp: Float, strokeDp: Float) {
-    val pctF = pct.coerceIn(0, 100) / 100f
+    val pctF by animateFloatAsState(
+        targetValue = pct.coerceIn(0, 100) / 100f,
+        animationSpec = tween(durationMillis = 500),
+        label = "progress-ring",
+    )
     Canvas(modifier = Modifier.size(sizeDp.dp)) {
         val stroke = strokeDp.dp.toPx()
         val radius = (size.minDimension - stroke) / 2f
@@ -914,7 +970,8 @@ private fun QuestionCardBody(
             HtmlText(html = question.question, modifier = Modifier.fillMaxWidth())
 
             val correctLetter = question.correct_option?.trim()?.uppercase()?.take(1)
-            question.options().forEach { (letter, text) ->
+            // QuestionCard embedded options: opacity 0, y 6 → 0, delay index*40ms, 200ms
+            question.options().forEachIndexed { optIndex, (letter, text) ->
                 OptionRow(
                     letter = letter,
                     text = text,
@@ -922,18 +979,29 @@ private fun QuestionCardBody(
                     revealed = state.revealed,
                     isCorrectOpt = letter.equals(correctLetter, ignoreCase = true),
                     enabled = !state.revealed,
+                    enterDelayMillis = optIndex * 40,
                     onSelect = { onSelect(letter) },
                 )
             }
 
-            if (state.revealed && state.lastCorrect != null) {
+            AnimatedVisibility(
+                visible = state.revealed && state.lastCorrect != null,
+                enter = fadeIn(animationSpec = tween(200)) +
+                    scaleIn(initialScale = 0.9f, animationSpec = tween(200)),
+                exit = fadeOut(animationSpec = tween(120)) +
+                    scaleOut(targetScale = 0.9f, animationSpec = tween(120)),
+            ) {
                 FeedbackBanner(
                     correct = state.lastCorrect == true,
                     correctOption = correctLetter,
                 )
             }
 
-            if (state.revealed) {
+            AnimatedVisibility(
+                visible = state.revealed,
+                enter = fadeIn(animationSpec = tween(200)) + expandVertically(animationSpec = tween(200)),
+                exit = fadeOut(animationSpec = tween(120)),
+            ) {
                 OutlinedButton(
                     onClick = onToggleSolution,
                     shape = RoundedCornerShape(12.dp),
@@ -957,7 +1025,13 @@ private fun QuestionCardBody(
                 }
             }
 
-            if (state.revealed && state.showSolution) {
+            AnimatedVisibility(
+                visible = state.revealed && state.showSolution,
+                enter = fadeIn(animationSpec = tween(200)) +
+                    expandVertically(animationSpec = tween(200)) +
+                    scaleIn(initialScale = 0.96f, animationSpec = tween(200)),
+                exit = fadeOut(animationSpec = tween(120)),
+            ) {
                 SolutionPanel(question = question, correctLetter = correctLetter)
             }
         }
@@ -972,8 +1046,25 @@ private fun OptionRow(
     revealed: Boolean,
     isCorrectOpt: Boolean,
     enabled: Boolean,
+    enterDelayMillis: Int = 0,
     onSelect: () -> Unit,
 ) {
+    var armed by remember { mutableStateOf(false) }
+    LaunchedEffect(letter) {
+        armed = false
+        if (enterDelayMillis > 0) kotlinx.coroutines.delay(enterDelayMillis.toLong())
+        armed = true
+    }
+    val alpha by animateFloatAsState(
+        targetValue = if (armed) 1f else 0f,
+        animationSpec = tween(durationMillis = 200),
+        label = "optAlpha",
+    )
+    val offsetY by androidx.compose.animation.core.animateDpAsState(
+        targetValue = if (armed) 0.dp else 6.dp,
+        animationSpec = tween(durationMillis = 200),
+        label = "optY",
+    )
     val borderWidth = when {
         revealed && (isCorrectOpt || (selected && !isCorrectOpt)) -> 2.dp
         selected && !revealed -> 2.dp
@@ -1004,13 +1095,15 @@ private fun OptionRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .alpha(alpha)
+            .offset(y = offsetY)
+            .clip(RoundedCornerShape(Tw.Radius.xl))
             .background(bg)
-            .border(borderWidth, borderColor, RoundedCornerShape(12.dp))
+            .border(borderWidth, borderColor, RoundedCornerShape(Tw.Radius.xl))
             .clickable(enabled = enabled, onClick = onSelect)
-            .padding(horizontal = 14.dp, vertical = 14.dp),
+            .padding(horizontal = Tw.Space.s3_5, vertical = Tw.Space.s3_5),
         verticalAlignment = Alignment.Top,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(Tw.Space.s3),
     ) {
         Box(
             modifier = Modifier

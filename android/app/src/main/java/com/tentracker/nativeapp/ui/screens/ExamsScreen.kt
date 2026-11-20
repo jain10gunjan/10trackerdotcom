@@ -68,6 +68,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.tentracker.nativeapp.data.ActiveExam
+import com.tentracker.nativeapp.ui.motion.OgFadeSlideIn
 import com.tentracker.nativeapp.ui.theme.Bg
 import com.tentracker.nativeapp.ui.theme.Border
 import com.tentracker.nativeapp.ui.theme.Brand
@@ -76,6 +77,7 @@ import com.tentracker.nativeapp.ui.theme.EmeraldBorder
 import com.tentracker.nativeapp.ui.theme.EmeraldSoft
 import com.tentracker.nativeapp.ui.theme.Ink
 import com.tentracker.nativeapp.ui.theme.Muted
+import com.tentracker.nativeapp.ui.theme.Tw
 import com.tentracker.nativeapp.ui.viewmodel.ExamsViewModel
 
 private val Emerald700 = Color(0xFF047857)
@@ -133,20 +135,24 @@ fun ExamsScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                        .padding(top = 8.dp, bottom = 20.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                        .padding(horizontal = Tw.Space.s4)
+                        .padding(top = Tw.Space.s2, bottom = Tw.Space.s5),
+                    verticalArrangement = Arrangement.spacedBy(Tw.Space.s4),
                 ) {
-                    CatalogHero(
-                        examCount = state.exams.size,
-                        totalQuestions = state.totalQuestions,
-                    )
-                    if (featured.isNotEmpty()) {
-                        FeaturedExamsPanel(
-                            featured = featured,
-                            onPractice = onPracticeExam,
-                            onMock = onMockExam,
+                    OgFadeSlideIn(delayMillis = 0) {
+                        CatalogHero(
+                            examCount = state.exams.size,
+                            totalQuestions = state.totalQuestions,
                         )
+                    }
+                    if (featured.isNotEmpty()) {
+                        OgFadeSlideIn(delayMillis = 80) {
+                            FeaturedExamsPanel(
+                                featured = featured,
+                                onPractice = onPracticeExam,
+                                onMock = onMockExam,
+                            )
+                        }
                     }
                 }
             }
@@ -209,19 +215,25 @@ fun ExamsScreen(
                 }
                 else -> {
                     item {
-                        BrowseSectionHeader(
-                            modifier = Modifier
-                                .padding(horizontal = 16.dp)
-                                .padding(top = 24.dp, bottom = 14.dp),
-                        )
+                        OgFadeSlideIn(delayMillis = 120) {
+                            BrowseSectionHeader(
+                                modifier = Modifier
+                                    .padding(horizontal = Tw.Space.s4)
+                                    .padding(top = Tw.Space.s6, bottom = Tw.Space.s3_5),
+                            )
+                        }
                     }
-                    items(state.filtered, key = { it.slug }) { exam ->
-                        ExamCatalogCard(
-                            exam = exam,
-                            onPractice = { onPracticeExam(exam) },
-                            onMock = { onMockExam(exam) },
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
-                        )
+                    items(state.filtered.withIndex().toList(), key = { it.value.slug }) { (index, exam) ->
+                        OgFadeSlideIn(
+                            delayMillis = 140 + (index * 40).coerceAtMost(320),
+                            modifier = Modifier.padding(horizontal = Tw.Space.s4, vertical = Tw.Space.s1_5),
+                        ) {
+                            ExamCatalogCard(
+                                exam = exam,
+                                onPractice = { onPracticeExam(exam) },
+                                onMock = { onMockExam(exam) },
+                            )
+                        }
                     }
                 }
             }
@@ -707,16 +719,16 @@ private fun ExamCatalogCard(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .shadow(elevation = 1.dp, shape = RoundedCornerShape(16.dp), clip = false),
-        shape = RoundedCornerShape(16.dp),
+            .shadow(elevation = 1.dp, shape = Tw.Radius.shape2xl, clip = false),
+        shape = Tw.Radius.shape2xl,
         colors = CardDefaults.cardColors(containerColor = Color.White),
         border = androidx.compose.foundation.BorderStroke(1.dp, Border.copy(alpha = 0.9f)),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
         Row(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(Tw.Space.s4),
             verticalAlignment = Alignment.Top,
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            horizontalArrangement = Arrangement.spacedBy(Tw.Space.s3_5),
         ) {
             ExamThumb(exam = exam, size = 48.dp)
             Column(modifier = Modifier.weight(1f)) {
