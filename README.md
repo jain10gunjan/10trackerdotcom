@@ -1,3 +1,19 @@
+# 10Tracker
+
+## Native Android app (no DB changes)
+
+Jetpack Compose client under [`android/`](android/) with **in-app YouTube watch-% sync** via existing `POST /api/og-trackers/progress`.
+
+- Debug APK: [`android/dist/10tracker-native-debug.apk`](android/dist/10tracker-native-debug.apk)
+- Package: `com.tentracker.nativeapp.debug`
+- Docs: [`android/README.md`](android/README.md)
+
+```bash
+cd android && ./gradlew assembleDebug
+```
+
+---
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
 ## Vendor practice-tests (multi-tenant)
