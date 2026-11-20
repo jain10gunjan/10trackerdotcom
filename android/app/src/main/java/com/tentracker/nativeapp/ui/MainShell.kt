@@ -343,6 +343,7 @@ fun MainShell(
                     ExamsScreen(
                         vm = vm,
                         onOpenExam = { exam -> onOpenExam(exam.slug, exam.name) },
+                        onGoHome = { goTab("tab_home") },
                     )
                 }
                 composable("tab_trackers") {

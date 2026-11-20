@@ -45,7 +45,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -63,19 +65,20 @@ import com.tentracker.nativeapp.data.ActiveExam
 import com.tentracker.nativeapp.ui.theme.Bg
 import com.tentracker.nativeapp.ui.theme.Border
 import com.tentracker.nativeapp.ui.theme.Brand
+import com.tentracker.nativeapp.ui.theme.Emerald
+import com.tentracker.nativeapp.ui.theme.EmeraldBorder
+import com.tentracker.nativeapp.ui.theme.EmeraldSoft
 import com.tentracker.nativeapp.ui.theme.Ink
 import com.tentracker.nativeapp.ui.theme.Muted
 import com.tentracker.nativeapp.ui.viewmodel.ExamsViewModel
 
-private val Emerald = Color(0xFF059669)
-private val EmeraldMuted = Color(0xFF047857)
-private val EmeraldSoft = Color(0xFFECFDF5)
-private val EmeraldInk = Color(0xFF065F46)
-private val EmeraldBorder = Color(0xFFD1FAE5)
+private val Emerald700 = Color(0xFF047857)
+private val Emerald800 = Color(0xFF065F46)
 private val EmeraldGlow = Color(0x5910B981)
 private val Neutral50 = Color(0xFFFAFAFA)
 private val Neutral100 = Color(0xFFF5F5F5)
 private val Neutral300 = Color(0xFFD4D4D4)
+private val Neutral400 = Color(0xFFA3A3A3)
 private val Neutral900 = Color(0xFF171717)
 
 @Composable
@@ -84,10 +87,12 @@ fun ExamsScreen(
     onOpenExam: (ActiveExam) -> Unit,
     onPracticeExam: (ActiveExam) -> Unit = onOpenExam,
     onMockExam: (ActiveExam) -> Unit = onOpenExam,
+    onGoHome: () -> Unit = {},
 ) {
     val state by vm.state.collectAsState()
-    val hasFilters =
-        state.searchQuery.isNotBlank() || state.selectedCategory != "All" || state.sortBy != "popular"
+    val filterBarHasFilters =
+        state.searchQuery.isNotBlank() || state.selectedCategory != "All"
+    val hasFilters = filterBarHasFilters || state.sortBy != "popular"
     val featured = remember(state.exams) { pickFeaturedExams(state.exams) }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -119,21 +124,24 @@ fun ExamsScreen(
             contentPadding = PaddingValues(bottom = 56.dp),
         ) {
             item {
-                Spacer(modifier = Modifier.height(12.dp))
-                CatalogHero(
-                    examCount = state.exams.size,
-                    totalQuestions = state.totalQuestions,
-                )
-            }
-
-            if (featured.isNotEmpty()) {
-                item {
-                    FeaturedExamsPanel(
-                        featured = featured,
-                        onPractice = onPracticeExam,
-                        onMock = onMockExam,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .padding(top = 8.dp, bottom = 20.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    CatalogHero(
+                        examCount = state.exams.size,
+                        totalQuestions = state.totalQuestions,
                     )
+                    if (featured.isNotEmpty()) {
+                        FeaturedExamsPanel(
+                            featured = featured,
+                            onPractice = onPracticeExam,
+                            onMock = onMockExam,
+                        )
+                    }
                 }
             }
 
@@ -147,7 +155,7 @@ fun ExamsScreen(
                     selectedCategory = state.selectedCategory,
                     onCategorySelected = vm::setCategory,
                     resultCount = state.filtered.size,
-                    hasFilters = hasFilters,
+                    hasFilters = filterBarHasFilters,
                     onResetFilters = vm::resetFilters,
                 )
             }
@@ -196,7 +204,9 @@ fun ExamsScreen(
                 else -> {
                     item {
                         BrowseSectionHeader(
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 20.dp),
+                            modifier = Modifier
+                                .padding(horizontal = 16.dp)
+                                .padding(top = 24.dp, bottom = 14.dp),
                         )
                     }
                     items(state.filtered, key = { it.slug }) { exam ->
@@ -211,7 +221,12 @@ fun ExamsScreen(
             }
 
             item {
-                NextStepFooter(modifier = Modifier.padding(horizontal = 16.dp, vertical = 24.dp))
+                NextStepFooter(
+                    onGoHome = onGoHome,
+                    modifier = Modifier
+                        .padding(horizontal = 16.dp)
+                        .padding(top = 24.dp, bottom = 56.dp),
+                )
             }
         }
     }
@@ -225,9 +240,7 @@ private fun pickFeaturedExams(exams: List<ActiveExam>, limit: Int = 3): List<Act
 @Composable
 private fun CatalogHero(examCount: Int, totalQuestions: Int) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
+        modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.95f)),
         border = androidx.compose.foundation.BorderStroke(1.dp, Border.copy(alpha = 0.9f)),
@@ -254,6 +267,7 @@ private fun CatalogHero(examCount: Int, totalQuestions: Int) {
                     .align(Alignment.TopEnd)
                     .offset(x = 48.dp, y = (-64).dp)
                     .size(160.dp)
+                    .blur(48.dp)
                     .clip(CircleShape)
                     .background(Color(0x59A7F3D0)),
             )
@@ -272,7 +286,7 @@ private fun CatalogHero(examCount: Int, totalQuestions: Int) {
                         "Exam catalog",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = EmeraldInk,
+                        color = Emerald800,
                     )
                 }
                 Spacer(modifier = Modifier.height(12.dp))
@@ -324,7 +338,9 @@ private fun FeaturedExamsPanel(
     modifier: Modifier = Modifier,
 ) {
     Card(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .shadow(elevation = 1.dp, shape = RoundedCornerShape(16.dp), clip = false),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         border = androidx.compose.foundation.BorderStroke(1.dp, Border.copy(alpha = 0.9f)),
@@ -335,7 +351,8 @@ private fun FeaturedExamsPanel(
                 modifier = Modifier
                     .fillMaxWidth()
                     .border(1.dp, Neutral50)
-                    .padding(horizontal = 16.dp, vertical = 16.dp),
+                    .padding(horizontal = 16.dp)
+                    .padding(top = 16.dp, bottom = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 Box(
@@ -346,14 +363,14 @@ private fun FeaturedExamsPanel(
                         .border(1.dp, EmeraldBorder, RoundedCornerShape(6.dp)),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("✦", fontSize = 12.sp, color = EmeraldInk)
+                    Text("✦", fontSize = 12.sp, color = Emerald800)
                 }
                 Column {
                     Text(
                         "START HERE",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = EmeraldMuted,
+                        color = Emerald700,
                         letterSpacing = 0.8.sp,
                     )
                     Text(
@@ -398,7 +415,7 @@ private fun FeaturedExamsPanel(
                             "%02d".format(index + 1),
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
-                            color = EmeraldInk,
+                            color = Emerald800,
                         )
                     }
                     Column(modifier = Modifier.weight(1f)) {
@@ -590,7 +607,7 @@ private fun SortOption(
             .padding(horizontal = 12.dp, vertical = 10.dp),
         fontSize = 14.sp,
         fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-        color = if (selected) EmeraldInk else Ink,
+        color = if (selected) Emerald800 else Ink,
     )
     Spacer(modifier = Modifier.height(4.dp))
 }
@@ -606,11 +623,11 @@ private fun ExamSearchField(
             .clip(RoundedCornerShape(12.dp))
             .background(Color.White)
             .border(1.dp, Border, RoundedCornerShape(12.dp))
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+            .padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 8.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-            Icon(Icons.Default.Search, contentDescription = null, tint = Muted, modifier = Modifier.size(16.dp))
-            Spacer(modifier = Modifier.width(8.dp))
+            Icon(Icons.Default.Search, contentDescription = null, tint = Neutral400, modifier = Modifier.size(16.dp))
+            Spacer(modifier = Modifier.width(10.dp))
             BasicTextField(
                 value = value,
                 onValueChange = onValueChange,
@@ -647,7 +664,7 @@ private fun BrowseSectionHeader(modifier: Modifier = Modifier) {
                 .border(1.dp, EmeraldBorder, RoundedCornerShape(6.dp)),
             contentAlignment = Alignment.Center,
         ) {
-            Text("01", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = EmeraldInk)
+            Text("01", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Emerald800)
         }
         Spacer(modifier = Modifier.width(8.dp))
         Column {
@@ -655,7 +672,7 @@ private fun BrowseSectionHeader(modifier: Modifier = Modifier) {
                 "BROWSE",
                 fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = Emerald,
+                color = Emerald700,
                 letterSpacing = 0.8.sp,
             )
             Text(
@@ -678,7 +695,9 @@ private fun ExamCatalogCard(
 ) {
     val qCount = ExamsViewModel.questionCount(exam)
     Card(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .shadow(elevation = 1.dp, shape = RoundedCornerShape(16.dp), clip = false),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         border = androidx.compose.foundation.BorderStroke(1.dp, Border.copy(alpha = 0.9f)),
@@ -722,7 +741,7 @@ private fun ExamCatalogCard(
                     Text(
                         "%,d questions".format(qCount),
                         fontSize = 11.sp,
-                        color = Muted,
+                        color = Neutral400,
                     )
                 }
                 Row(
@@ -791,7 +810,10 @@ private fun ExamThumb(exam: ActiveExam, size: androidx.compose.ui.unit.Dp) {
 }
 
 @Composable
-private fun NextStepFooter(modifier: Modifier = Modifier) {
+private fun NextStepFooter(
+    onGoHome: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -804,6 +826,7 @@ private fun NextStepFooter(modifier: Modifier = Modifier) {
                 .align(Alignment.TopEnd)
                 .offset(x = 48.dp, y = (-64).dp)
                 .size(192.dp)
+                .blur(48.dp)
                 .clip(CircleShape)
                 .background(EmeraldGlow),
         )
@@ -830,6 +853,50 @@ private fun NextStepFooter(modifier: Modifier = Modifier) {
                 lineHeight = 20.sp,
                 modifier = Modifier.padding(top = 6.dp),
             )
+            Spacer(modifier = Modifier.height(16.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color.White)
+                        .clickable(onClick = onGoHome)
+                        .padding(horizontal = 20.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        "Get started free",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Ink,
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = null,
+                        tint = Ink,
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .border(1.dp, Color.White.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
+                        .clickable(onClick = onGoHome)
+                        .padding(horizontal = 20.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        "Back to home",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White,
+                    )
+                }
+            }
         }
     }
 }
