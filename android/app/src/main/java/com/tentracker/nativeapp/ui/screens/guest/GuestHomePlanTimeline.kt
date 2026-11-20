@@ -50,9 +50,13 @@ fun GuestHomePlanTimeline(
     onViewAllPlans: () -> Unit,
     onOpenRoadmap: (RoadmapSummary) -> Unit,
     onBrowseExams: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
+    val animate = rememberGuestAnimate()
+    val (revealModifier, show) = rememberGuestSectionRevealed(threshold = 0.2f)
     Column(
-        modifier = Modifier
+        modifier = modifier
+            .then(revealModifier)
             .fillMaxWidth()
             .padding(horizontal = GuestGutter)
             .padding(bottom = 56.dp),
@@ -62,6 +66,7 @@ fun GuestHomePlanTimeline(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.Bottom,
         ) {
+            GuestRevealFadeSlide(show = show, animate = animate, modifier = Modifier.weight(1f)) {
             GuestSectionHeader(
                 eyebrow = "Study plans",
                 title = if (roadmaps.isNotEmpty()) "Structured roadmaps for serious prep"
@@ -71,8 +76,8 @@ fun GuestHomePlanTimeline(
                 } else {
                     "Day-by-day learning paths with videos and coding practice are on the way. Practice exams are live today."
                 },
-                modifier = Modifier.weight(1f),
             )
+            }
             if (roadmaps.isNotEmpty()) {
                 OutlinedButton(
                     onClick = onViewAllPlans,
@@ -89,7 +94,15 @@ fun GuestHomePlanTimeline(
             roadmaps.isEmpty() -> ComingSoonCard(onBrowseExams = onBrowseExams)
             else -> roadmaps.forEachIndexed { index, roadmap ->
                 if (index > 0) Spacer(modifier = Modifier.height(12.dp))
-                PlanCard(roadmap = roadmap, index = index, onClick = { onOpenRoadmap(roadmap) })
+                GuestStaggeredFadeSlide(show = show, animate = animate, index = index) {
+                PlanCard(
+                    roadmap = roadmap,
+                    index = index,
+                    onClick = { onOpenRoadmap(roadmap) },
+                    show = show,
+                    animate = animate,
+                )
+                }
             }
         }
     }
@@ -137,7 +150,7 @@ private fun ComingSoonCard(onBrowseExams: () -> Unit) {
 }
 
 @Composable
-private fun PlanCard(roadmap: RoadmapSummary, index: Int, onClick: () -> Unit) {
+private fun PlanCard(roadmap: RoadmapSummary, index: Int, onClick: () -> Unit, show: Boolean, animate: Boolean) {
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
@@ -193,7 +206,12 @@ private fun PlanCard(roadmap: RoadmapSummary, index: Int, onClick: () -> Unit) {
                     modifier = Modifier.padding(top = 10.dp),
                 )
             }
-            DayPathBar(totalDays = roadmap.totalDays, freePreviewDays = roadmap.freePreviewDays)
+            DayPathBar(
+                totalDays = roadmap.totalDays,
+                freePreviewDays = roadmap.freePreviewDays,
+                show = show,
+                animate = animate,
+            )
             Row(
                 modifier = Modifier.padding(top = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -247,7 +265,7 @@ private fun PlanCard(roadmap: RoadmapSummary, index: Int, onClick: () -> Unit) {
 }
 
 @Composable
-private fun DayPathBar(totalDays: Int, freePreviewDays: Int) {
+private fun DayPathBar(totalDays: Int, freePreviewDays: Int, show: Boolean, animate: Boolean) {
     val days = (totalDays.coerceIn(5, 12)).takeIf { totalDays > 0 } ?: 7
     val free = freePreviewDays.coerceAtMost(days)
     Row(
@@ -261,6 +279,7 @@ private fun DayPathBar(totalDays: Int, freePreviewDays: Int) {
                 modifier = Modifier
                     .weight(1f)
                     .height(8.dp)
+                    .guestStaggerScaleY(show = show, animate = animate, index = i)
                     .clip(RoundedCornerShape(99.dp))
                     .background(
                         when {

@@ -63,21 +63,30 @@ fun GuestHomeRetentionKit(
     onOpenArticles: () -> Unit,
     onOpenWeb: (path: String, title: String?) -> Unit,
     onOpenTrackers: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
+    val animate = rememberGuestAnimate()
+    val (revealModifier, show) = rememberGuestSectionRevealed(threshold = 0.18f)
     Column(
-        modifier = Modifier
+        modifier = modifier
+            .then(revealModifier)
             .fillMaxWidth()
             .padding(horizontal = GuestGutter)
             .padding(bottom = 56.dp),
     ) {
+        GuestRevealFadeSlide(show = show, animate = animate) {
         GuestSectionHeader(
             eyebrow = "Built to stick",
             title = "More than practice — habits that pull you back",
             subtitle = "Extension sync, daily sets, streaks, rankings, and cheap unlimited days — everything that turns one session into a streak.",
         )
+        }
         Spacer(modifier = Modifier.height(16.dp))
-        ExtensionShowcase(onOpenTrackers = onOpenTrackers, onOpenWeb = onOpenWeb)
+        GuestRevealFadeSlide(show = show, animate = animate) {
+        ExtensionShowcase(onOpenTrackers = onOpenTrackers, onOpenWeb = onOpenWeb, animate = animate, show = show)
+        }
         Spacer(modifier = Modifier.height(12.dp))
+        GuestRevealFadeSlide(show = show, animate = animate, delayMillis = 50) {
         FeatureTile(
             title = "Streaks that stick",
             eyebrow = "Habit",
@@ -87,7 +96,9 @@ fun GuestHomeRetentionKit(
             accent = true,
             onClick = onSignIn,
         )
+        }
         Spacer(modifier = Modifier.height(10.dp))
+        GuestRevealFadeSlide(show = show, animate = animate, delayMillis = 100) {
         FeatureTile(
             title = "Mock of the day & DPP",
             eyebrow = "Daily",
@@ -97,7 +108,9 @@ fun GuestHomeRetentionKit(
             accent = false,
             onClick = onOpenExams,
         )
+        }
         Spacer(modifier = Modifier.height(10.dp))
+        GuestRevealFadeSlide(show = show, animate = animate, delayMillis = 150) {
         FeatureTile(
             title = "Free start, cheap unlocks",
             eyebrow = "Credits",
@@ -107,7 +120,9 @@ fun GuestHomeRetentionKit(
             accent = false,
             onClick = { onOpenWeb("/pricing", "Pricing") },
         )
+        }
         Spacer(modifier = Modifier.height(10.dp))
+        GuestRevealFadeSlide(show = show, animate = animate, delayMillis = 200) {
         FeatureTile(
             title = "Progress & rankings",
             eyebrow = "Insight",
@@ -117,7 +132,9 @@ fun GuestHomeRetentionKit(
             accent = false,
             onClick = { onOpenWeb("/analysis", "Analysis") },
         )
+        }
         Spacer(modifier = Modifier.height(12.dp))
+        GuestRevealFadeSlide(show = show, animate = animate, delayMillis = 180) {
         QuickLinkRow("Exam updates", "News, strategies, current affairs", Icons.Default.Campaign, onOpenArticles)
         Spacer(modifier = Modifier.height(8.dp))
         QuickLinkRow("Jobs feed", "Latest openings while you prep", Icons.Default.AutoAwesome) {
@@ -127,19 +144,27 @@ fun GuestHomeRetentionKit(
         QuickLinkRow("Aptitude practice", "Dedicated topic drills", Icons.Default.GpsFixed) {
             onOpenWeb("/aptitude", "Aptitude")
         }
+        }
     }
 }
 
 @Composable
-private fun ExtensionShowcase(onOpenTrackers: () -> Unit, onOpenWeb: (String, String?) -> Unit) {
+private fun ExtensionShowcase(
+    onOpenTrackers: () -> Unit,
+    onOpenWeb: (String, String?) -> Unit,
+    animate: Boolean,
+    show: Boolean,
+) {
     var scene by remember { mutableIntStateOf(0) }
-    LaunchedEffect(Unit) {
+    LaunchedEffect(animate, show) {
+        if (!animate || !show) return@LaunchedEffect
         while (true) {
             delay(2600)
             scene = (scene + 1) % WatchScenes.size
         }
     }
     val (title, pct) = WatchScenes[scene]
+    val progress = rememberAnimatedProgress(pct / 100f, animate && show, durationMillis = 700)
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -186,9 +211,11 @@ private fun ExtensionShowcase(onOpenTrackers: () -> Unit, onOpenWeb: (String, St
                 Spacer(modifier = Modifier.width(6.dp))
                 Text("Live on YouTube", fontSize = 11.sp, color = Color(0xFFA3A3A3))
             }
-            Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.White, modifier = Modifier.padding(top = 8.dp))
+            GuestAnimatedSwap(target = title, animate = animate) { line ->
+                Text(line, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.White, modifier = Modifier.padding(top = 8.dp))
+            }
             LinearProgressIndicator(
-                progress = { pct / 100f },
+                progress = { progress },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 10.dp)

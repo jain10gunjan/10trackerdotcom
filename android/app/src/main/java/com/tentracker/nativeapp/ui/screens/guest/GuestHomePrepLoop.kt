@@ -1,5 +1,7 @@
 package com.tentracker.nativeapp.ui.screens.guest
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -62,7 +64,10 @@ fun GuestHomePrepLoop(
     onOpenExams: () -> Unit,
     onOpenTrackers: () -> Unit,
     onOpenWeb: (path: String, title: String?) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
+    val animate = rememberGuestAnimate()
+    val (revealModifier, show) = rememberGuestSectionRevealed(threshold = 0.25f)
     val steps = remember {
         listOf(
             PrepStep("mcqs", Icons.AutoMirrored.Filled.MenuBook, "Topic-wise MCQs", "Chapter-level practice with solutions across active exams.", "Browse exams"),
@@ -72,15 +77,21 @@ fun GuestHomePrepLoop(
         )
     }
     var active by remember { mutableIntStateOf(0) }
-    LaunchedEffect(Unit) {
+    LaunchedEffect(animate, show) {
+        if (!animate || !show) return@LaunchedEffect
         while (true) {
             delay(2800)
             active = (active + 1) % steps.size
         }
     }
+    val railProgress by animateFloatAsState(
+        (active + 1) / steps.size.toFloat(),
+        tween(450, easing = GuestEaseOut),
+        label = "prepRail",
+    )
 
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .background(
                 Brush.radialGradient(
@@ -92,9 +103,11 @@ fun GuestHomePrepLoop(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .then(revealModifier)
                 .padding(horizontal = GuestGutter)
                 .padding(bottom = 56.dp),
         ) {
+            GuestRevealFadeSlide(show = show, animate = animate) {
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -116,9 +129,10 @@ fun GuestHomePrepLoop(
                     modifier = Modifier.padding(top = 8.dp),
                 )
             }
+            }
             Spacer(modifier = Modifier.height(20.dp))
             LinearProgressIndicator(
-                progress = { (active + 1) / steps.size.toFloat() },
+                progress = { railProgress },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(2.dp),
@@ -135,19 +149,26 @@ fun GuestHomePrepLoop(
                     else -> onOpenExams
                 }
                 if (index > 0) Spacer(modifier = Modifier.height(10.dp))
-                PrepStepCard(step = step, index = index, isActive = isActive, onClick = onClick)
+                GuestStaggeredFadeSlide(show = show, animate = animate, index = index) {
+                PrepStepCard(step = step, index = index, isActive = isActive, animate = animate, onClick = onClick)
+                }
             }
         }
     }
 }
 
 @Composable
-private fun PrepStepCard(step: PrepStep, index: Int, isActive: Boolean, onClick: () -> Unit) {
+private fun PrepStepCard(step: PrepStep, index: Int, isActive: Boolean, animate: Boolean, onClick: () -> Unit) {
+    val cardScale by animateFloatAsState(
+        if (isActive && animate) 1.02f else 1f,
+        tween(300, easing = GuestEaseOut),
+        label = "prepCard",
+    )
     Card(
         onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
-            .then(if (isActive) Modifier.scale(1.01f) else Modifier),
+            .scale(cardScale),
         shape = RoundedCornerShape(Radius2xl),
         colors = CardDefaults.cardColors(containerColor = if (isActive) Color.White else Color.White.copy(alpha = 0.85f)),
         border = androidx.compose.foundation.BorderStroke(

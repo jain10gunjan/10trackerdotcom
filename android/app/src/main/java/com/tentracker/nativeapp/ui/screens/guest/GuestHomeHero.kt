@@ -1,9 +1,18 @@
 package com.tentracker.nativeapp.ui.screens.guest
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -14,6 +23,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -36,6 +46,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -66,9 +78,12 @@ fun GuestHomeHero(
     onBrowseExams: () -> Unit,
     onExploreTrackers: () -> Unit,
     onSignIn: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
+    val animate = rememberGuestAnimate()
     var hookIndex by remember { mutableIntStateOf(0) }
-    LaunchedEffect(Unit) {
+    LaunchedEffect(animate) {
+        if (!animate) return@LaunchedEffect
         while (true) {
             delay(2600)
             hookIndex = (hookIndex + 1) % RotatingHooks.size
@@ -82,7 +97,7 @@ fun GuestHomeHero(
     }
 
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .background(
                 Brush.verticalGradient(
@@ -101,6 +116,30 @@ fun GuestHomeHero(
                     ),
                 ),
         )
+        GuestFloatOrb(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 24.dp, end = 48.dp)
+                .size(200.dp)
+                .background(Brand.copy(alpha = 0.16f), CircleShape),
+            color = Brand,
+            animate = animate,
+            durationMillis = 12_000,
+            driftXPx = 20f,
+            driftYPx = 14f,
+        )
+        GuestFloatOrb(
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .padding(start = 16.dp, top = 80.dp)
+                .size(160.dp)
+                .background(Color(0xFFBAE6FD).copy(alpha = 0.4f), CircleShape),
+            color = Color(0xFFBAE6FD),
+            animate = animate,
+            durationMillis = 14_000,
+            driftXPx = -16f,
+            driftYPx = 18f,
+        )
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -108,6 +147,7 @@ fun GuestHomeHero(
                 .padding(top = 12.dp, bottom = 40.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            GuestMountFadeSlide(animate = animate, delayMillis = 0) {
             Text(
                 text = "EXAM PRACTICE · PATHS · YOUTUBE SYNC",
                 fontSize = 11.sp,
@@ -115,6 +155,8 @@ fun GuestHomeHero(
                 letterSpacing = 1.5.sp,
                 color = Muted,
             )
+            }
+            GuestMountFadeSlide(animate = animate, delayMillis = 50) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = "10tracker",
@@ -134,6 +176,8 @@ fun GuestHomeHero(
                         .padding(horizontal = 6.dp, vertical = 3.dp),
                 )
             }
+            }
+            GuestMountFadeSlide(animate = animate, delayMillis = 100) {
             Column {
                 Text(
                     text = "Practice that sticks — with",
@@ -141,26 +185,41 @@ fun GuestHomeHero(
                     fontWeight = FontWeight.SemiBold,
                     color = Ink,
                 )
-                Text(
-                    text = RotatingHooks[hookIndex],
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Brand,
-                )
+                GuestAnimatedSwap(target = RotatingHooks[hookIndex], animate = animate) { hook ->
+                    Text(
+                        text = hook,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Brand,
+                    )
+                }
             }
+            }
+            GuestMountFadeSlide(animate = animate, delayMillis = 150) {
             Text(
                 text = "MCQs, timed mocks, OG Tracker paths, and in-app YouTube progress — one app for your prep.",
                 fontSize = 14.sp,
                 color = Muted,
                 lineHeight = 20.sp,
             )
+            }
+            GuestMountFadeSlide(animate = animate, delayMillis = 200) {
+            val browseInteraction = rememberGuestPressInteractionSource()
+            val browsePressed by browseInteraction.collectIsPressedAsState()
+            val browseScale by animateFloatAsState(
+                if (browsePressed) 0.99f else 1f,
+                spring(dampingRatio = 0.62f, stiffness = 380f),
+                label = "browseScale",
+            )
             Button(
                 onClick = onBrowseExams,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(48.dp),
+                    .height(48.dp)
+                    .scale(browseScale),
                 shape = RoundedCornerShape(RadiusXl),
                 colors = ButtonDefaults.buttonColors(containerColor = Brand),
+                interactionSource = browseInteraction,
             ) {
                 Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(8.dp))
@@ -195,7 +254,11 @@ fun GuestHomeHero(
                 fontSize = 12.sp,
                 color = Muted,
             )
-            QuickLinksRow(onBrowseExams = onBrowseExams, onExploreTrackers = onExploreTrackers)
+            }
+            GuestMountFadeSlide(animate = animate, delayMillis = 280) {
+            QuickLinksRow(onBrowseExams = onBrowseExams, onExploreTrackers = onExploreTrackers, animate = animate)
+            }
+            GuestMountFadeSlide(animate = animate, delayMillis = 320) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -227,13 +290,16 @@ fun GuestHomeHero(
                     Text(text = "Free to start", fontSize = 13.sp, color = Muted)
                 }
             }
-            GuestFeatureShowcase(onOpenExams = onBrowseExams)
+            }
+            GuestMountFadeSlide(animate = animate, delayMillis = 120) {
+            GuestFeatureShowcase(onOpenExams = onBrowseExams, animate = animate)
+            }
         }
     }
 }
 
 @Composable
-private fun QuickLinksRow(onBrowseExams: () -> Unit, onExploreTrackers: () -> Unit) {
+private fun QuickLinksRow(onBrowseExams: () -> Unit, onExploreTrackers: () -> Unit, animate: Boolean) {
     val scroll = rememberScrollState()
     Row(
         modifier = Modifier
@@ -241,16 +307,30 @@ private fun QuickLinksRow(onBrowseExams: () -> Unit, onExploreTrackers: () -> Un
             .horizontalScroll(scroll),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        QuickChip("Exams", Icons.AutoMirrored.Filled.MenuBook, onBrowseExams)
-        QuickChip("OG Trackers", Icons.Default.Map, onExploreTrackers)
-        QuickChip("Mocks", Icons.Default.Assignment, onBrowseExams)
+        QuickChip("Exams", Icons.AutoMirrored.Filled.MenuBook, onBrowseExams, animate)
+        QuickChip("OG Trackers", Icons.Default.Map, onExploreTrackers, animate)
+        QuickChip("Mocks", Icons.Default.Assignment, onBrowseExams, animate)
     }
 }
 
 @Composable
-private fun QuickChip(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit) {
+private fun QuickChip(
+    label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    onClick: () -> Unit,
+    animate: Boolean,
+) {
+    val interaction = rememberGuestPressInteractionSource()
+    val pressed by interaction.collectIsPressedAsState()
+    val chipScale by animateFloatAsState(
+        if (pressed) 0.98f else if (animate) 1.03f else 1f,
+        spring(dampingRatio = 0.65f, stiffness = 340f),
+        label = "chipScale",
+    )
     OutlinedButton(
         onClick = onClick,
+        modifier = Modifier.scale(chipScale),
+        interactionSource = interaction,
         shape = RoundedCornerShape(999.dp),
         border = androidx.compose.foundation.BorderStroke(1.dp, Border),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 6.dp),
@@ -262,9 +342,10 @@ private fun QuickChip(label: String, icon: androidx.compose.ui.graphics.vector.I
 }
 
 @Composable
-private fun GuestFeatureShowcase(onOpenExams: () -> Unit) {
+private fun GuestFeatureShowcase(onOpenExams: () -> Unit, animate: Boolean) {
     var tab by remember { mutableIntStateOf(0) }
-    LaunchedEffect(Unit) {
+    LaunchedEffect(animate) {
+        if (!animate) return@LaunchedEffect
         while (true) {
             delay(3400)
             tab = (tab + 1) % 3
@@ -313,17 +394,20 @@ private fun GuestFeatureShowcase(onOpenExams: () -> Unit) {
             modifier = Modifier.padding(top = 12.dp),
             letterSpacing = 1.2.sp,
         )
-        Text(
-            text = titles[tab],
-            fontSize = 17.sp,
-            fontWeight = FontWeight.Bold,
-            color = Ink,
-            modifier = Modifier.padding(top = 4.dp),
-        )
-        when (tab) {
-            0 -> McqPanelPreview()
-            1 -> MockPanelPreview()
-            else -> StreakPanelPreview()
+        GuestAnimatedSwap(target = titles[tab], animate = animate, modifier = Modifier.padding(top = 4.dp)) { title ->
+            Text(
+                text = title,
+                fontSize = 17.sp,
+                fontWeight = FontWeight.Bold,
+                color = Ink,
+            )
+        }
+        GuestAnimatedSwap(target = tab, animate = animate) { activeTab ->
+            when (activeTab) {
+                0 -> McqPanelPreview(animate = animate)
+                1 -> MockPanelPreview(animate = animate)
+                else -> StreakPanelPreview(animate = animate)
+            }
         }
         TextButtonLink("Open", onOpenExams, modifier = Modifier.align(Alignment.End))
     }
@@ -343,7 +427,22 @@ private fun TextButtonLink(label: String, onClick: () -> Unit, modifier: Modifie
 }
 
 @Composable
-private fun McqPanelPreview() {
+private fun McqPanelPreview(animate: Boolean) {
+    var phase by remember { mutableIntStateOf(if (animate) 0 else 2) }
+    LaunchedEffect(animate) {
+        if (!animate) {
+            phase = 2
+            return@LaunchedEffect
+        }
+        while (true) {
+            phase = 0
+            delay(700)
+            phase = 1
+            delay(700)
+            phase = 2
+            delay(2000)
+        }
+    }
     Column(modifier = Modifier.padding(top = 12.dp)) {
         Text(
             text = "Q. If 3x + 5 = 20, what is x?",
@@ -352,11 +451,18 @@ private fun McqPanelPreview() {
             modifier = Modifier.padding(bottom = 8.dp),
         )
         listOf("3", "5", "7", "15").forEachIndexed { i, opt ->
-            val selected = i == 1
+            val selected = phase > 0 && i == 1
+            val confirmed = phase == 2 && i == 1
+            val scale by animateFloatAsState(
+                if (confirmed && animate) 1.02f else 1f,
+                tween(250, easing = GuestEaseOut),
+                label = "mcqOpt",
+            )
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 4.dp)
+                    .scale(scale)
                     .clip(RoundedCornerShape(12.dp))
                     .background(if (selected) BrandSoft.copy(alpha = 0.7f) else Color(0xFFFAFAFA))
                     .border(
@@ -387,13 +493,26 @@ private fun McqPanelPreview() {
 }
 
 @Composable
-private fun MockPanelPreview() {
+private fun MockPanelPreview(animate: Boolean) {
+    val progress = rememberAnimatedProgress(0.74f, animate)
     Column(modifier = Modifier.padding(top = 12.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("Score" to "68%", "Rank" to "#214", "Done" to "48/65").forEach { (label, value) ->
+            listOf("Score" to "68%", "Rank" to "#214", "Done" to "48/65").forEachIndexed { i, (label, value) ->
+                val cellAlpha = remember(i) { Animatable(if (animate) 0f else 1f) }
+                val cellOffset = remember(i) { Animatable(if (animate) 12f else 0f) }
+                LaunchedEffect(animate) {
+                    if (!animate) return@LaunchedEffect
+                    kotlinx.coroutines.delay((i * 80).toLong())
+                    cellOffset.animateTo(0f, tween(400, easing = GuestEaseOut))
+                    cellAlpha.animateTo(1f, tween(400, easing = GuestEaseOut))
+                }
                 Column(
                     modifier = Modifier
                         .weight(1f)
+                        .graphicsLayer {
+                            alpha = cellAlpha.value
+                            translationY = cellOffset.value
+                        }
                         .clip(RoundedCornerShape(12.dp))
                         .border(1.dp, Border, RoundedCornerShape(12.dp))
                         .background(Color.White)
@@ -406,7 +525,7 @@ private fun MockPanelPreview() {
             }
         }
         LinearProgressIndicator(
-            progress = { 0.74f },
+            progress = { progress },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 16.dp)
@@ -419,15 +538,24 @@ private fun MockPanelPreview() {
 }
 
 @Composable
-private fun StreakPanelPreview() {
+private fun StreakPanelPreview(animate: Boolean) {
+    val infinite = rememberInfiniteTransition(label = "streakFlame")
+    val flameScale by infinite.animateFloat(
+        1f,
+        1.06f,
+        infiniteRepeatable(tween(2200), RepeatMode.Reverse),
+        label = "flame",
+    )
+    val heat = remember { listOf(0.2f, 0.5f, 0.8f, 0.3f, 1f, 0.6f, 0.9f, 0.4f, 0.7f, 1f, 0.5f, 0.85f, 0.3f, 0.95f) }
+    Column(modifier = Modifier.padding(top = 12.dp)) {
     Row(
-        modifier = Modifier.padding(top = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Box(
             modifier = Modifier
                 .size(48.dp)
+                .scale(if (animate) flameScale else 1f)
                 .clip(RoundedCornerShape(16.dp))
                 .background(Color(0xFFFFF7ED))
                 .border(1.dp, Color(0xFFFED7AA), RoundedCornerShape(16.dp)),
@@ -439,5 +567,33 @@ private fun StreakPanelPreview() {
             Text("12", fontSize = 28.sp, fontWeight = FontWeight.Black, color = Ink)
             Text("day streak", fontSize = 12.sp, color = Muted)
         }
+    }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        heat.chunked(7).forEachIndexed { rowIndex, row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                row.forEachIndexed { colIndex, v ->
+                    val i = rowIndex * 7 + colIndex
+                    val cellAlpha = remember(i) { Animatable(if (animate) 0f else 1f) }
+                    LaunchedEffect(animate) {
+                        if (!animate) return@LaunchedEffect
+                        kotlinx.coroutines.delay((i * 30).toLong())
+                        cellAlpha.animateTo(1f, tween(280, easing = GuestEaseOut))
+                    }
+                    Box(
+                        modifier = Modifier
+                            .size(20.dp)
+                            .graphicsLayer { alpha = cellAlpha.value }
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(Brand.copy(alpha = 0.12f + v * 0.88f)),
+                    )
+                }
+            }
+        }
+    }
     }
 }

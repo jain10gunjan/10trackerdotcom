@@ -33,7 +33,7 @@ fun GuestHomePage(
             .fillMaxSize()
             .background(GuestPageBg),
     ) {
-        item {
+        item(key = "hero") {
             GuestHomeHero(
                 examCount = stats.examCount,
                 roadmapCount = stats.roadmapCount,
@@ -43,14 +43,14 @@ fun GuestHomePage(
                 onSignIn = onSignIn,
             )
         }
-        item {
+        item(key = "pulse") {
             GuestHomePulseStats(
                 examCount = stats.examCount,
                 roadmapCount = stats.roadmapCount,
                 questionCount = stats.questionCount,
             )
         }
-        item {
+        item(key = "exams") {
             GuestHomeExamSpotlight(
                 exams = featuredExams,
                 onViewAllExams = onBrowseExams,
@@ -58,7 +58,7 @@ fun GuestHomePage(
                 onMockExam = onOpenExam,
             )
         }
-        item {
+        item(key = "plans") {
             GuestHomePlanTimeline(
                 roadmaps = featuredRoadmaps,
                 onViewAllPlans = onViewAllPlans,
@@ -66,7 +66,7 @@ fun GuestHomePage(
                 onBrowseExams = onBrowseExams,
             )
         }
-        item {
+        item(key = "retention") {
             GuestHomeRetentionKit(
                 onSignIn = onSignIn,
                 onOpenExams = onBrowseExams,
@@ -75,7 +75,7 @@ fun GuestHomePage(
                 onOpenTrackers = onExploreTrackers,
             )
         }
-        item {
+        item(key = "prep") {
             GuestHomePrepLoop(
                 onSignIn = onSignIn,
                 onOpenExams = onBrowseExams,
@@ -83,7 +83,7 @@ fun GuestHomePage(
                 onOpenWeb = onOpenWeb,
             )
         }
-        item {
+        item(key = "close") {
             GuestHomeCloseBand(
                 onBrowseExams = onBrowseExams,
                 onExplorePlans = onViewAllPlans,
