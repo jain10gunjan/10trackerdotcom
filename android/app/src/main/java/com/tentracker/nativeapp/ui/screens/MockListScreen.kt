@@ -12,10 +12,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -49,6 +51,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -56,6 +60,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tentracker.nativeapp.data.MockTestSummary
+import com.tentracker.nativeapp.ui.motion.OgFadeSlideIn
 import com.tentracker.nativeapp.ui.theme.Border
 import com.tentracker.nativeapp.ui.theme.Bg
 import com.tentracker.nativeapp.ui.theme.Emerald
@@ -148,38 +153,58 @@ fun MockListScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     item {
-                        MockListHubBanner(title = title, testsCount = state.tests.size)
+                        // MockTestPageHeader / MockTestHubHeader: opacity 0→1, y 16, 350ms
+                        OgFadeSlideIn(delayMillis = 0, durationMillis = 350) {
+                            MockListHubBanner(title = title, testsCount = state.tests.size)
+                        }
                     }
                     if (!isSignedIn) {
                         item {
-                            MockGuestHero(
-                                testsCount = state.tests.size,
-                                totalQuestions = state.tests.sumOf { it.totalQuestions },
-                                onSignIn = onSignIn,
+                            OgFadeSlideIn(delayMillis = 60, durationMillis = 350) {
+                                MockGuestHero(
+                                    testsCount = state.tests.size,
+                                    totalQuestions = state.tests.sumOf { it.totalQuestions },
+                                    onSignIn = onSignIn,
+                                )
+                            }
+                        }
+                    }
+                    item {
+                        OgFadeSlideIn(delayMillis = 100, durationMillis = 350) {
+                            MockCatalogHeader()
+                        }
+                    }
+                    itemsIndexed(state.tests, key = { _, test -> test.id }) { index, test ->
+                        // Tab panel motion: opacity 0→1, y 8, 250ms (staggered)
+                        OgFadeSlideIn(
+                            delayMillis = 140 + (index * 40).coerceAtMost(320),
+                            durationMillis = 250,
+                            fromOffsetY = 8.dp,
+                        ) {
+                            MockTestCard(
+                                test = test,
+                                onStart = { onStartNative(test) },
+                                onOpenWeb = {
+                                    onOpenWeb("/mock-test/$category/attempt/${test.id}", test.name)
+                                },
                             )
                         }
                     }
                     item {
-                        MockCatalogHeader()
-                    }
-                    items(state.tests, key = { it.id }) { test ->
-                        MockTestCard(
-                            test = test,
-                            onStart = { onStartNative(test) },
-                            onOpenWeb = {
-                                onOpenWeb("/mock-test/$category/attempt/${test.id}", test.name)
-                            },
-                        )
-                    }
-                    item {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        OutlinedButton(
-                            onClick = { onOpenWeb("/mock-test/$category", "Mock tests") },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                            border = BorderStroke(1.dp, Border),
+                        OgFadeSlideIn(
+                            delayMillis = 180 + (state.tests.size * 40).coerceAtMost(320),
+                            durationMillis = 250,
+                            fromOffsetY = 8.dp,
                         ) {
-                            Text("Full hub + checkout on web", color = Ink)
+                            Spacer(modifier = Modifier.height(4.dp))
+                            OutlinedButton(
+                                onClick = { onOpenWeb("/mock-test/$category", "Mock tests") },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                border = BorderStroke(1.dp, Border),
+                            ) {
+                                Text("Full hub + checkout on web", color = Ink)
+                            }
                         }
                     }
                 }
@@ -193,7 +218,7 @@ private fun MockListHubBanner(title: String, testsCount: Int) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(28.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.95f)),
         border = BorderStroke(1.dp, Border.copy(alpha = 0.9f)),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
     ) {
@@ -210,6 +235,25 @@ private fun MockListHubBanner(title: String, testsCount: Int) {
                             ),
                         ),
                     ),
+            )
+            // MockTestHubHeader ambient orbs (blur-3xl emerald / violet)
+            Box(
+                modifier = Modifier
+                    .size(192.dp)
+                    .align(Alignment.TopEnd)
+                    .offset(x = 48.dp, y = (-64).dp)
+                    .blur(48.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFFA7F3D0).copy(alpha = 0.35f)),
+            )
+            Box(
+                modifier = Modifier
+                    .size(192.dp)
+                    .align(Alignment.BottomStart)
+                    .offset(x = (-64).dp, y = 80.dp)
+                    .blur(48.dp)
+                    .clip(CircleShape)
+                    .background(VioletSoft.copy(alpha = 0.55f)),
             )
             Column(modifier = Modifier.padding(20.dp)) {
                 Row(
