@@ -32,6 +32,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -43,6 +45,7 @@ import com.tentracker.nativeapp.ui.theme.BrandDeep
 import com.tentracker.nativeapp.ui.theme.BrandSoft
 import com.tentracker.nativeapp.ui.theme.Ink
 import com.tentracker.nativeapp.ui.theme.Muted
+import com.tentracker.nativeapp.ui.theme.Tw
 
 @Composable
 fun GuestHomePlanTimeline(
@@ -51,45 +54,56 @@ fun GuestHomePlanTimeline(
     onOpenRoadmap: (RoadmapSummary) -> Unit,
     onBrowseExams: () -> Unit,
 ) {
+    val animate = rememberGuestMotionEnabled()
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = GuestGutter)
-            .padding(bottom = 56.dp),
+            .padding(bottom = Tw.Space.s14),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.Bottom,
         ) {
-            GuestSectionHeader(
-                eyebrow = "Study plans",
-                title = if (roadmaps.isNotEmpty()) "Structured roadmaps for serious prep"
-                else "Study plans — coming soon",
-                subtitle = if (roadmaps.isNotEmpty()) {
-                    "YouTube lessons + coding practice on a day path. Preview free days, then unlock."
-                } else {
-                    "Day-by-day learning paths with videos and coding practice are on the way. Practice exams are live today."
-                },
-                modifier = Modifier.weight(1f),
-            )
+            GuestReveal(play = animate, modifier = Modifier.weight(1f)) {
+                GuestSectionHeader(
+                    eyebrow = "Study plans",
+                    title = if (roadmaps.isNotEmpty()) "Structured roadmaps for serious prep"
+                    else "Study plans — coming soon",
+                    subtitle = if (roadmaps.isNotEmpty()) {
+                        "YouTube lessons + coding practice on a day path. Preview free days, then unlock."
+                    } else {
+                        "Day-by-day learning paths with videos and coding practice are on the way. Practice exams are live today."
+                    },
+                )
+            }
             if (roadmaps.isNotEmpty()) {
-                OutlinedButton(
-                    onClick = onViewAllPlans,
-                    shape = RoundedCornerShape(RadiusXl),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Border),
-                ) {
-                    Text("View all", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Ink)
-                    Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(16.dp))
+                GuestReveal(play = animate, delayMillis = 80) {
+                    OutlinedButton(
+                        onClick = onViewAllPlans,
+                        shape = RoundedCornerShape(RadiusXl),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Border),
+                    ) {
+                        Text("View all", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Ink)
+                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(16.dp))
+                    }
                 }
             }
         }
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(Tw.Space.s4))
         when {
             roadmaps.isEmpty() -> ComingSoonCard(onBrowseExams = onBrowseExams)
             else -> roadmaps.forEachIndexed { index, roadmap ->
-                if (index > 0) Spacer(modifier = Modifier.height(12.dp))
-                PlanCard(roadmap = roadmap, index = index, onClick = { onOpenRoadmap(roadmap) })
+                if (index > 0) Spacer(modifier = Modifier.height(Tw.Space.s3))
+                GuestStaggerItem(index = index, play = animate) {
+                    PlanCard(
+                        roadmap = roadmap,
+                        index = index,
+                        animate = animate,
+                        onClick = { onOpenRoadmap(roadmap) },
+                    )
+                }
             }
         }
     }
@@ -103,7 +117,7 @@ private fun ComingSoonCard(onBrowseExams: () -> Unit) {
             .clip(RoundedCornerShape(Radius2xl))
             .border(1.dp, Border, RoundedCornerShape(Radius2xl))
             .background(Color.White)
-            .padding(32.dp),
+            .padding(Tw.Space.s8),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(
@@ -116,18 +130,30 @@ private fun ComingSoonCard(onBrowseExams: () -> Unit) {
         ) {
             Icon(Icons.Default.Map, contentDescription = null, tint = Brand)
         }
-        Text("Coming soon", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Muted, modifier = Modifier.padding(top = 16.dp))
-        Text("OG Trackers", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Ink, modifier = Modifier.padding(top = 8.dp))
+        Text(
+            "Coming soon",
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Muted,
+            modifier = Modifier.padding(top = Tw.Space.s4),
+        )
+        Text(
+            "OG Trackers",
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            color = Ink,
+            modifier = Modifier.padding(top = Tw.Space.s2),
+        )
         Text(
             "Structured paths with YouTube lessons and coding practice will launch here.",
             fontSize = 14.sp,
             color = Muted,
-            modifier = Modifier.padding(top = 8.dp),
+            modifier = Modifier.padding(top = Tw.Space.s2),
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
         )
         Button(
             onClick = onBrowseExams,
-            modifier = Modifier.padding(top = 20.dp),
+            modifier = Modifier.padding(top = Tw.Space.s5),
             shape = RoundedCornerShape(RadiusXl),
             colors = ButtonDefaults.buttonColors(containerColor = Brand),
         ) {
@@ -137,7 +163,12 @@ private fun ComingSoonCard(onBrowseExams: () -> Unit) {
 }
 
 @Composable
-private fun PlanCard(roadmap: RoadmapSummary, index: Int, onClick: () -> Unit) {
+private fun PlanCard(
+    roadmap: RoadmapSummary,
+    index: Int,
+    animate: Boolean,
+    onClick: () -> Unit,
+) {
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
@@ -145,7 +176,7 @@ private fun PlanCard(roadmap: RoadmapSummary, index: Int, onClick: () -> Unit) {
         colors = CardDefaults.cardColors(containerColor = Color.White),
         border = androidx.compose.foundation.BorderStroke(1.dp, Border.copy(alpha = 0.9f)),
     ) {
-        Column(modifier = Modifier.padding(20.dp)) {
+        Column(modifier = Modifier.padding(Tw.Space.s5)) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -153,12 +184,12 @@ private fun PlanCard(roadmap: RoadmapSummary, index: Int, onClick: () -> Unit) {
                     .clip(RoundedCornerShape(99.dp))
                     .background(Brush.horizontalGradient(listOf(Brand, BrandBright))),
             )
-            Spacer(modifier = Modifier.height(12.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Spacer(modifier = Modifier.height(Tw.Space.s3))
+            Row(horizontalArrangement = Arrangement.spacedBy(Tw.Space.s2_5)) {
                 Box(
                     modifier = Modifier
                         .size(40.dp)
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(RoundedCornerShape(Tw.Radius.xl))
                         .background(Brand),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -190,13 +221,17 @@ private fun PlanCard(roadmap: RoadmapSummary, index: Int, onClick: () -> Unit) {
                     color = Muted,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 10.dp),
+                    modifier = Modifier.padding(top = Tw.Space.s2_5),
                 )
             }
-            DayPathBar(totalDays = roadmap.totalDays, freePreviewDays = roadmap.freePreviewDays)
+            DayPathBar(
+                totalDays = roadmap.totalDays,
+                freePreviewDays = roadmap.freePreviewDays,
+                animate = animate,
+            )
             Row(
-                modifier = Modifier.padding(top = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.padding(top = Tw.Space.s3),
+                horizontalArrangement = Arrangement.spacedBy(Tw.Space.s2),
             ) {
                 Text(
                     "₹${roadmap.priceInr} · one-time",
@@ -207,7 +242,7 @@ private fun PlanCard(roadmap: RoadmapSummary, index: Int, onClick: () -> Unit) {
                         .clip(RoundedCornerShape(999.dp))
                         .border(1.dp, Border, RoundedCornerShape(999.dp))
                         .background(Color(0xFFFAFAFA))
-                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                        .padding(horizontal = Tw.Space.s2_5, vertical = Tw.Space.s1_5),
                 )
                 if (roadmap.totalDays > 0) {
                     Row(
@@ -216,10 +251,10 @@ private fun PlanCard(roadmap: RoadmapSummary, index: Int, onClick: () -> Unit) {
                             .clip(RoundedCornerShape(999.dp))
                             .border(1.dp, Border, RoundedCornerShape(999.dp))
                             .background(Color.White)
-                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                            .padding(horizontal = Tw.Space.s2_5, vertical = Tw.Space.s1_5),
                     ) {
                         Icon(Icons.Default.CalendarMonth, contentDescription = null, tint = Brand, modifier = Modifier.size(12.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
+                        Spacer(modifier = Modifier.width(Tw.Space.s1))
                         Text("${roadmap.totalDays} days", fontSize = 12.sp, color = Muted)
                     }
                 }
@@ -230,15 +265,15 @@ private fun PlanCard(roadmap: RoadmapSummary, index: Int, onClick: () -> Unit) {
                             .clip(RoundedCornerShape(999.dp))
                             .border(1.dp, Brand.copy(alpha = 0.2f), RoundedCornerShape(999.dp))
                             .background(BrandSoft)
-                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                            .padding(horizontal = Tw.Space.s2_5, vertical = Tw.Space.s1_5),
                     ) {
                         Icon(Icons.Default.CardGiftcard, contentDescription = null, tint = BrandDeep, modifier = Modifier.size(12.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
+                        Spacer(modifier = Modifier.width(Tw.Space.s1))
                         Text("${roadmap.freePreviewDays} free", fontSize = 12.sp, color = BrandDeep)
                     }
                 }
             }
-            TextButton(onClick = onClick, modifier = Modifier.padding(top = 8.dp)) {
+            TextButton(onClick = onClick, modifier = Modifier.padding(top = Tw.Space.s2)) {
                 Text("View roadmap", fontWeight = FontWeight.SemiBold, color = Ink)
                 Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = Ink, modifier = Modifier.size(16.dp))
             }
@@ -247,20 +282,33 @@ private fun PlanCard(roadmap: RoadmapSummary, index: Int, onClick: () -> Unit) {
 }
 
 @Composable
-private fun DayPathBar(totalDays: Int, freePreviewDays: Int) {
+private fun DayPathBar(totalDays: Int, freePreviewDays: Int, animate: Boolean) {
     val days = (totalDays.coerceIn(5, 12)).takeIf { totalDays > 0 } ?: 7
     val free = freePreviewDays.coerceAtMost(days)
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 12.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
+            .padding(top = Tw.Space.s3),
+        horizontalArrangement = Arrangement.spacedBy(Tw.Space.s1),
     ) {
         repeat(days) { i ->
+            // web DayPath: scaleY 0.3→1, opacity 0→1, duration 0.35, delay 0.04*i
+            val scaleY = rememberGuestBarScale(
+                play = animate,
+                index = i,
+                durationMillis = 350,
+                delayPerIndexMillis = 40,
+                initialScale = 0.3f,
+            )
             Box(
                 modifier = Modifier
                     .weight(1f)
                     .height(8.dp)
+                    .graphicsLayer {
+                        this.scaleY = scaleY
+                        transformOrigin = TransformOrigin(0.5f, 1f)
+                        alpha = if (scaleY < 0.35f) 0f else 1f
+                    }
                     .clip(RoundedCornerShape(99.dp))
                     .background(
                         when {

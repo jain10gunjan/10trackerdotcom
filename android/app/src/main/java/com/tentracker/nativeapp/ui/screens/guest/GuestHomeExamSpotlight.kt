@@ -3,8 +3,8 @@ package com.tentracker.nativeapp.ui.screens.guest
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -44,6 +44,7 @@ import com.tentracker.nativeapp.ui.theme.BrandDeep
 import com.tentracker.nativeapp.ui.theme.BrandSoft
 import com.tentracker.nativeapp.ui.theme.Ink
 import com.tentracker.nativeapp.ui.theme.Muted
+import com.tentracker.nativeapp.ui.theme.Tw
 import java.text.NumberFormat
 
 @Composable
@@ -53,44 +54,57 @@ fun GuestHomeExamSpotlight(
     onPracticeExam: (ActiveExam) -> Unit,
     onMockExam: (ActiveExam) -> Unit,
 ) {
+    val animate = rememberGuestMotionEnabled()
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = GuestGutter)
-            .padding(bottom = 56.dp),
+            .padding(bottom = Tw.Space.s14),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.Bottom,
         ) {
-            GuestSectionHeader(
-                eyebrow = "Practice",
-                title = "Popular exams to start with",
-                subtitle = "Jump into topic-wise MCQs or timed mocks — featured by activity across the platform.",
-                modifier = Modifier.weight(1f),
-            )
-            OutlinedButton(
-                onClick = onViewAllExams,
-                shape = RoundedCornerShape(RadiusXl),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Border),
-            ) {
-                Text("View all", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Ink)
-                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(16.dp))
+            GuestReveal(play = animate, modifier = Modifier.weight(1f)) {
+                GuestSectionHeader(
+                    eyebrow = "Practice",
+                    title = "Popular exams to start with",
+                    subtitle = "Jump into topic-wise MCQs or timed mocks — featured by activity across the platform.",
+                )
+            }
+            GuestReveal(play = animate, delayMillis = 80) {
+                OutlinedButton(
+                    onClick = onViewAllExams,
+                    shape = RoundedCornerShape(RadiusXl),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Border),
+                ) {
+                    Text("View all", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Ink)
+                    Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(16.dp))
+                }
             }
         }
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(Tw.Space.s4))
         if (exams.isEmpty()) {
             BoxLoadingPlaceholder("Exams loading — check back shortly.")
         } else {
-            FeaturedExamCard(
-                exam = exams.first(),
-                onPractice = { onPracticeExam(exams.first()) },
-                onMock = { onMockExam(exams.first()) },
-            )
+            GuestReveal(play = animate, delayMillis = 50) {
+                FeaturedExamCard(
+                    exam = exams.first(),
+                    onPractice = { onPracticeExam(exams.first()) },
+                    onMock = { onMockExam(exams.first()) },
+                )
+            }
             exams.drop(1).forEachIndexed { index, exam ->
-                Spacer(modifier = Modifier.height(10.dp))
-                RankedExamRow(exam = exam, index = index, onPractice = { onPracticeExam(exam) }, onMock = { onMockExam(exam) })
+                Spacer(modifier = Modifier.height(Tw.Space.s2_5))
+                GuestStaggerItem(index = index, play = animate) {
+                    RankedExamRow(
+                        exam = exam,
+                        index = index,
+                        onPractice = { onPracticeExam(exam) },
+                        onMock = { onMockExam(exam) },
+                    )
+                }
             }
         }
     }
@@ -104,7 +118,7 @@ private fun BoxLoadingPlaceholder(message: String) {
             .clip(RoundedCornerShape(Radius2xl))
             .border(1.dp, Border, RoundedCornerShape(Radius2xl))
             .background(Color.White)
-            .padding(vertical = 48.dp),
+            .padding(vertical = Tw.Space.s12),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(message, fontSize = 14.sp, color = Muted)
@@ -120,17 +134,23 @@ private fun FeaturedExamCard(exam: ActiveExam, onPractice: () -> Unit, onMock: (
         border = androidx.compose.foundation.BorderStroke(1.dp, Border.copy(alpha = 0.9f)),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
     ) {
-        Column(modifier = Modifier.padding(20.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(modifier = Modifier.padding(Tw.Space.s5)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(Tw.Space.s3)) {
                 ExamThumb(exam = exam, large = true)
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("SPOTLIGHT", fontSize = 10.sp, fontWeight = FontWeight.SemiBold, color = Brand, letterSpacing = 1.2.sp)
+                    Text(
+                        "SPOTLIGHT",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Brand,
+                        letterSpacing = 1.2.sp,
+                    )
                     Text(
                         exam.name,
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Bold,
                         color = Ink,
-                        modifier = Modifier.padding(top = 4.dp),
+                        modifier = Modifier.padding(top = Tw.Space.s1),
                     )
                     exam.category?.let {
                         Text(
@@ -139,11 +159,11 @@ private fun FeaturedExamCard(exam: ActiveExam, onPractice: () -> Unit, onMock: (
                             fontWeight = FontWeight.SemiBold,
                             color = BrandDeep,
                             modifier = Modifier
-                                .padding(top = 8.dp)
+                                .padding(top = Tw.Space.s2)
                                 .clip(RoundedCornerShape(999.dp))
                                 .background(BrandSoft.copy(alpha = 0.7f))
                                 .border(1.dp, Brand.copy(alpha = 0.2f), RoundedCornerShape(999.dp))
-                                .padding(horizontal = 10.dp, vertical = 4.dp),
+                                .padding(horizontal = Tw.Space.s2_5, vertical = Tw.Space.s1),
                         )
                     }
                 }
@@ -155,15 +175,15 @@ private fun FeaturedExamCard(exam: ActiveExam, onPractice: () -> Unit, onMock: (
                     color = Muted,
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 12.dp),
+                    modifier = Modifier.padding(top = Tw.Space.s3),
                 )
             }
             Row(
-                modifier = Modifier.padding(top = 12.dp),
+                modifier = Modifier.padding(top = Tw.Space.s3),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(Icons.Default.Description, contentDescription = null, tint = Brand, modifier = Modifier.size(14.dp))
-                Spacer(modifier = Modifier.width(6.dp))
+                Spacer(modifier = Modifier.width(Tw.Space.s1_5))
                 Text(
                     "${NumberFormat.getIntegerInstance().format(activeExamQuestionCount(exam))} questions",
                     fontSize = 12.sp,
@@ -173,8 +193,8 @@ private fun FeaturedExamCard(exam: ActiveExam, onPractice: () -> Unit, onMock: (
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 20.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    .padding(top = Tw.Space.s5),
+                horizontalArrangement = Arrangement.spacedBy(Tw.Space.s2_5),
             ) {
                 Button(
                     onClick = onPractice,
@@ -183,7 +203,7 @@ private fun FeaturedExamCard(exam: ActiveExam, onPractice: () -> Unit, onMock: (
                     colors = ButtonDefaults.buttonColors(containerColor = Brand),
                 ) {
                     Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
+                    Spacer(modifier = Modifier.width(Tw.Space.s1_5))
                     Text("Practice", fontWeight = FontWeight.SemiBold)
                 }
                 OutlinedButton(
@@ -193,7 +213,7 @@ private fun FeaturedExamCard(exam: ActiveExam, onPractice: () -> Unit, onMock: (
                     border = androidx.compose.foundation.BorderStroke(1.dp, Border),
                 ) {
                     Icon(Icons.Default.Assignment, contentDescription = null, tint = Brand, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
+                    Spacer(modifier = Modifier.width(Tw.Space.s1_5))
                     Text("Mocks", fontWeight = FontWeight.SemiBold, color = Ink)
                 }
             }
@@ -215,8 +235,8 @@ private fun RankedExamRow(
         border = androidx.compose.foundation.BorderStroke(1.dp, Border.copy(alpha = 0.9f)),
     ) {
         Row(
-            modifier = Modifier.padding(14.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.padding(Tw.Space.s3_5),
+            horizontalArrangement = Arrangement.spacedBy(Tw.Space.s2_5),
             verticalAlignment = Alignment.Top,
         ) {
             Text(
@@ -226,13 +246,20 @@ private fun RankedExamRow(
                 color = Color.White,
                 modifier = Modifier
                     .size(32.dp)
-                    .clip(RoundedCornerShape(8.dp))
+                    .clip(RoundedCornerShape(Tw.Radius.lg))
                     .background(Brand)
-                    .padding(8.dp),
+                    .padding(Tw.Space.s2),
             )
             ExamThumb(exam = exam, large = false)
             Column(modifier = Modifier.weight(1f)) {
-                Text(exam.name, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(
+                    exam.name,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Ink,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
                 Text(
                     "${NumberFormat.getIntegerInstance().format(activeExamQuestionCount(exam))} questions" +
                         (exam.category?.let { " · $it" } ?: ""),
@@ -240,7 +267,10 @@ private fun RankedExamRow(
                     color = Muted,
                     modifier = Modifier.padding(top = 2.dp),
                 )
-                Row(modifier = Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(
+                    modifier = Modifier.padding(top = Tw.Space.s2),
+                    horizontalArrangement = Arrangement.spacedBy(Tw.Space.s3),
+                ) {
                     Text(
                         "Practice →",
                         fontSize = 12.sp,
