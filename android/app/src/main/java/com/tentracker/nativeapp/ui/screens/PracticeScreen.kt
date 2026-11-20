@@ -1,5 +1,7 @@
 package com.tentracker.nativeapp.ui.screens
 
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -10,57 +12,68 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.MenuBook
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.MenuBook
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.OutlinedFlag
+import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.BottomAppBar
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Surface
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import com.tentracker.nativeapp.data.PracticeQuestion
 import com.tentracker.nativeapp.ui.components.HtmlText
 import com.tentracker.nativeapp.ui.theme.Border
@@ -70,25 +83,36 @@ import com.tentracker.nativeapp.ui.theme.Ink
 import com.tentracker.nativeapp.ui.theme.Muted
 import com.tentracker.nativeapp.ui.viewmodel.PracticeUiState
 import com.tentracker.nativeapp.ui.viewmodel.PracticeViewModel
+import kotlin.math.min
 
-private val CorrectGreen = Color(0xFF16A34A)
-private val CorrectBg = Color(0xFFDCFCE7)
-private val CorrectBorder = Color(0xFFBBF7D0)
-private val WrongRed = Color(0xFFDC2626)
-private val WrongBg = Color(0xFFFEE2E2)
-private val WrongBorder = Color(0xFFFECACA)
-private val SolutionIndigo = Color(0xFF3730A3)
+private val CorrectGreen = Color(0xFF10B981)
+private val CorrectBg = Color(0xFFECFDF5)
+private val CorrectBorder = Color(0xFF10B981)
+private val WrongRed = Color(0xFFF43F5E)
+private val WrongBg = Color(0xFFFFF1F2)
+private val WrongBorder = Color(0xFFF43F5E)
+private val SolutionIndigo = Color(0xFF312E81)
 private val SolutionBg = Color(0xFFEEF2FF)
 private val SolutionBorder = Color(0xFFC7D2FE)
-private val Emerald = Color(0xFF10B981)
+private val Emerald600 = Color(0xFF059669)
+private val Emerald500 = Color(0xFF10B981)
 private val Neutral50 = Color(0xFFFAFAFA)
+private val Neutral100 = Color(0xFFF5F5F5)
+private val Neutral200 = Color(0xFFE5E5E5)
+private val Neutral300 = Color(0xFFD4D4D4)
+private val Neutral400 = Color(0xFFA3A3A3)
+private val Neutral500 = Color(0xFF737373)
+private val Neutral600 = Color(0xFF525252)
+private val Neutral800 = Color(0xFF262626)
 private val Neutral900 = Color(0xFF171717)
 private val EmeraldSoft = Color(0xFFECFDF5)
 private val EmeraldBorder = Color(0xFFA7F3D0)
+private val EmeraldText = Color(0xFF065F46)
 private val RoseSoft = Color(0xFFFFF1F2)
 private val RoseBorder = Color(0xFFFECDD3)
+private val RoseText = Color(0xFF9F1239)
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun PracticeScreen(
     title: String,
@@ -100,109 +124,146 @@ fun PracticeScreen(
     val totalLabel = if (state.totalCount > 0) state.totalCount else state.questions.size
     var listFilter by remember { mutableStateOf("all") }
 
-    Scaffold(
-        containerColor = Neutral50,
-        topBar = {
-            Column {
-                TopAppBar(
-                    title = {
-                        Column {
-                            Text("$title — Practice", maxLines = 1, fontWeight = FontWeight.SemiBold)
-                            if (state.totalCount > 0 || state.questions.isNotEmpty()) {
-                                Text(
-                                    "$totalLabel questions",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = Muted,
-                                )
-                            }
-                        }
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Neutral50),
-                )
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
+            containerColor = Neutral50,
+            bottomBar = {
                 if (q != null) {
-                    StickyProgressStrip(
-                        state = state,
-                        listFilter = listFilter,
-                        onFilter = { listFilter = it },
-                        onJumpOpen = { vm.jumpToFirstOpen() },
-                    )
-                }
-            }
-        },
-        bottomBar = {
-            if (q != null) {
-                Surface(shadowElevation = 8.dp, tonalElevation = 0.dp) {
-                    MobilePracticeNavBar(
+                    MobilePracticeBottomBar(
                         state = state,
                         onPrev = { vm.prev() },
                         onNext = { if (state.revealed) vm.next() else vm.checkAnswer() },
-                        onToggleMap = { vm.togglePalette() },
-                        mapExpanded = state.paletteExpanded,
+                        onOpenMap = { vm.togglePalette() },
                     )
                 }
-            }
-        },
-    ) { innerPadding ->
-        when {
-            state.loading && state.questions.isEmpty() -> {
-                Box(
-                    modifier = Modifier.fillMaxSize().padding(innerPadding),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    CircularProgressIndicator(color = Brand)
+            },
+        ) { innerPadding ->
+            when {
+                state.loading && state.questions.isEmpty() -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize().padding(innerPadding),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        CircularProgressIndicator(color = Brand)
+                    }
+                }
+                state.error != null && q == null -> {
+                    Column(modifier = Modifier.padding(innerPadding).padding(16.dp)) {
+                        Text(state.error ?: "Error", color = Muted)
+                        TextButton(onClick = { vm.load(1, reset = true) }) { Text("Retry") }
+                    }
+                }
+                q != null -> {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                            start = 16.dp,
+                            end = 16.dp,
+                            bottom = 96.dp,
+                        ),
+                    ) {
+                        item {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            PracticeSubpageHeader(
+                                title = "$title — Practice",
+                                description = "$totalLabel questions",
+                                breadcrumb = "$title › Practice",
+                                onBack = onBack,
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
+                        stickyHeader {
+                            StickyProgressStrip(
+                                state = state,
+                                listFilter = listFilter,
+                                onFilter = { listFilter = it },
+                            )
+                        }
+                        item {
+                            Spacer(modifier = Modifier.height(16.dp))
+                            MobileScoreChips(state = state)
+                            Spacer(modifier = Modifier.height(12.dp))
+                            QuestionCardBody(
+                                question = q,
+                                index = state.index,
+                                state = state,
+                                onSelect = { vm.selectOption(it) },
+                                onToggleSolution = { vm.toggleSolution() },
+                            )
+                            state.saveHint?.let { hint ->
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(hint, style = MaterialTheme.typography.labelSmall, color = Muted)
+                            }
+                        }
+                    }
                 }
             }
-            state.error != null && q == null -> {
-                Column(modifier = Modifier.padding(innerPadding).padding(16.dp)) {
-                    Text(state.error ?: "Error", color = Muted)
-                    TextButton(onClick = { vm.load(1, reset = true) }) { Text("Retry") }
-                }
-            }
-            q != null -> {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding)
-                        .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    MobileScoreChips(state = state)
-                    if (state.paletteExpanded) {
-                        QuestionPalette(
-                            state = state,
-                            listFilter = listFilter,
-                            onToggle = { vm.togglePalette() },
-                            onJump = { vm.jumpTo(it) },
-                            onJumpOpen = { vm.jumpToFirstOpen() },
-                        )
-                    }
-                    QuestionCardBody(
-                        question = q,
-                        index = state.index,
-                        state = state,
-                        onSelect = { vm.selectOption(it) },
-                        onToggleSolution = { vm.toggleSolution() },
-                    )
-                    state.saveHint?.let {
-                        Text(it, style = MaterialTheme.typography.labelSmall, color = Muted)
-                    }
-                    if (state.revealed) {
-                        NavRow(
-                            state = state,
-                            onPrev = { vm.prev() },
-                            onCheck = { vm.checkAnswer() },
-                            onNext = { vm.next() },
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(88.dp))
-                }
+        }
+
+        if (state.paletteExpanded && q != null) {
+            ChapterNavSheet(
+                state = state,
+                listFilter = listFilter,
+                onClose = { vm.togglePalette() },
+                onJump = { vm.jumpTo(it); vm.togglePalette() },
+                onJumpOpen = { vm.jumpToFirstOpen(); vm.togglePalette() },
+            )
+        }
+    }
+}
+
+@Composable
+private fun PracticeSubpageHeader(
+    title: String,
+    description: String,
+    breadcrumb: String,
+    onBack: () -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        TextButton(
+            onClick = onBack,
+            modifier = Modifier.padding(start = 0.dp, bottom = 4.dp),
+        ) {
+            Icon(
+                Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = null,
+                modifier = Modifier.size(14.dp),
+                tint = Neutral400,
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text("Back", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = Neutral400)
+        }
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(24.dp),
+            color = Color.White,
+            shadowElevation = 1.dp,
+            border = androidx.compose.foundation.BorderStroke(1.dp, Neutral200),
+        ) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                Text(
+                    breadcrumb,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Neutral500,
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    title,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Neutral900,
+                    lineHeight = 26.sp,
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    description,
+                    fontSize = 14.sp,
+                    color = Neutral500,
+                    lineHeight = 20.sp,
+                )
             }
         }
     }
@@ -213,41 +274,40 @@ private fun StickyProgressStrip(
     state: PracticeUiState,
     listFilter: String,
     onFilter: (String) -> Unit,
-    onJumpOpen: () -> Unit,
 ) {
     val total = if (state.totalCount > 0) state.totalCount else state.questions.size
+  val progressFrac = if (total > 0) state.completedInChapter().toFloat() / total else 0f
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .background(Neutral50.copy(alpha = 0.97f))
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+            .padding(horizontal = 0.dp, vertical = 10.dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(
-                "${state.index + 1}",
+                buildAnnotatedString {
+                    append("${state.index + 1}")
+                    withStyle(SpanStyle(color = Neutral400, fontWeight = FontWeight.Medium)) {
+                        append("/$total")
+                    }
+                },
                 fontWeight = FontWeight.Bold,
-                color = Ink,
-                fontSize = 13.sp,
+                color = Neutral800,
+                fontSize = 12.sp,
             )
-            Text("/$total", color = Muted, fontSize = 12.sp)
             LinearProgressIndicator(
-                progress = { state.progressPct / 100f },
+                progress = { progressFrac },
                 modifier = Modifier
                     .weight(1f)
+                    .widthIn(max = 160.dp)
                     .height(6.dp)
                     .clip(RoundedCornerShape(999.dp)),
-                color = Emerald,
-                trackColor = Color(0xFFE5E5E5),
-            )
-            Text(
-                "${state.progressPct}% done",
-                style = MaterialTheme.typography.labelSmall,
-                color = Muted,
-                fontWeight = FontWeight.SemiBold,
+                color = Emerald500,
+                trackColor = Neutral200,
             )
         }
         Row(
@@ -257,33 +317,67 @@ private fun StickyProgressStrip(
         ) {
             PracticeFilterChip("All", listFilter == "all") { onFilter("all") }
             PracticeFilterChip("Wrong", listFilter == "wrong") { onFilter("wrong") }
-            if (state.firstPendingIndex >= 0) {
-                TextButton(onClick = onJumpOpen) {
-                    Text("Jump to open", color = Emerald, fontWeight = FontWeight.Bold, fontSize = 11.sp)
-                }
-            }
+            PracticeFilterChip(
+                label = "Flagged",
+                active = listFilter == "flagged",
+                leading = {
+                    Icon(
+                        Icons.Default.OutlinedFlag,
+                        contentDescription = null,
+                        modifier = Modifier.size(12.dp),
+                    )
+                },
+            ) { onFilter("flagged") }
+            Box(
+                modifier = Modifier
+                    .width(1.dp)
+                    .height(16.dp)
+                    .background(Neutral200),
+            )
+            Text(
+                "Exam mode",
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color.White)
+                    .border(1.dp, Neutral200, RoundedCornerShape(12.dp))
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Neutral600,
+            )
         }
-        HorizontalDivider(modifier = Modifier.padding(top = 10.dp), color = Color(0xFFE5E5E5).copy(alpha = 0.85f))
+        HorizontalDivider(
+            modifier = Modifier.padding(top = 10.dp),
+            color = Neutral200.copy(alpha = 0.85f),
+        )
     }
 }
 
 @Composable
-private fun PracticeFilterChip(label: String, active: Boolean, onClick: () -> Unit) {
+private fun PracticeFilterChip(
+    label: String,
+    active: Boolean,
+    leading: (@Composable () -> Unit)? = null,
+    onClick: () -> Unit,
+) {
     val bg = if (active) Neutral900 else Color.White
-    val fg = if (active) Color.White else Muted
-    val borderColor = if (active) Neutral900 else Border
-    Text(
-        label,
+    val fg = if (active) Color.White else Neutral600
+    val borderColor = if (active) Neutral900 else Neutral200
+    Row(
         modifier = Modifier
             .clip(RoundedCornerShape(12.dp))
             .background(bg)
             .border(1.dp, borderColor, RoundedCornerShape(12.dp))
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 6.dp),
-        fontSize = 12.sp,
-        fontWeight = FontWeight.SemiBold,
-        color = fg,
-    )
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        if (leading != null) {
+            Box(modifier = Modifier.size(12.dp)) { leading() }
+        }
+        Text(label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = fg)
+    }
 }
 
 @Composable
@@ -292,202 +386,301 @@ private fun MobileScoreChips(state: PracticeUiState) {
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        MiniStatChip("Correct ${state.correctInChapter()}", EmeraldSoft, EmeraldBorder, Color(0xFF065F46))
-        MiniStatChip("Wrong ${state.wrongInChapter}", RoseSoft, RoseBorder, Color(0xFF9F1239))
-        MiniStatChip("Left ${state.pendingInChapter}", Color(0xFFFAFAFA), Border, Ink)
+        MiniStatChip("Correct ${state.correctInChapter()}", EmeraldSoft, EmeraldBorder, EmeraldText, Icons.Default.CheckCircle)
+        MiniStatChip("Wrong ${state.wrongInChapter}", RoseSoft, RoseBorder, RoseText, Icons.Default.Warning)
+        MiniStatChip(
+            "Left ${state.pendingInChapter}",
+            Neutral50,
+            Neutral200,
+            Neutral600,
+            Icons.Default.RadioButtonUnchecked,
+        )
     }
 }
 
 @Composable
-private fun MiniStatChip(label: String, bg: Color, border: Color, color: Color) {
-    Text(
-        label,
+private fun MiniStatChip(
+    label: String,
+    bg: Color,
+    border: Color,
+    color: Color,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+) {
+    Row(
         modifier = Modifier
             .clip(RoundedCornerShape(12.dp))
             .background(bg)
             .border(1.dp, border, RoundedCornerShape(12.dp))
-            .padding(horizontal = 10.dp, vertical = 8.dp),
-        fontSize = 11.sp,
-        fontWeight = FontWeight.SemiBold,
-        color = color,
-    )
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(14.dp))
+        Text(label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = color)
+    }
 }
 
 @Composable
-private fun MobilePracticeNavBar(
+private fun MobilePracticeBottomBar(
     state: PracticeUiState,
     onPrev: () -> Unit,
     onNext: () -> Unit,
-    onToggleMap: () -> Unit,
-    mapExpanded: Boolean,
+    onOpenMap: () -> Unit,
 ) {
-    BottomAppBar(containerColor = Color.White.copy(alpha = 0.97f)) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = Color.White.copy(alpha = 0.97f),
+        shadowElevation = 0.dp,
+        tonalElevation = 0.dp,
+        border = androidx.compose.foundation.BorderStroke(1.dp, Neutral200),
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 8.dp),
+                .windowInsetsPadding(WindowInsets.navigationBars)
+                .padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            IconButton(onClick = onPrev, enabled = state.index > 0) {
-                Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Previous")
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .border(1.dp, Neutral200, RoundedCornerShape(16.dp))
+                    .clickable(enabled = state.index > 0, onClick = onPrev),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                    contentDescription = "Previous",
+                    tint = Neutral800,
+                    modifier = Modifier.size(20.dp),
+                )
             }
             Row(
                 modifier = Modifier
                     .weight(1f)
                     .clip(RoundedCornerShape(16.dp))
-                    .background(Color(0xFFFAFAFA))
-                    .border(1.dp, Border, RoundedCornerShape(16.dp))
-                    .clickable(onClick = onToggleMap)
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                    .background(Neutral50)
+                    .border(1.dp, Neutral200, RoundedCornerShape(16.dp))
+                    .clickable(onClick = onOpenMap)
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Text(
-                    "${state.index + 1}/${state.questions.size}",
-                    fontWeight = FontWeight.Bold,
-                    color = Ink,
-                    fontSize = 12.sp,
-                )
-                Text(
-                    if (mapExpanded) "Hide map" else "Question map",
-                    color = Muted,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold,
+                QuestionMapDotStrip(state = state, modifier = Modifier.weight(1f))
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        "${state.index + 1}/${state.questions.size}",
+                        fontWeight = FontWeight.Bold,
+                        color = Neutral900,
+                        fontSize = 12.sp,
+                        lineHeight = 14.sp,
+                    )
+                    Text("Map", color = Neutral500, fontSize = 10.sp)
+                }
+                Icon(
+                    Icons.Default.ExpandLess,
+                    contentDescription = null,
+                    tint = Neutral400,
+                    modifier = Modifier.size(16.dp),
                 )
             }
-            Button(
-                onClick = onNext,
-                enabled = if (state.revealed) true else state.selected != null,
-                colors = ButtonDefaults.buttonColors(containerColor = Emerald),
-                shape = RoundedCornerShape(14.dp),
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Emerald600)
+                    .clickable(
+                        enabled = if (state.revealed) true else state.selected != null,
+                        onClick = onNext,
+                    ),
+                contentAlignment = Alignment.Center,
             ) {
-                Text(
-                    when {
-                        !state.revealed -> "Check"
-                        state.index < state.questions.lastIndex -> "Next"
-                        state.hasMore -> if (state.loadingMore) "…" else "More"
-                        else -> "Done"
-                    },
+                Icon(
+                    Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = "Next",
+                    tint = Color.White,
+                    modifier = Modifier.size(20.dp),
                 )
-                if (state.revealed) {
-                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, modifier = Modifier.size(18.dp))
-                }
             }
         }
     }
 }
 
 @Composable
-private fun ScoreStrip(state: PracticeUiState, onJumpOpen: () -> Unit) {
-    val total = if (state.totalCount > 0) state.totalCount else state.questions.size
-    val completed = state.completedInChapter()
-    val correct = state.correctInChapter()
-    val wrong = state.wrongInChapter
-    val pending = state.pendingInChapter
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(Color.White)
-            .border(1.dp, Border, RoundedCornerShape(16.dp))
-            .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+private fun QuestionMapDotStrip(state: PracticeUiState, modifier: Modifier = Modifier) {
+    val start = (state.index - 4).coerceAtLeast(0)
+    val end = min(state.questions.size, start + 9)
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Text(
-                "${state.index + 1}",
-                fontWeight = FontWeight.Bold,
-                color = Ink,
-                fontSize = 14.sp,
-            )
-            Text(
-                "/$total",
-                color = Muted,
-                fontSize = 13.sp,
-            )
-            LinearProgressIndicator(
-                progress = { state.progressPct / 100f },
+        for (i in start until end) {
+            val id = state.questions.getOrNull(i)?.id
+            val cur = i == state.index
+            val ok = id != null && id in state.correctIds
+            val bad = id != null && id in state.completedIds && !ok
+            val (w, color) = when {
+                cur -> 16.dp to Emerald500
+                ok -> 6.dp to Color(0xFF34D399)
+                bad -> 6.dp to Color(0xFFFB7185)
+                else -> 6.dp to Neutral300
+            }
+            Box(
                 modifier = Modifier
-                    .weight(1f)
+                    .width(w)
                     .height(6.dp)
-                    .clip(RoundedCornerShape(999.dp)),
-                color = Emerald,
-                trackColor = Color(0xFFE5E5E5),
-            )
-            Text(
-                "${state.progressPct}%",
-                style = MaterialTheme.typography.labelSmall,
-                color = Muted,
-                fontWeight = FontWeight.SemiBold,
+                    .clip(RoundedCornerShape(999.dp))
+                    .background(color),
             )
         }
+    }
+}
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+@Composable
+private fun ChapterNavSheet(
+    state: PracticeUiState,
+    listFilter: String,
+    onClose: () -> Unit,
+    onJump: (Int) -> Unit,
+    onJumpOpen: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .zIndex(50f),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.4f))
+                .clickable(onClick = onClose),
+        )
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .height(520.dp)
+                .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+                .background(Color.White)
+                .border(1.dp, Neutral200, RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+                .windowInsetsPadding(WindowInsets.navigationBars),
         ) {
-            StatChip(
-                modifier = Modifier.weight(1f),
-                value = "$correct",
-                label = "Correct",
-                bg = EmeraldSoft,
-                border = EmeraldBorder,
-                valueColor = Color(0xFF065F46),
-            )
-            StatChip(
-                modifier = Modifier.weight(1f),
-                value = "$wrong",
-                label = "Wrong",
-                bg = RoseSoft,
-                border = RoseBorder,
-                valueColor = Color(0xFF9F1239),
-            )
-            StatChip(
-                modifier = Modifier.weight(1f),
-                value = "$pending",
-                label = "Left",
-                bg = Color(0xFFFAFAFA),
-                border = Border,
-                valueColor = Ink,
-            )
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    Icons.Default.Star,
-                    contentDescription = null,
-                    tint = Color(0xFFCA8A04),
-                    modifier = Modifier.size(16.dp),
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 12.dp, bottom = 4.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(40.dp)
+                        .height(4.dp)
+                        .clip(RoundedCornerShape(999.dp))
+                        .background(Neutral200),
                 )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    "${state.points} pts",
-                    fontWeight = FontWeight.SemiBold,
-                    color = Ink,
-                    fontSize = 13.sp,
-                )
-                if (completed > 0) {
+            }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column {
+                    Text("Question map", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Neutral900)
                     Text(
-                        " · ${state.accuracyPct}% accuracy",
-                        color = Muted,
+                        "${state.questions.size}${if (state.hasMore) "+" else ""} loaded · tap to jump",
                         fontSize = 12.sp,
+                        color = Neutral500,
+                        modifier = Modifier.padding(top = 2.dp),
+                    )
+                }
+                IconButton(onClick = onClose) {
+                    Icon(Icons.Default.Close, contentDescription = "Close", tint = Neutral600)
+                }
+            }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 12.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Neutral50)
+                    .border(1.dp, Neutral200, RoundedCornerShape(16.dp))
+                    .padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    ProgressRing(pct = state.progressPct, sizeDp = 46f, strokeDp = 4.5f)
+                    Text(
+                        "${state.progressPct}%",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Neutral800,
+                    )
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        buildAnnotatedString {
+                            append("${state.completedInChapter()}")
+                            withStyle(SpanStyle(color = Neutral400, fontWeight = FontWeight.Medium)) {
+                                append("/${if (state.totalCount > 0) state.totalCount else state.questions.size}")
+                            }
+                            append(" done")
+                        },
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        color = Neutral900,
+                    )
+                    Text(
+                        "${state.accuracyPct}% accuracy · ${state.points} pts",
+                        fontSize = 12.sp,
+                        color = Neutral500,
+                        modifier = Modifier.padding(top = 2.dp),
                     )
                 }
             }
-            if (state.firstPendingIndex >= 0 && state.firstPendingIndex != state.index) {
-                TextButton(onClick = onJumpOpen) {
-                    Text("Jump to open", color = Emerald, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                LegendDot(Color(0xFF10B981), "Correct: ${state.correctInChapter()}")
+                LegendDot(Color(0xFFF43F5E), "Wrong: ${state.wrongInChapter}")
+                LegendDot(Neutral300, "Pending: ${state.pendingInChapter}")
+            }
+            HorizontalDivider(color = Neutral100)
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 16.dp),
+            ) {
+                ChapterQuestionMapGrid(
+                    state = state,
+                    listFilter = listFilter,
+                    onJump = onJump,
+                )
+                if (state.firstPendingIndex >= 0) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        "First unattempted: Q${state.firstPendingIndex + 1}",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color(0xFFFFFBEB))
+                            .border(1.dp, Color(0xFFFDE68A), RoundedCornerShape(12.dp))
+                            .clickable(onClick = onJumpOpen)
+                            .padding(12.dp),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF92400E),
+                    )
                 }
             }
         }
@@ -495,139 +688,91 @@ private fun ScoreStrip(state: PracticeUiState, onJumpOpen: () -> Unit) {
 }
 
 @Composable
-private fun StatChip(
-    modifier: Modifier = Modifier,
-    value: String,
-    label: String,
-    bg: Color,
-    border: Color,
-    valueColor: Color,
-) {
-    Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(bg)
-            .border(1.dp, border, RoundedCornerShape(12.dp))
-            .padding(vertical = 8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(value, fontWeight = FontWeight.Bold, color = valueColor, fontSize = 15.sp)
-        Text(label, color = valueColor.copy(alpha = 0.75f), fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+private fun LegendDot(color: Color, label: String) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Box(
+            modifier = Modifier
+                .size(10.dp)
+                .clip(CircleShape)
+                .background(color),
+        )
+        Text(label, fontSize = 11.sp, color = Neutral500, fontWeight = FontWeight.Medium)
+    }
+}
+
+@Composable
+private fun ProgressRing(pct: Int, sizeDp: Float, strokeDp: Float) {
+    val pctF = pct.coerceIn(0, 100) / 100f
+    Canvas(modifier = Modifier.size(sizeDp.dp)) {
+        val stroke = strokeDp.dp.toPx()
+        val radius = (size.minDimension - stroke) / 2f
+        val topLeft = Offset((size.width - radius * 2) / 2f, (size.height - radius * 2) / 2f)
+        val arcSize = Size(radius * 2, radius * 2)
+        drawArc(
+            color = Neutral100,
+            startAngle = 0f,
+            sweepAngle = 360f,
+            useCenter = false,
+            topLeft = topLeft,
+            size = arcSize,
+            style = Stroke(width = stroke),
+        )
+        drawArc(
+            color = Emerald500,
+            startAngle = -90f,
+            sweepAngle = 360f * pctF,
+            useCenter = false,
+            topLeft = topLeft,
+            size = arcSize,
+            style = Stroke(width = stroke, cap = StrokeCap.Round),
+        )
     }
 }
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun QuestionPalette(
+private fun ChapterQuestionMapGrid(
     state: PracticeUiState,
     listFilter: String,
-    onToggle: () -> Unit,
     onJump: (Int) -> Unit,
-    onJumpOpen: () -> Unit,
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(Color.White)
-            .border(1.dp, Border, RoundedCornerShape(16.dp))
-            .padding(12.dp),
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        maxItemsInEachRow = 8,
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onToggle),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Text(
-                "QUESTION MAP",
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold,
-                color = Muted,
-                letterSpacing = 0.8.sp,
-            )
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (state.firstPendingIndex >= 0) {
-                    TextButton(onClick = onJumpOpen) {
-                        Text("Jump to open", color = Emerald, fontWeight = FontWeight.Bold, fontSize = 11.sp)
-                    }
-                }
-                Icon(
-                    if (state.paletteExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                    contentDescription = if (state.paletteExpanded) "Collapse" else "Expand",
-                    tint = Muted,
-                )
+        state.questions.forEachIndexed { i, question ->
+            val id = question.id
+            val ok = id in state.correctIds
+            val bad = id in state.completedIds && !ok
+            if (listFilter == "wrong" && !bad) return@forEachIndexed
+            if (listFilter == "flagged") return@forEachIndexed
+            val cur = i == state.index
+            val (bg, borderColor, textColor) = when {
+                cur -> Triple(Emerald600, Emerald500, Color.White)
+                ok -> Triple(EmeraldSoft, Color(0xFF6EE7B7), EmeraldText)
+                bad -> Triple(RoseSoft, Color(0xFFFDA4AF), RoseText)
+                else -> Triple(Color.White, Neutral200, Neutral600)
             }
-        }
-
-        if (state.paletteExpanded) {
-            Spacer(modifier = Modifier.height(8.dp))
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(bg)
+                    .border(
+                        width = if (cur) 2.dp else 1.dp,
+                        color = borderColor,
+                        shape = RoundedCornerShape(12.dp),
+                    )
+                    .clickable { onJump(i) },
+                contentAlignment = Alignment.Center,
             ) {
-                state.questions.forEachIndexed { i, question ->
-                    val id = question.id
-                    val ok = id in state.correctIds
-                    val bad = id in state.completedIds && !ok
-                    if (listFilter == "wrong" && !bad) return@forEachIndexed
-                    val cur = i == state.index
-                    val bg = when {
-                        cur -> Emerald
-                        ok -> EmeraldSoft
-                        bad -> RoseSoft
-                        else -> Color.White
-                    }
-                    val borderColor = when {
-                        cur -> Emerald
-                        ok -> EmeraldBorder
-                        bad -> RoseBorder
-                        else -> Border
-                    }
-                    val textColor = when {
-                        cur -> Color.White
-                        ok -> Color(0xFF065F46)
-                        bad -> Color(0xFF9F1239)
-                        else -> Muted
-                    }
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(bg)
-                            .border(1.dp, borderColor, RoundedCornerShape(12.dp))
-                            .clickable { onJump(i) },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            "${i + 1}",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp,
-                            color = textColor,
-                            textAlign = TextAlign.Center,
-                        )
-                    }
-                }
-                if (state.hasMore) {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(Color(0xFFFAFAFA))
-                            .border(1.dp, Border, RoundedCornerShape(12.dp)),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text("…", color = Muted, fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
-            if (state.loadingMore) {
-                Spacer(modifier = Modifier.height(8.dp))
-                LinearProgressIndicator(
-                    modifier = Modifier.fillMaxWidth().height(3.dp),
-                    color = Brand,
-                    trackColor = BrandSoft,
+                Text(
+                    "${i + 1}",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp,
+                    color = textColor,
+                    textAlign = TextAlign.Center,
                 )
             }
         }
@@ -642,30 +787,32 @@ private fun QuestionCardBody(
     onSelect: (String) -> Unit,
     onToggleSolution: () -> Unit,
 ) {
+    val completed = question.id in state.completedIds
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
+            .shadow(1.dp, RoundedCornerShape(24.dp), clip = false)
+            .clip(RoundedCornerShape(24.dp))
             .background(Color.White)
-            .border(1.dp, Border, RoundedCornerShape(20.dp)),
+            .border(1.dp, Neutral200, RoundedCornerShape(24.dp)),
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color(0xFFF8FAFC))
-                .padding(14.dp),
+                .background(Neutral50)
+                .padding(horizontal = 16.dp, vertical = 16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.Top,
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Box(
                     modifier = Modifier
                         .size(36.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(Ink),
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Neutral900),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
@@ -679,8 +826,9 @@ private fun QuestionCardBody(
                     Text(
                         "DIFFICULTY",
                         style = MaterialTheme.typography.labelSmall,
-                        color = Muted,
+                        color = Neutral500,
                         fontSize = 10.sp,
+                        fontWeight = FontWeight.Medium,
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     DifficultyDots(question.difficulty)
@@ -690,68 +838,29 @@ private fun QuestionCardBody(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                question.year?.takeIf { it.isNotBlank() }?.let { year ->
-                    YearBadge(year)
-                }
-                StatusBadge(done = question.id in state.completedIds)
+                question.year?.takeIf { it.isNotBlank() }?.let { year -> YearBadge(year) }
+                StatusBadge(done = completed)
             }
         }
+        HorizontalDivider(color = Neutral200)
 
         Column(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             HtmlText(html = question.question, modifier = Modifier.fillMaxWidth())
 
             val correctLetter = question.correct_option?.trim()?.uppercase()?.take(1)
             question.options().forEach { (letter, text) ->
-                val selected = state.selected.equals(letter, ignoreCase = true)
-                val isCorrectOpt = letter.equals(correctLetter, ignoreCase = true)
-                val borderColor = when {
-                    state.revealed && isCorrectOpt -> CorrectGreen
-                    state.revealed && selected -> WrongRed
-                    selected -> Brand
-                    else -> Border
-                }
-                val bg = when {
-                    state.revealed && isCorrectOpt -> CorrectBg
-                    state.revealed && selected -> WrongBg
-                    selected -> BrandSoft
-                    else -> Color.White
-                }
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(bg)
-                        .border(1.dp, borderColor, RoundedCornerShape(12.dp))
-                        .clickable(enabled = !state.revealed) { onSelect(letter) }
-                        .padding(12.dp),
-                    verticalAlignment = Alignment.Top,
-                ) {
-                    Text(
-                        "$letter.",
-                        fontWeight = FontWeight.Bold,
-                        color = Brand,
-                        modifier = Modifier.padding(end = 8.dp),
-                    )
-                    HtmlText(html = text, modifier = Modifier.weight(1f), textSizeSp = 14f)
-                    if (state.revealed && isCorrectOpt) {
-                        Icon(
-                            Icons.Default.CheckCircle,
-                            contentDescription = "Correct",
-                            tint = CorrectGreen,
-                            modifier = Modifier.size(18.dp),
-                        )
-                    } else if (state.revealed && selected && !isCorrectOpt) {
-                        Icon(
-                            Icons.Default.Warning,
-                            contentDescription = "Incorrect",
-                            tint = WrongRed,
-                            modifier = Modifier.size(18.dp),
-                        )
-                    }
-                }
+                OptionRow(
+                    letter = letter,
+                    text = text,
+                    selected = state.selected.equals(letter, ignoreCase = true),
+                    revealed = state.revealed,
+                    isCorrectOpt = letter.equals(correctLetter, ignoreCase = true),
+                    enabled = !state.revealed,
+                    onSelect = { onSelect(letter) },
+                )
             }
 
             if (state.revealed && state.lastCorrect != null) {
@@ -766,6 +875,8 @@ private fun QuestionCardBody(
                     onClick = onToggleSolution,
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth(),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, SolutionBorder),
+                    colors = ButtonDefaults.outlinedButtonColors(containerColor = SolutionBg),
                 ) {
                     Icon(
                         Icons.AutoMirrored.Filled.MenuBook,
@@ -778,6 +889,7 @@ private fun QuestionCardBody(
                         if (state.showSolution) "Hide Solution" else "Show Solution",
                         color = SolutionIndigo,
                         fontWeight = FontWeight.SemiBold,
+                        fontSize = 14.sp,
                     )
                 }
             }
@@ -785,6 +897,77 @@ private fun QuestionCardBody(
             if (state.revealed && state.showSolution) {
                 SolutionPanel(question = question, correctLetter = correctLetter)
             }
+        }
+    }
+}
+
+@Composable
+private fun OptionRow(
+    letter: String,
+    text: String,
+    selected: Boolean,
+    revealed: Boolean,
+    isCorrectOpt: Boolean,
+    enabled: Boolean,
+    onSelect: () -> Unit,
+) {
+    val borderWidth = when {
+        revealed && (isCorrectOpt || (selected && !isCorrectOpt)) -> 2.dp
+        selected && !revealed -> 2.dp
+        else -> 1.dp
+    }
+    val borderColor = when {
+        revealed && isCorrectOpt -> CorrectBorder
+        revealed && selected && !isCorrectOpt -> WrongBorder
+        selected && !revealed -> Neutral900
+        else -> Neutral200
+    }
+    val bg = when {
+        revealed && isCorrectOpt -> CorrectBg
+        revealed && selected && !isCorrectOpt -> WrongBg
+        selected && !revealed -> Neutral100
+        else -> Color.White
+    }
+    val letterBg = when {
+        selected && !revealed -> Neutral900
+        revealed && isCorrectOpt -> Emerald600
+        revealed && selected && !isCorrectOpt -> WrongRed
+        else -> Neutral100
+    }
+    val letterFg = when {
+        (selected && !revealed) || (revealed && (isCorrectOpt || selected)) -> Color.White
+        else -> Neutral600
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(bg)
+            .border(borderWidth, borderColor, RoundedCornerShape(12.dp))
+            .clickable(enabled = enabled, onClick = onSelect)
+            .padding(horizontal = 14.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(letterBg)
+                .border(1.dp, if (letterBg == Neutral100) Neutral200 else letterBg, RoundedCornerShape(8.dp)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(letter, fontWeight = FontWeight.Bold, color = letterFg, fontSize = 12.sp)
+        }
+        HtmlText(
+            html = text,
+            modifier = Modifier.weight(1f),
+            textSizeSp = 14f,
+        )
+        if (revealed && isCorrectOpt) {
+            Icon(Icons.Default.CheckCircle, contentDescription = null, tint = CorrectGreen, modifier = Modifier.size(18.dp))
+        } else if (revealed && selected && !isCorrectOpt) {
+            Icon(Icons.Default.Warning, contentDescription = null, tint = WrongRed, modifier = Modifier.size(18.dp))
         }
     }
 }
@@ -809,7 +992,7 @@ private fun DifficultyDots(difficulty: String?) {
                 modifier = Modifier
                     .size(8.dp)
                     .clip(CircleShape)
-                    .background(if (i <= level) active else Color(0xFFE5E5E5)),
+                    .background(if (i <= level) active else Neutral200),
             )
         }
         if (!difficulty.isNullOrBlank()) {
@@ -831,7 +1014,7 @@ private fun YearBadge(year: String) {
         modifier = Modifier
             .clip(RoundedCornerShape(8.dp))
             .background(Color.White)
-            .border(1.dp, Border, RoundedCornerShape(8.dp))
+            .border(1.dp, Neutral200, RoundedCornerShape(8.dp))
             .padding(horizontal = 8.dp, vertical = 4.dp),
         style = MaterialTheme.typography.labelSmall,
         color = Ink,
@@ -862,7 +1045,7 @@ private fun StatusBadge(done: Boolean) {
 @Composable
 private fun FeedbackBanner(correct: Boolean, correctOption: String?) {
     val bg = if (correct) CorrectBg else WrongBg
-    val border = if (correct) CorrectBorder else WrongBorder
+    val border = if (correct) Color(0xFFBBF7D0) else Color(0xFFFECACA)
     val titleColor = if (correct) Color(0xFF166534) else Color(0xFF991B1B)
     val bodyColor = if (correct) Color(0xFF15803D) else Color(0xFFB91C1C)
     Row(
@@ -870,7 +1053,7 @@ private fun FeedbackBanner(correct: Boolean, correctOption: String?) {
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .background(bg)
-            .border(2.dp, border, RoundedCornerShape(12.dp))
+            .border(1.dp, border, RoundedCornerShape(12.dp))
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -903,38 +1086,33 @@ private fun SolutionPanel(question: PracticeQuestion, correctLetter: String?) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(SolutionBg)
-            .border(1.dp, SolutionBorder, RoundedCornerShape(14.dp))
-            .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+            .clip(RoundedCornerShape(12.dp))
+            .background(SolutionBg.copy(alpha = 0.8f))
+            .border(1.dp, SolutionBorder, RoundedCornerShape(12.dp))
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
                 Icons.AutoMirrored.Filled.MenuBook,
                 contentDescription = null,
                 tint = SolutionIndigo,
-                modifier = Modifier.size(16.dp),
+                modifier = Modifier.size(14.dp),
             )
             Spacer(modifier = Modifier.width(6.dp))
-            Text(
-                "Solution",
-                fontWeight = FontWeight.Bold,
-                color = SolutionIndigo,
-                fontSize = 13.sp,
-            )
+            Text("Solution", fontWeight = FontWeight.Bold, color = SolutionIndigo, fontSize = 14.sp)
         }
         if (!correctLetter.isNullOrBlank()) {
             Text(
                 "Correct Answer: $correctLetter",
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(Color.White.copy(alpha = 0.85f))
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color.White.copy(alpha = 0.8f))
                     .padding(10.dp),
                 fontWeight = FontWeight.SemiBold,
                 color = SolutionIndigo,
-                fontSize = 13.sp,
+                fontSize = 14.sp,
             )
         }
         val body = question.solutiontext?.takeIf { it.isNotBlank() }
@@ -942,51 +1120,7 @@ private fun SolutionPanel(question: PracticeQuestion, correctLetter: String?) {
         if (body != null) {
             HtmlText(html = body, modifier = Modifier.fillMaxWidth(), textSizeSp = 14f)
         } else {
-            Text("No written solution yet.", color = Muted, fontSize = 13.sp)
-        }
-    }
-}
-
-@Composable
-private fun NavRow(
-    state: PracticeUiState,
-    onPrev: () -> Unit,
-    onCheck: () -> Unit,
-    onNext: () -> Unit,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        OutlinedButton(
-            onClick = onPrev,
-            enabled = state.index > 0,
-            shape = RoundedCornerShape(12.dp),
-        ) { Text("Prev") }
-
-        if (!state.revealed) {
-            Button(
-                onClick = onCheck,
-                enabled = state.selected != null,
-                colors = ButtonDefaults.buttonColors(containerColor = Brand),
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.weight(1f),
-            ) { Text("Check") }
-        } else {
-            Button(
-                onClick = onNext,
-                colors = ButtonDefaults.buttonColors(containerColor = Emerald),
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.weight(1f),
-            ) {
-                Text(
-                    when {
-                        state.index < state.questions.lastIndex -> "Next"
-                        state.hasMore -> if (state.loadingMore) "Loading…" else "Load more"
-                        else -> "Done"
-                    }
-                )
-            }
+            Text("No written solution yet.", color = Neutral500, fontSize = 14.sp)
         }
     }
 }

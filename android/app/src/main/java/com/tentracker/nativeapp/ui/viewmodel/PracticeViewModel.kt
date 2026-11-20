@@ -31,7 +31,7 @@ data class PracticeUiState(
     val totalCount: Int = 0,
     val error: String? = null,
     val saveHint: String? = null,
-    val paletteExpanded: Boolean = true,
+    val paletteExpanded: Boolean = false,
 ) {
     fun completedInChapter(): Int {
         if (questions.isEmpty()) return 0
