@@ -82,6 +82,7 @@ import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.PlayerConstan
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.YouTubePlayer
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.listeners.AbstractYouTubePlayerListener
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.listeners.FullscreenListener
+import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.listeners.YouTubePlayerCallback
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.options.IFramePlayerOptions
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.views.YouTubePlayerView
 import com.tentracker.nativeapp.data.ApiClient
@@ -624,10 +625,12 @@ private fun YouTubePlayerBox(
 
     LaunchedEffect(videoId) {
         if (loadedId != null && loadedId != videoId) {
-            playerView.getYouTubePlayerWhenReady {
-                it.loadVideo(videoId, 0f)
-                loadedId = videoId
-            }
+            playerView.getYouTubePlayerWhenReady(object : YouTubePlayerCallback {
+                override fun onYouTubePlayer(youTubePlayer: YouTubePlayer) {
+                    youTubePlayer.loadVideo(videoId, 0f)
+                    loadedId = videoId
+                }
+            })
         }
     }
 
