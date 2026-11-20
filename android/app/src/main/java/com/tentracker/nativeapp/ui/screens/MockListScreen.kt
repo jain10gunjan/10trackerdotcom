@@ -1,6 +1,7 @@
 package com.tentracker.nativeapp.ui.screens
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,11 +18,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.OpenInBrowser
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Quiz
 import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.TrackChanges
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -43,6 +45,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -50,8 +53,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tentracker.nativeapp.data.MockTestSummary
 import com.tentracker.nativeapp.ui.theme.Border
-import com.tentracker.nativeapp.ui.theme.Brand
-import com.tentracker.nativeapp.ui.theme.BrandSoft
+import com.tentracker.nativeapp.ui.theme.Bg
+import com.tentracker.nativeapp.ui.theme.Emerald
+import com.tentracker.nativeapp.ui.theme.EmeraldBorder
+import com.tentracker.nativeapp.ui.theme.EmeraldDark
+import com.tentracker.nativeapp.ui.theme.EmeraldSoft
 import com.tentracker.nativeapp.ui.theme.Ink
 import com.tentracker.nativeapp.ui.theme.Muted
 import com.tentracker.nativeapp.ui.viewmodel.MockListViewModel
@@ -68,6 +74,10 @@ private val DiffHardBorder = Color(0xFFFECDD3)
 private val DiffMixedBg = Color(0xFFF5F5F5)
 private val DiffMixedText = Color(0xFF404040)
 
+private val VioletSoft = Color(0xFFF5F3FF)
+private val VioletBorder = Color(0xFFEDE9FE)
+private val VioletInk = Color(0xFF5B21B6)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MockListScreen(
@@ -81,7 +91,7 @@ fun MockListScreen(
     val state by vm.state.collectAsState()
 
     Scaffold(
-        containerColor = Color(0xFFFAFAFA),
+        containerColor = Bg,
         topBar = {
             TopAppBar(
                 title = {
@@ -114,7 +124,7 @@ fun MockListScreen(
                 Box(
                     modifier = Modifier.fillMaxSize().padding(padding),
                     contentAlignment = Alignment.Center,
-                ) { CircularProgressIndicator(color = Brand) }
+                ) { CircularProgressIndicator(color = Emerald) }
             }
             state.error != null && state.tests.isEmpty() -> {
                 Column(modifier = Modifier.padding(padding).padding(16.dp)) {
@@ -128,16 +138,11 @@ fun MockListScreen(
             else -> {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize().padding(padding),
-                    contentPadding = PaddingValues(16.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     item {
-                        Text(
-                            "${state.tests.size} tests available",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = Muted,
-                            fontWeight = FontWeight.SemiBold,
-                        )
+                        MockListHubBanner(title = title, testsCount = state.tests.size)
                     }
                     items(state.tests, key = { it.id }) { test ->
                         MockTestCard(
@@ -166,33 +171,98 @@ fun MockListScreen(
 }
 
 @Composable
+private fun MockListHubBanner(title: String, testsCount: Int) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(28.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        border = BorderStroke(1.dp, Border.copy(alpha = 0.9f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+    ) {
+        Box {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.linearGradient(
+                            colors = listOf(
+                                EmeraldSoft.copy(alpha = 0.35f),
+                                Color.Transparent,
+                                VioletSoft.copy(alpha = 0.25f),
+                            ),
+                        ),
+                    ),
+            )
+            Column(modifier = Modifier.padding(20.dp)) {
+                Surface(
+                    shape = RoundedCornerShape(999.dp),
+                    color = EmeraldSoft.copy(alpha = 0.9f),
+                    border = BorderStroke(1.dp, EmeraldBorder),
+                ) {
+                    Text(
+                        "Mock tests",
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = EmeraldDark,
+                    )
+                }
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    title,
+                    fontWeight = FontWeight.Bold,
+                    color = Ink,
+                    style = MaterialTheme.typography.headlineSmall,
+                    lineHeight = 28.sp,
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    "Timed full mocks with ranks on web. $testsCount tests available — sign in on web to sync credits.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Muted,
+                    lineHeight = 20.sp,
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun MockTestCard(
     test: MockTestSummary,
     onStart: () -> Unit,
     onOpenWeb: () -> Unit,
 ) {
+    val motd = test.isMockOfDay
+    val iconBg = if (motd) EmeraldSoft else VioletSoft
+    val iconBorder = if (motd) EmeraldBorder else VioletBorder
+    val iconTint = if (motd) EmeraldDark else VioletInk
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (test.isMockOfDay) BrandSoft else Color.White,
+            containerColor = if (motd) EmeraldSoft.copy(alpha = 0.35f) else Color.White,
         ),
-        border = BorderStroke(1.dp, if (test.isMockOfDay) Brand.copy(alpha = 0.25f) else Border),
+        border = BorderStroke(
+            1.dp,
+            if (motd) EmeraldBorder else Border,
+        ),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Surface(
                     shape = RoundedCornerShape(12.dp),
-                    color = BrandSoft,
-                    border = BorderStroke(1.dp, Brand.copy(alpha = 0.15f)),
+                    color = iconBg,
+                    border = BorderStroke(1.dp, iconBorder),
                     modifier = Modifier.size(44.dp),
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
                             Icons.Default.MenuBook,
                             contentDescription = null,
-                            tint = Brand,
+                            tint = iconTint,
                             modifier = Modifier.size(22.dp),
                         )
                     }
@@ -202,10 +272,10 @@ private fun MockTestCard(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        if (test.isMockOfDay) {
-                            MotChip("Mock of day", BrandSoft, Brand, Brand.copy(alpha = 0.3f))
+                        if (motd) {
+                            MotChip("Mock of day", EmeraldSoft, EmeraldDark, EmeraldBorder)
                         } else {
-                            MotChip("Full mock", BrandSoft, Brand, Brand.copy(alpha = 0.15f))
+                            MotChip("Full mock", VioletSoft, VioletInk, VioletBorder)
                         }
                         test.difficulty?.takeIf { it.isNotBlank() }?.let { diff ->
                             DifficultyChip(diff)
@@ -217,15 +287,18 @@ private fun MockTestCard(
                         fontWeight = FontWeight.Bold,
                         color = Ink,
                         style = MaterialTheme.typography.titleMedium,
+                        fontSize = 17.sp,
+                        lineHeight = 22.sp,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
                     test.description?.takeIf { it.isNotBlank() }?.let { desc ->
-                        Spacer(modifier = Modifier.height(4.dp))
+                        Spacer(modifier = Modifier.height(6.dp))
                         Text(
                             desc,
                             style = MaterialTheme.typography.bodySmall,
                             color = Muted,
+                            fontSize = 14.sp,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
                         )
@@ -235,8 +308,8 @@ private fun MockTestCard(
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        MetaLine(Icons.Default.Quiz, "${test.totalQuestions} questions")
-                        MetaLine(Icons.Default.Timer, formatMockDuration(test.duration))
+                        MetaLine(Icons.Default.TrackChanges, "${test.totalQuestions} questions", Emerald)
+                        MetaLine(Icons.Default.Timer, formatMockDuration(test.duration), Emerald)
                     }
                 }
             }
@@ -249,7 +322,13 @@ private fun MockTestCard(
             ) {
                 Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.size(6.dp))
-                Text("Start test", fontWeight = FontWeight.SemiBold)
+                Text("Start test", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                Spacer(modifier = Modifier.weight(1f))
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                )
             }
             TextButton(
                 onClick = onOpenWeb,
@@ -264,9 +343,13 @@ private fun MockTestCard(
 }
 
 @Composable
-private fun MetaLine(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        Icon(icon, contentDescription = null, tint = Brand, modifier = Modifier.size(14.dp))
+private fun MetaLine(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    tint: Color = Emerald,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(14.dp))
         Text(label, style = MaterialTheme.typography.labelSmall, color = Muted, fontSize = 12.sp)
     }
 }
@@ -280,11 +363,11 @@ private fun MotChip(text: String, bg: Color, fg: Color, borderColor: Color) {
     ) {
         Text(
             text.uppercase(),
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-            fontSize = 9.sp,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+            fontSize = 10.sp,
             fontWeight = FontWeight.Bold,
             color = fg,
-            letterSpacing = 0.5.sp,
+            letterSpacing = 0.4.sp,
         )
     }
 }
@@ -301,7 +384,7 @@ private fun DifficultyChip(difficulty: String) {
     Surface(shape = RoundedCornerShape(6.dp), color = bg, border = BorderStroke(1.dp, border)) {
         Text(
             difficulty.replaceFirstChar { it.uppercase() },
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
             fontSize = 10.sp,
             fontWeight = FontWeight.Bold,
             color = fg,

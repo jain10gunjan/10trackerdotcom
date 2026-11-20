@@ -28,7 +28,9 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -56,8 +58,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -65,15 +69,27 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.tentracker.nativeapp.ui.components.HtmlText
 import com.tentracker.nativeapp.ui.theme.Border
-import com.tentracker.nativeapp.ui.theme.Brand
-import com.tentracker.nativeapp.ui.theme.BrandSoft
+import com.tentracker.nativeapp.ui.theme.Emerald
+import com.tentracker.nativeapp.ui.theme.EmeraldBorder
+import com.tentracker.nativeapp.ui.theme.EmeraldDark
+import com.tentracker.nativeapp.ui.theme.EmeraldSoft
 import com.tentracker.nativeapp.ui.theme.Ink
 import com.tentracker.nativeapp.ui.theme.Muted
 import com.tentracker.nativeapp.ui.util.openSite
 import com.tentracker.nativeapp.ui.viewmodel.MockAttemptViewModel
 
-private val TimerRed = Color(0xFFDC2626)
-private val AttemptBg = Color(0xFFF5F5F5)
+private val TimerRose = Color(0xFFE11D48)
+private val Emerald700 = Color(0xFF047857)
+private val Emerald300 = Color(0xFF6EE7B7)
+private val Neutral50 = Color(0xFFFAFAFA)
+private val Neutral100 = Color(0xFFF5F5F5)
+private val AttemptPageBg = Brush.verticalGradient(
+    colors = listOf(
+        Color(0xFFECFDF5).copy(alpha = 0.55f),
+        Color(0xFFFAFAFA),
+        Color(0xFFF5F5F5),
+    ),
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -91,38 +107,50 @@ fun MockAttemptScreen(
     val inAttempt = state.started && !state.submitted && q != null
 
     Scaffold(
-        containerColor = if (inAttempt) AttemptBg else Color.White,
+        containerColor = if (inAttempt) Color.Transparent else Color.White,
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            state.test?.name ?: "Mock attempt",
-                            maxLines = 1,
-                            fontWeight = FontWeight.Bold,
-                            color = Ink,
-                        )
-                        when {
-                            state.submitted -> Text(
-                                "Submitted",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = Muted,
+            if (!inAttempt) {
+                TopAppBar(
+                    title = {
+                        Column {
+                            Text(
+                                state.test?.name ?: "Mock attempt",
+                                maxLines = 1,
+                                fontWeight = FontWeight.Bold,
+                                color = Ink,
                             )
-                            state.started && state.questions.isNotEmpty() -> Text(
-                                "Question ${state.index + 1} of ${state.questions.size}",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = Muted,
-                            )
+                            when {
+                                state.submitted -> Text(
+                                    "Submitted",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Muted,
+                                )
+                                state.started && state.questions.isNotEmpty() -> Text(
+                                    "Question ${state.index + 1} of ${state.questions.size}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Muted,
+                                )
+                            }
                         }
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White),
-            )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White),
+                )
+            } else {
+                TopAppBar(
+                    title = {},
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
+                )
+            }
         },
         bottomBar = {
             if (inAttempt) {
@@ -135,20 +163,31 @@ fun MockAttemptScreen(
                     onPrev = { vm.prev() },
                     onNext = { vm.next() },
                     onGrid = { showGrid = true },
-                    onFinish = { confirmSubmit = true },
+                    onSaveNext = {
+                        if (state.index < state.questions.lastIndex) vm.next() else confirmSubmit = true
+                    },
+                    onClear = { vm.clearCurrentAnswer() },
+                    onSkip = { vm.next() },
                 )
             }
         },
     ) { padding ->
+        val pageModifier = Modifier
+            .fillMaxSize()
+            .padding(padding)
+            .then(
+                if (inAttempt) Modifier.background(AttemptPageBg) else Modifier,
+            )
+
         when {
             state.loading -> {
                 Box(
-                    modifier = Modifier.fillMaxSize().padding(padding),
+                    modifier = pageModifier,
                     contentAlignment = Alignment.Center,
-                ) { CircularProgressIndicator(color = Brand) }
+                ) { CircularProgressIndicator(color = Emerald) }
             }
             state.error != null && state.questions.isEmpty() -> {
-                Column(modifier = Modifier.padding(padding).padding(16.dp)) {
+                Column(modifier = pageModifier.padding(16.dp)) {
                     Text(state.error ?: "Error", color = Muted)
                     TextButton(onClick = { vm.load() }) { Text("Retry") }
                     TextButton(
@@ -160,7 +199,7 @@ fun MockAttemptScreen(
             }
             state.submitted && state.result != null -> {
                 MockScoreContent(
-                    modifier = Modifier.padding(padding),
+                    modifier = pageModifier,
                     state = state,
                     category = category,
                     context = context,
@@ -169,7 +208,7 @@ fun MockAttemptScreen(
             }
             !state.started -> {
                 MockPreflightContent(
-                    modifier = Modifier.padding(padding),
+                    modifier = pageModifier,
                     state = state,
                     category = category,
                     context = context,
@@ -177,11 +216,7 @@ fun MockAttemptScreen(
                 )
             }
             q != null -> {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(padding),
-                ) {
+                Column(modifier = pageModifier) {
                     MockAttemptHeaderCard(
                         testName = state.test?.name.orEmpty(),
                         current = state.index + 1,
@@ -191,51 +226,59 @@ fun MockAttemptScreen(
                         onSubmit = { confirmSubmit = true },
                         onOpenGrid = { showGrid = true },
                     )
-                    Column(
+                    Card(
                         modifier = Modifier
                             .weight(1f)
-                            .verticalScroll(rememberScrollState())
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                            .padding(horizontal = 16.dp)
+                            .padding(bottom = 8.dp)
+                            .fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Border.copy(alpha = 0.9f)),
+                        elevation = CardDefaults.cardElevation(1.dp),
                     ) {
-                        q.difficulty?.takeIf { it.isNotBlank() }?.let { diff ->
-                            Surface(
-                                shape = RoundedCornerShape(999.dp),
-                                color = Color.White,
-                                border = androidx.compose.foundation.BorderStroke(1.dp, Border),
-                            ) {
-                                Text(
-                                    diff.replaceFirstChar { it.uppercase() },
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = Muted,
-                                    fontWeight = FontWeight.SemiBold,
+                        Column(
+                            modifier = Modifier
+                                .verticalScroll(rememberScrollState())
+                                .padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            val chips = buildList {
+                                q.subject?.takeIf { it.isNotBlank() }?.let { add(it to true) }
+                                q.difficulty?.takeIf { it.isNotBlank() }?.let {
+                                    add(it.replaceFirstChar { c -> c.uppercase() } to false)
+                                }
+                            }
+                            if (chips.isNotEmpty()) {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    chips.forEach { (label, primary) ->
+                                        QuestionMetaChip(label, primary)
+                                    }
+                                }
+                            }
+
+                            HtmlText(
+                                html = q.question,
+                                modifier = Modifier.fillMaxWidth(),
+                                textSizeSp = 16f,
+                            )
+
+                            Spacer(modifier = Modifier.height(4.dp))
+
+                            q.options().forEach { (letter, text) ->
+                                val isSelected = selected.equals(letter, ignoreCase = true)
+                                MockOptionRow(
+                                    letter = letter,
+                                    html = text,
+                                    selected = isSelected,
+                                    onClick = { vm.selectOption(letter) },
                                 )
                             }
+                            Spacer(modifier = Modifier.height(8.dp))
                         }
-
-                        Card(
-                            shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(containerColor = Color.White),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, Border),
-                            elevation = CardDefaults.cardElevation(1.dp),
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                HtmlText(html = q.question, modifier = Modifier.fillMaxWidth())
-                            }
-                        }
-
-                        q.options().forEach { (letter, text) ->
-                            val isSelected = selected.equals(letter, ignoreCase = true)
-                            MockOptionRow(
-                                letter = letter,
-                                html = text,
-                                selected = isSelected,
-                                onClick = { vm.selectOption(letter) },
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(72.dp))
                     }
                 }
             }
@@ -268,11 +311,32 @@ fun MockAttemptScreen(
                         confirmSubmit = false
                         vm.submit()
                     },
-                ) { Text("Submit", color = Brand, fontWeight = FontWeight.Bold) }
+                ) { Text("Submit", color = Emerald, fontWeight = FontWeight.Bold) }
             },
             dismissButton = {
                 TextButton(onClick = { confirmSubmit = false }) { Text("Cancel") }
             },
+        )
+    }
+}
+
+@Composable
+private fun QuestionMetaChip(label: String, primary: Boolean) {
+    Surface(
+        shape = RoundedCornerShape(999.dp),
+        color = if (primary) EmeraldSoft else Neutral50,
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            if (primary) EmeraldBorder else Border,
+        ),
+    ) {
+        Text(
+            label,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+            style = MaterialTheme.typography.labelSmall,
+            color = if (primary) EmeraldDark else Color(0xFF525252),
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 12.sp,
         )
     }
 }
@@ -288,105 +352,140 @@ private fun MockAttemptHeaderCard(
     onOpenGrid: () -> Unit,
 ) {
     val progress = if (total > 0) current.toFloat() / total else 0f
+    val progressPct = if (total > 0) (progress * 100).toInt() else 0
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Border),
+        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.95f)),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Border.copy(alpha = 0.9f)),
         elevation = CardDefaults.cardElevation(1.dp),
     ) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        "IN PROGRESS",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Brand,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 0.8.sp,
-                    )
-                    Text(
-                        testName,
-                        fontWeight = FontWeight.Bold,
-                        color = Ink,
-                        maxLines = 1,
-                        style = MaterialTheme.typography.titleSmall,
-                    )
-                    Text(
-                        "$answered answered",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Muted,
-                    )
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    if (secondsRemaining != null) {
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = Color(0xFFFAFAFA),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, Border),
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
+        Box {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.linearGradient(
+                            colors = listOf(
+                                EmeraldSoft.copy(alpha = 0.35f),
+                                Color.Transparent,
+                            ),
+                        ),
+                    ),
+            )
+            Column(modifier = Modifier.padding(12.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            "IN PROGRESS",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = EmeraldDark,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                            letterSpacing = 0.8.sp,
+                        )
+                        Text(
+                            testName,
+                            fontWeight = FontWeight.Bold,
+                            color = Ink,
+                            maxLines = 1,
+                            style = MaterialTheme.typography.titleSmall,
+                        )
+                        Text(
+                            "Question $current of $total · $answered answered",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Muted,
+                            fontSize = 12.sp,
+                        )
+                    }
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        if (secondsRemaining != null) {
+                            val warn = secondsRemaining <= 300
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = Neutral50,
+                                border = androidx.compose.foundation.BorderStroke(1.dp, Border),
                             ) {
-                                Icon(Icons.Default.Timer, contentDescription = null, tint = Brand, modifier = Modifier.size(16.dp))
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    formatClock(secondsRemaining),
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (secondsRemaining < 60) TimerRed else Ink,
-                                    fontSize = 14.sp,
-                                )
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Icon(
+                                        Icons.Default.Timer,
+                                        contentDescription = null,
+                                        tint = if (warn) TimerRose else Emerald,
+                                        modifier = Modifier.size(16.dp),
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        formatClock(secondsRemaining),
+                                        fontWeight = FontWeight.Bold,
+                                        fontFamily = FontFamily.Monospace,
+                                        color = if (warn) TimerRose else Ink,
+                                        fontSize = 14.sp,
+                                    )
+                                }
                             }
                         }
-                    }
-                    IconButton(onClick = onOpenGrid) {
-                        Icon(Icons.Default.GridView, contentDescription = "Questions", tint = Ink)
-                    }
-                    Button(
-                        onClick = onSubmit,
-                        colors = ButtonDefaults.buttonColors(containerColor = Ink),
-                        shape = RoundedCornerShape(12.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-                    ) {
-                        Text("End", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                        IconButton(onClick = onOpenGrid) {
+                            Icon(Icons.Default.GridView, contentDescription = "Questions", tint = Ink)
+                        }
+                        Button(
+                            onClick = onSubmit,
+                            colors = ButtonDefaults.buttonColors(containerColor = Ink),
+                            shape = RoundedCornerShape(12.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                        ) {
+                            Icon(
+                                Icons.Default.Warning,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp),
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("End", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                        }
                     }
                 }
-            }
-            Spacer(modifier = Modifier.height(10.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    "${(progress * 100).toInt()}%",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Muted,
-                    fontWeight = FontWeight.Medium,
+                Spacer(modifier = Modifier.height(10.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        "$progressPct%",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Muted,
+                        fontWeight = FontWeight.Medium,
+                        fontFamily = FontFamily.Monospace,
+                    )
+                    Text(
+                        "Q $current / $total",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Muted,
+                        fontFamily = FontFamily.Monospace,
+                    )
+                }
+                Spacer(modifier = Modifier.height(6.dp))
+                LinearProgressIndicator(
+                    progress = { progress },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(999.dp)),
+                    color = Emerald,
+                    trackColor = Neutral100,
                 )
-                Text(
-                    "Q $current / $total",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Muted,
-                )
             }
-            Spacer(modifier = Modifier.height(6.dp))
-            LinearProgressIndicator(
-                progress = { progress },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(6.dp)
-                    .clip(RoundedCornerShape(999.dp)),
-                color = Brand,
-                trackColor = Color(0xFFE5E5E5),
-            )
         }
     }
 }
@@ -402,10 +501,10 @@ private fun MockOptionRow(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(if (selected) BrandSoft else Color.White)
+            .background(if (selected) EmeraldSoft.copy(alpha = 0.8f) else Color.White)
             .border(
                 1.dp,
-                if (selected) Brand.copy(alpha = 0.5f) else Border,
+                if (selected) Emerald300 else Border,
                 RoundedCornerShape(12.dp),
             )
             .clickable(onClick = onClick)
@@ -414,12 +513,12 @@ private fun MockOptionRow(
     ) {
         Box(
             modifier = Modifier
-                .size(32.dp)
+                .size(28.dp)
                 .clip(RoundedCornerShape(8.dp))
-                .background(if (selected) Brand else Color(0xFFF5F5F5))
+                .background(if (selected) Emerald700 else Neutral100)
                 .border(
                     1.dp,
-                    if (selected) Brand else Border,
+                    if (selected) Emerald700 else Border,
                     RoundedCornerShape(8.dp),
                 ),
             contentAlignment = Alignment.Center,
@@ -427,8 +526,8 @@ private fun MockOptionRow(
             Text(
                 letter.uppercase(),
                 fontWeight = FontWeight.Bold,
-                color = if (selected) Color.White else Muted,
-                fontSize = 13.sp,
+                color = if (selected) Color.White else Color(0xFF525252),
+                fontSize = 12.sp,
             )
         }
         Spacer(modifier = Modifier.width(12.dp))
@@ -446,33 +545,26 @@ private fun MockAttemptBottomBar(
     onPrev: () -> Unit,
     onNext: () -> Unit,
     onGrid: () -> Unit,
-    onFinish: () -> Unit,
+    onSaveNext: () -> Unit,
+    onClear: () -> Unit,
+    onSkip: () -> Unit,
 ) {
     Surface(
         color = Color.White,
         shadowElevation = 8.dp,
         tonalElevation = 0.dp,
+        modifier = Modifier.border(
+            width = androidx.compose.ui.unit.Dp.Hairline,
+            color = Border,
+            shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+        ),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            if (hasAnswer) {
-                Button(
-                    onClick = { if (canNext) onNext() else onFinish() },
-                    colors = ButtonDefaults.buttonColors(containerColor = Brand),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 8.dp),
-                ) {
-                    Text(
-                        if (canNext) "Save & next" else "Save & finish",
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                }
-            }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -485,7 +577,7 @@ private fun MockAttemptBottomBar(
                     modifier = Modifier.weight(1f),
                 ) {
                     Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = null)
-                    Text("Prev", fontWeight = FontWeight.SemiBold)
+                    Text("Prev", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                 }
                 OutlinedButton(
                     onClick = onGrid,
@@ -494,7 +586,7 @@ private fun MockAttemptBottomBar(
                 ) {
                     Icon(Icons.Default.GridView, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("$current/$total", fontWeight = FontWeight.Bold)
+                    Text("$current/$total", fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
                 }
                 OutlinedButton(
                     onClick = onNext,
@@ -502,8 +594,50 @@ private fun MockAttemptBottomBar(
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.weight(1f),
                 ) {
-                    Text("Next", fontWeight = FontWeight.SemiBold)
+                    Text("Next", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                     Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
+                }
+            }
+            if (hasAnswer) {
+                Button(
+                    onClick = onSaveNext,
+                    colors = ButtonDefaults.buttonColors(containerColor = Emerald700),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(
+                        if (canNext) "Save & next" else "Save & finish",
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 14.sp,
+                    )
+                }
+            }
+            if (hasAnswer || canNext) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    if (hasAnswer) {
+                        OutlinedButton(
+                            onClick = onClear,
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            Text("Clear", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                        }
+                    }
+                    if (canNext) {
+                        Button(
+                            onClick = onSkip,
+                            colors = ButtonDefaults.buttonColors(containerColor = Ink),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            Icon(Icons.Default.SkipNext, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Skip", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                        }
+                    }
                 }
             }
         }
@@ -522,96 +656,121 @@ private fun MockQuestionGridDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
-        Card(
+        Box(
             modifier = Modifier
-                .fillMaxWidth(0.92f)
-                .padding(8.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.4f))
+                .clickable(onClick = onDismiss),
+            contentAlignment = Alignment.Center,
         ) {
-            Column {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column {
-                        Text(
-                            "NAVIGATE",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Brand,
-                            fontWeight = FontWeight.Bold,
-                        )
-                        Text("Questions", fontWeight = FontWeight.Bold, color = Ink)
-                    }
-                    IconButton(onClick = onDismiss) {
-                        Icon(Icons.Default.Close, contentDescription = "Close")
-                    }
-                }
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(5),
-                    contentPadding = PaddingValues(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.heightIn(max = 320.dp),
-                ) {
-                    itemsIndexed(questionIds) { index, qId ->
-                        val answered = answeredIds.contains(qId)
-                        val active = index == currentIndex
-                        val bg = when {
-                            active -> Ink
-                            answered -> Brand
-                            else -> Color(0xFFF5F5F5)
-                        }
-                        val fg = if (active || answered) Color.White else Muted
-                        val borderColor = when {
-                            active -> Brand
-                            answered -> Brand
-                            else -> Border
-                        }
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(bg)
-                                .border(1.dp, borderColor, RoundedCornerShape(12.dp))
-                                .clickable {
-                                    onNavigate(index)
-                                    onDismiss()
-                                }
-                                .padding(vertical = 12.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth(0.92f)
+                    .clickable(enabled = false) {},
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Border),
+            ) {
+                Column {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 14.dp)
+                            .border(
+                                width = androidx.compose.ui.unit.Dp.Hairline,
+                                color = Border,
+                                shape = RoundedCornerShape(0.dp),
+                            ),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column {
                             Text(
-                                "${index + 1}",
+                                "NAVIGATE",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = EmeraldDark,
                                 fontWeight = FontWeight.Bold,
-                                color = fg,
-                                fontSize = 13.sp,
+                                fontSize = 11.sp,
+                                letterSpacing = 0.6.sp,
                             )
+                            Text("Questions", fontWeight = FontWeight.Bold, color = Ink, fontSize = 14.sp)
+                        }
+                        IconButton(onClick = onDismiss) {
+                            Icon(Icons.Default.Close, contentDescription = "Close")
                         }
                     }
-                }
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    color = Color(0xFFFAFAFA),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Border),
-                ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Text(
-                            "LEGEND",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Muted,
-                            fontWeight = FontWeight.Bold,
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            LegendDot("Current", Ink)
-                            LegendDot("Answered", Brand)
-                            LegendDot("Pending", Color(0xFFE5E5E5))
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(5),
+                        contentPadding = PaddingValues(16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.heightIn(max = 360.dp),
+                    ) {
+                        itemsIndexed(questionIds) { index, qId ->
+                            val answered = answeredIds.contains(qId)
+                            val active = index == currentIndex
+                            val bg = when {
+                                active -> Ink
+                                answered -> Emerald
+                                else -> Neutral100
+                            }
+                            val fg = if (active || answered) Color.White else Color(0xFF525252)
+                            val cellBorder = when {
+                                active -> Emerald300
+                                answered -> Emerald
+                                else -> Border
+                            }
+                            val ring = if (active) Modifier.border(2.dp, Emerald300, RoundedCornerShape(12.dp)) else Modifier
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .then(ring)
+                                    .background(bg)
+                                    .border(1.dp, cellBorder, RoundedCornerShape(12.dp))
+                                    .clickable {
+                                        onNavigate(index)
+                                        onDismiss()
+                                    }
+                                    .padding(vertical = 12.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    "${index + 1}",
+                                    fontWeight = FontWeight.Bold,
+                                    color = fg,
+                                    fontSize = 13.sp,
+                                )
+                            }
+                        }
+                    }
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        color = Neutral50,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Border),
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(
+                                "LEGEND",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Muted,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 11.sp,
+                                letterSpacing = 0.6.sp,
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    LegendDot("Current", Ink)
+                                    LegendDot("Marked", Color(0xFFF59E0B))
+                                }
+                                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    LegendDot("Answered", Emerald)
+                                    LegendDot("Pending", Neutral100)
+                                }
+                            }
                         }
                     }
                 }
@@ -674,7 +833,7 @@ private fun MockPreflightContent(
             border = androidx.compose.foundation.BorderStroke(1.dp, Border),
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
-                Text("Before you begin", color = Brand, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                Text("Before you begin", color = EmeraldDark, fontWeight = FontWeight.Bold, fontSize = 11.sp)
                 Text("Instructions", fontWeight = FontWeight.Bold, color = Ink)
                 Spacer(modifier = Modifier.height(8.dp))
                 listOf(
@@ -689,7 +848,7 @@ private fun MockPreflightContent(
         Button(
             onClick = onStart,
             enabled = state.questions.isNotEmpty(),
-            colors = ButtonDefaults.buttonColors(containerColor = Brand),
+            colors = ButtonDefaults.buttonColors(containerColor = Emerald700),
             shape = RoundedCornerShape(12.dp),
             modifier = Modifier.fillMaxWidth(),
         ) {
@@ -723,7 +882,7 @@ private fun MockScoreContent(
         Text(
             "${r.percent}%",
             fontWeight = FontWeight.Black,
-            color = Brand,
+            color = Emerald,
             style = MaterialTheme.typography.displaySmall,
         )
         Text("${r.correct} of ${r.total} correct", fontWeight = FontWeight.SemiBold, color = Ink)
@@ -743,7 +902,7 @@ private fun MockScoreContent(
                 val id = state.test?.id.orEmpty()
                 openSite(context, "/mock-test/$category/attempt/$id")
             },
-            colors = ButtonDefaults.buttonColors(containerColor = Brand),
+            colors = ButtonDefaults.buttonColors(containerColor = Emerald700),
             shape = RoundedCornerShape(12.dp),
             modifier = Modifier.fillMaxWidth(),
         ) { Text("Save / sync on web", fontWeight = FontWeight.SemiBold) }
@@ -760,7 +919,7 @@ private fun ScoreStat(value: String, label: String, modifier: Modifier = Modifie
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(12.dp),
-        color = Color(0xFFFAFAFA),
+        color = Neutral50,
         border = androidx.compose.foundation.BorderStroke(1.dp, Border),
     ) {
         Column(
