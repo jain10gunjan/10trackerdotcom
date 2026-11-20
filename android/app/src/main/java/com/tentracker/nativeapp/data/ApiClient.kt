@@ -91,6 +91,35 @@ class ApiClient(private val sessionStore: SessionStore) {
         return get("/api/mock-test/mock-of-day?category=$q", MockOfDayResponse::class.java)
     }
 
+    /** Auth.js session cookie → user email/name (or empty when signed out). */
+    suspend fun getAuthSession(): AuthSessionResponse = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url(BASE_URL + "/api/auth/session")
+            .get()
+            .header("Accept", "application/json")
+            .build()
+        client.newCall(request).execute().use { response ->
+            val text = response.body?.string().orEmpty().trim()
+            if (!response.isSuccessful) {
+                return@withContext AuthSessionResponse()
+            }
+            if (text.isEmpty() || text == "null") {
+                return@withContext AuthSessionResponse()
+            }
+            runCatching { gson.fromJson(text, AuthSessionResponse::class.java) }
+                .getOrElse { AuthSessionResponse() }
+                .also {
+                    if (it.user?.email != null) sessionStore.markSignedInFromCookies()
+                }
+        }
+    }
+
+    suspend fun getUserProfile(): UserProfileResponse =
+        get("/api/mock-test/profile", UserProfileResponse::class.java)
+
+    suspend fun getCreditsWallet(): CreditsWalletResponse =
+        get("/api/credits/wallet", CreditsWalletResponse::class.java)
+
     suspend fun saveVideoProgress(
         resourceId: String,
         percentWatched: Int,
