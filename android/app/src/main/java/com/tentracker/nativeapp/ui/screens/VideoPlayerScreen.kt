@@ -11,6 +11,7 @@ import android.widget.FrameLayout
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -21,6 +22,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -73,6 +75,7 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -257,11 +260,20 @@ fun VideoPlayerScreen(
         exitFullscreenAction?.invoke() ?: youTubePlayer?.toggleFullscreen()
     }
 
+    val neutral50 = Color(0xFFFAFAFA)
+    val neutral900 = Color(0xFF171717)
+
     Scaffold(
+        containerColor = neutral50,
         topBar = {
             if (!fullscreen) {
                 TopAppBar(
-                    title = { Text(activeTitle, maxLines = 1) },
+                    title = {
+                        Column {
+                            Text("Video lesson", style = MaterialTheme.typography.labelSmall, color = Muted)
+                            Text(activeTitle, maxLines = 1, fontWeight = FontWeight.SemiBold, color = Ink)
+                        }
+                    },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -274,6 +286,7 @@ fun VideoPlayerScreen(
                             }
                         }
                     },
+                    colors = androidx.compose.material3.TopAppBarDefaults.topAppBarColors(containerColor = neutral50),
                 )
             }
         }
@@ -285,10 +298,21 @@ fun VideoPlayerScreen(
             item {
                 if (videoId == null) {
                     Box(
-                        modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f).background(Color.Black),
+                        modifier = Modifier
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                            .fillMaxWidth()
+                            .aspectRatio(16f / 9f)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Color.Black),
                         contentAlignment = Alignment.Center,
                     ) { Text("Invalid YouTube video id", color = Color.White) }
                 } else {
+                    Box(
+                        modifier = Modifier
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .border(1.dp, Color(0xFF262626), RoundedCornerShape(16.dp)),
+                    ) {
                     YouTubePlayerBox(
                         videoId = videoId,
                         lifecycleOwner = lifecycleOwner,
@@ -365,6 +389,7 @@ fun VideoPlayerScreen(
                             fullscreenHost = null
                         },
                     )
+                    }
                 }
             }
 
@@ -480,11 +505,34 @@ fun VideoPlayerScreen(
                             Text("${volume.toInt()}", style = MaterialTheme.typography.labelSmall, color = Muted)
                         }
 
-                        Text("Watch progress", fontWeight = FontWeight.SemiBold)
-                        Text(statusLabel, style = MaterialTheme.typography.bodyMedium, color = Muted)
-                        LinearProgressIndicator(progress = { percent / 100f }, modifier = Modifier.fillMaxWidth())
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text("Watch progress", fontWeight = FontWeight.SemiBold, color = Ink)
+                            Text("$percent%", fontWeight = FontWeight.SemiBold, color = Ink, style = MaterialTheme.typography.labelSmall)
+                        }
+                        Text(statusLabel, style = MaterialTheme.typography.bodySmall, color = Muted)
+                        LinearProgressIndicator(
+                            progress = { percent / 100f },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(6.dp)
+                                .clip(RoundedCornerShape(999.dp)),
+                            color = neutral900,
+                            trackColor = Color(0xFFF5F5F5),
+                        )
+                        if (percent >= 90) {
+                            Text(
+                                "Marked complete",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color(0xFF047857),
+                                fontWeight = FontWeight.Medium,
+                            )
+                        }
                         Text(
-                            "$percent% · ${if (currentIndex >= 0) "Video ${currentIndex + 1}/${videoModules.size}" else "Lesson"}",
+                            if (currentIndex >= 0) "Video ${currentIndex + 1} of ${videoModules.size}" else "Lesson",
                             style = MaterialTheme.typography.labelMedium,
                             color = Muted,
                         )
@@ -514,86 +562,126 @@ fun VideoPlayerScreen(
                             }
                         }
 
-                        Text("Next modules", fontWeight = FontWeight.Bold, color = Ink)
+                        Text(
+                            "Up next on this path",
+                            fontWeight = FontWeight.Bold,
+                            color = Ink,
+                            fontSize = MaterialTheme.typography.titleSmall.fontSize,
+                        )
                         Text(
                             if (upcoming.isEmpty()) "You're at the end of this path."
                             else "${upcoming.size} steps after this lesson",
-                            style = MaterialTheme.typography.bodyMedium,
+                            style = MaterialTheme.typography.bodySmall,
                             color = Muted,
                         )
                     }
                 }
 
-                items(upcoming, key = { it.id }) { resource ->
-                    ModuleRow(
-                        resource = resource,
-                        onClick = {
-                            when {
-                                resource.type.equals("VIDEO", true) &&
-                                    extractYouTubeVideoId(resource.youtubeVideoId) != null &&
-                                    !resource.locked -> switchToVideo(resource)
-                                resource.type.equals("PRACTICE_CHAPTER", true) -> {
-                                    val meta = resource.meta.orEmpty()
-                                    val area = meta["area"]?.toString() ?: meta["category"]?.toString()
-                                    val subject = meta["subject"]?.toString()
-                                    val chapter = meta["chapter"]?.toString()
-                                    if (!area.isNullOrBlank() && !subject.isNullOrBlank() && !chapter.isNullOrBlank()) {
-                                        onOpenPractice(area, subject, chapter, resource.title)
-                                    } else {
-                                        resourceOpenUrl(resource, pathSlug)?.let { openSite(context, it) }
-                                    }
+                item {
+                    if (upcoming.isNotEmpty()) {
+                        Column(
+                            modifier = Modifier
+                                .padding(horizontal = 16.dp)
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(Color.White)
+                                .border(1.dp, Border, RoundedCornerShape(16.dp)),
+                        ) {
+                            upcoming.forEachIndexed { idx, resource ->
+                                ModuleRow(
+                                    resource = resource,
+                                    index = modules.indexOf(resource).coerceAtLeast(0),
+                                    onClick = {
+                                        when {
+                                            resource.type.equals("VIDEO", true) &&
+                                                extractYouTubeVideoId(resource.youtubeVideoId) != null &&
+                                                !resource.locked -> switchToVideo(resource)
+                                            resource.type.equals("PRACTICE_CHAPTER", true) -> {
+                                                val meta = resource.meta.orEmpty()
+                                                val area = meta["area"]?.toString() ?: meta["category"]?.toString()
+                                                val subject = meta["subject"]?.toString()
+                                                val chapter = meta["chapter"]?.toString()
+                                                if (!area.isNullOrBlank() && !subject.isNullOrBlank() && !chapter.isNullOrBlank()) {
+                                                    onOpenPractice(area, subject, chapter, resource.title)
+                                                } else {
+                                                    resourceOpenUrl(resource, pathSlug)?.let { openSite(context, it) }
+                                                }
+                                            }
+                                            else -> resourceOpenUrl(resource, pathSlug)?.let { openSite(context, it) }
+                                        }
+                                    },
+                                )
+                                if (idx < upcoming.lastIndex) {
+                                    androidx.compose.material3.HorizontalDivider(color = Color(0xFFF5F5F5))
                                 }
-                                else -> resourceOpenUrl(resource, pathSlug)?.let { openSite(context, it) }
                             }
-                        },
-                    )
+                        }
+                    }
                 }
+
             }
         }
     }
 }
 
 @Composable
-private fun ModuleRow(resource: OgResource, onClick: () -> Unit) {
+private fun ModuleRow(resource: OgResource, index: Int, onClick: () -> Unit) {
     val type = resource.type.uppercase()
     val pct = resource.progress?.percentWatched ?: 0
+    val status = resource.progress?.status ?: "NOT_STARTED"
     val enabled = !resource.locked && !resource.sequenceLocked
-    Card(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 5.dp)
-            .clickable(enabled = enabled, onClick = onClick),
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Border),
-        elevation = CardDefaults.cardElevation(0.dp),
+            .background(if (resource.sequenceLocked) Color(0xFFFAFAFA) else Color.White)
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Box(
-                modifier = Modifier.size(40.dp).clip(RoundedCornerShape(10.dp)).background(BrandSoft),
-                contentAlignment = Alignment.Center,
-            ) { Icon(Icons.Default.PlayArrow, null, tint = Brand) }
-            Column(modifier = Modifier.weight(1f)) {
-                if (!resource.sectionLabel.isNullOrBlank()) {
-                    Text(resource.sectionLabel!!, style = MaterialTheme.typography.labelSmall, color = Brand)
-                }
-                Text(resource.title, fontWeight = FontWeight.Medium, color = Ink, maxLines = 2)
+        Text(
+            "%02d".format(index + 1),
+            fontSize = 12.sp,
+            color = Muted,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(resource.title, fontWeight = FontWeight.SemiBold, color = if (enabled) Ink else Muted, maxLines = 2, fontSize = 14.sp)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {
                 Text(
-                    when {
-                        resource.locked -> "Premium locked"
-                        resource.sequenceLocked -> "Complete previous steps first"
-                        type == "VIDEO" -> "Video · $pct%"
-                        else -> "$type · ${resource.progress?.status ?: "NOT_STARTED"}"
+                    when (type) {
+                        "VIDEO" -> "Video"
+                        "PRACTICE_CHAPTER" -> "Practice"
+                        "MOCK_TEST" -> "Mock"
+                        else -> type
                     },
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Muted,
+                    fontSize = 11.sp,
+                    color = Brand,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                when {
+                    resource.locked -> Text("Premium", fontSize = 11.sp, color = Color(0xFFB45309))
+                    resource.sequenceLocked -> Text("Locked", fontSize = 11.sp, color = Muted)
+                    type == "VIDEO" -> Text("$pct%", fontSize = 11.sp, color = Muted)
+                    status == "COMPLETED" -> Text("Done", fontSize = 11.sp, color = Color(0xFF047857))
+                    else -> Text(status.replace('_', ' '), fontSize = 11.sp, color = Muted)
+                }
+            }
+            if (type == "VIDEO" && enabled) {
+                LinearProgressIndicator(
+                    progress = { (pct / 100f).coerceIn(0f, 1f) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp)
+                        .height(4.dp)
+                        .clip(RoundedCornerShape(999.dp)),
+                    color = Color(0xFF171717),
+                    trackColor = Color(0xFFF5F5F5),
                 )
             }
         }
+        Icon(Icons.Default.PlayArrow, null, tint = if (enabled) Brand else Muted, modifier = Modifier.size(20.dp))
     }
 }
 
