@@ -368,7 +368,7 @@ private fun typeLabel(type: String): String = when (type) {
     else -> type
 }
 
-private fun progressCaption(resource: OgResource, type: String, pct: Int, status: String): String? {
+private fun progressCaption(_resource: OgResource, type: String, pct: Int, status: String): String? {
     val done = status == "COMPLETED"
     return when (type) {
         "VIDEO" -> "$pct%${if (done) " · Done" else ""}"
