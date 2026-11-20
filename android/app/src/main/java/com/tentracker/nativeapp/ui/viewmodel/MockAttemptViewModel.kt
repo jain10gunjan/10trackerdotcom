@@ -113,6 +113,13 @@ class MockAttemptViewModel(
         _state.update { it.copy(answers = it.answers + (q.id to letter.uppercase())) }
     }
 
+    fun clearCurrentAnswer() {
+        val st = _state.value
+        if (!st.started || st.submitted) return
+        val q = st.questions.getOrNull(st.index) ?: return
+        _state.update { it.copy(answers = it.answers - q.id) }
+    }
+
     fun next() {
         val st = _state.value
         if (st.index >= st.questions.lastIndex) return
