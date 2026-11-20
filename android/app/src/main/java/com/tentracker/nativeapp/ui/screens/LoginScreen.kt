@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -46,6 +47,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.vector.PathParser
@@ -60,6 +63,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.tentracker.nativeapp.data.ApiClient
 import com.tentracker.nativeapp.ui.components.BrandLogo
+import com.tentracker.nativeapp.ui.motion.OgFadeSlideIn
 import com.tentracker.nativeapp.ui.theme.Border
 import com.tentracker.nativeapp.ui.theme.Brand
 import com.tentracker.nativeapp.ui.theme.Emerald
@@ -149,6 +153,8 @@ fun LoginScreen(
                 .padding(horizontal = 20.dp, vertical = 16.dp),
             contentAlignment = Alignment.TopCenter,
         ) {
+            // AuthCard chrome — rounded-3xl, border, emerald blur orb; CCT for Google OAuth
+            OgFadeSlideIn(delayMillis = 0, durationMillis = 400, fromOffsetY = 12.dp) {
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(24.dp),
@@ -156,13 +162,14 @@ fun LoginScreen(
                 border = BorderStroke(1.dp, Border),
                 shadowElevation = 2.dp,
             ) {
-                Box {
+                Box(modifier = Modifier.clip(RoundedCornerShape(24.dp))) {
                     Box(
                         modifier = Modifier
                             .size(192.dp)
                             .align(Alignment.TopEnd)
                             .offset { IntOffset(64, -64) }
-                            .background(Emerald.copy(alpha = 0.25f), RoundedCornerShape(999.dp)),
+                            .blur(48.dp)
+                            .background(Color(0xFFA7F3D0).copy(alpha = 0.25f), CircleShape),
                     )
                     Column(
                         modifier = Modifier
@@ -244,6 +251,7 @@ fun LoginScreen(
                         AuthTrustFooter()
                     }
                 }
+            }
             }
         }
     }

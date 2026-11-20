@@ -113,12 +113,13 @@ fun PathScreen(
     Scaffold(
         containerColor = Neutral50,
         bottomBar = {
+            // OgPathViewerPage continue bar: y 24→0, opacity 0→1, 400ms easeOut, delay 150ms
             AnimatedVisibility(
                 visible = continueResource != null,
                 enter = slideInVertically(
-                    initialOffsetY = { it / 3 },
-                    animationSpec = tween(400, easing = OgEaseOut),
-                ) + fadeIn(tween(400, easing = OgEaseOut, delayMillis = 80)),
+                    initialOffsetY = { 24 },
+                    animationSpec = tween(400, easing = OgEaseOut, delayMillis = 150),
+                ) + fadeIn(tween(400, easing = OgEaseOut, delayMillis = 150)),
             ) {
                 val resource = continueResource ?: return@AnimatedVisibility
                 Row(
@@ -226,7 +227,8 @@ fun PathScreen(
                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 112.dp),
                 ) {
                     item {
-                        OgFadeSlideIn(delayMillis = 0) {
+                        // OgPathViewerPage header: opacity 0→1, y 10, 400ms easeOut
+                        OgFadeSlideIn(delayMillis = 0, durationMillis = 400, fromOffsetY = 10.dp) {
                             Row(
                                 modifier = Modifier
                                     .clickable(onClick = onBack)
@@ -314,7 +316,11 @@ fun PathScreen(
                     sections.forEachIndexed { sectionIndex, section ->
                         val doneCount = section.items.count { (_, r) -> r.progress?.status == "COMPLETED" }
                         item {
-                            OgFadeSlideIn(delayMillis = 60 + sectionIndex * 50) {
+                            OgFadeSlideIn(
+                                delayMillis = 60 + sectionIndex * 50,
+                                durationMillis = 400,
+                                fromOffsetY = 10.dp,
+                            ) {
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()

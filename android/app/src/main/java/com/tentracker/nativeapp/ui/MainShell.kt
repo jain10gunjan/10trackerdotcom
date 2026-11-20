@@ -229,6 +229,7 @@ private fun MoreBottomSheet(
     BackHandler(enabled = visible) { onDismiss() }
 
     Box(Modifier.fillMaxSize()) {
+        // MobileBottomMenu backdrop: bg-neutral-900/30 (AnimatePresence fade)
         AnimatedVisibility(
             visible = visible,
             modifier = Modifier
@@ -240,7 +241,7 @@ private fun MoreBottomSheet(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color(0x4D171717))
+                    .background(Color(0x4D171717)) // neutral-900 @ 30%
                     .clickable(onClick = onDismiss),
             )
         }

@@ -96,9 +96,16 @@ fun OgScaleFadeIn(
     Box(modifier = modifier.alpha(alpha).scale(scale), content = content)
 }
 
+/**
+ * Framer-style entrance: opacity 0→1 + y slide.
+ * Defaults match OG Trackers hero (`duration: 0.5`, `y: 16`, easeOut).
+ * Mock hub header uses [durationMillis]=350; tab panels use 250 + [fromOffsetY]=8.dp.
+ */
 @Composable
 fun OgFadeSlideIn(
     delayMillis: Int = 0,
+    durationMillis: Int = 500,
+    fromOffsetY: Dp = 16.dp,
     modifier: Modifier = Modifier,
     content: @Composable BoxScope.() -> Unit,
 ) {
@@ -109,12 +116,12 @@ fun OgFadeSlideIn(
     }
     val alpha by animateFloatAsState(
         targetValue = if (armed) 1f else 0f,
-        animationSpec = tween(durationMillis = 500, easing = OgEaseOut),
+        animationSpec = tween(durationMillis = durationMillis, easing = OgEaseOut),
         label = "ogAlpha",
     )
     val offsetY by animateDpAsState(
-        targetValue = if (armed) 0.dp else 16.dp,
-        animationSpec = tween(durationMillis = 500, easing = OgEaseOut),
+        targetValue = if (armed) 0.dp else fromOffsetY,
+        animationSpec = tween(durationMillis = durationMillis, easing = OgEaseOut),
         label = "ogOffset",
     )
     Box(modifier = modifier.alpha(alpha).offset(y = offsetY), content = content)

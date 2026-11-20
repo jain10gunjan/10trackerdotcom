@@ -1,5 +1,10 @@
 package com.tentracker.nativeapp.ui.screens
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -26,7 +31,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.GridView
@@ -71,6 +75,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.tentracker.nativeapp.ui.components.HtmlText
+import com.tentracker.nativeapp.ui.motion.OgEaseOut
+import com.tentracker.nativeapp.ui.motion.OgFadeSlideIn
 import com.tentracker.nativeapp.ui.theme.Border
 import com.tentracker.nativeapp.ui.theme.Emerald
 import com.tentracker.nativeapp.ui.theme.EmeraldBorder
@@ -220,67 +226,81 @@ fun MockAttemptScreen(
             }
             q != null -> {
                 Column(modifier = pageModifier) {
-                    MockAttemptHeaderCard(
-                        testName = state.test?.name.orEmpty(),
-                        current = state.index + 1,
-                        total = state.questions.size,
-                        answered = state.answers.size,
-                        secondsRemaining = state.secondsRemaining,
-                        onSubmit = { confirmSubmit = true },
-                        onOpenGrid = { showGrid = true },
-                    )
-                    Card(
+                    OgFadeSlideIn(delayMillis = 0, durationMillis = 300, fromOffsetY = 10.dp) {
+                        MockAttemptHeaderCard(
+                            testName = state.test?.name.orEmpty(),
+                            current = state.index + 1,
+                            total = state.questions.size,
+                            answered = state.answers.size,
+                            secondsRemaining = state.secondsRemaining,
+                            onSubmit = { confirmSubmit = true },
+                            onOpenGrid = { showGrid = true },
+                        )
+                    }
+                    AnimatedContent(
+                        targetState = state.index,
+                        transitionSpec = {
+                            fadeIn(animationSpec = tween(220, easing = OgEaseOut)) togetherWith
+                                fadeOut(animationSpec = tween(160, easing = OgEaseOut))
+                        },
                         modifier = Modifier
                             .weight(1f)
                             .padding(horizontal = 16.dp)
                             .padding(bottom = 8.dp)
                             .fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Border.copy(alpha = 0.9f)),
-                        elevation = CardDefaults.cardElevation(1.dp),
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .verticalScroll(rememberScrollState())
-                                .padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                        label = "mockQuestion",
+                    ) { idx ->
+                        val question = state.questions.getOrNull(idx) ?: return@AnimatedContent
+                        val sel = state.answers[question.id]
+                        Card(
+                            modifier = Modifier.fillMaxSize(),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color.White),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Border.copy(alpha = 0.9f)),
+                            elevation = CardDefaults.cardElevation(1.dp),
                         ) {
-                            val chips = buildList {
-                                q.subject?.takeIf { it.isNotBlank() }?.let { add(it to true) }
-                                q.difficulty?.takeIf { it.isNotBlank() }?.let {
-                                    add(it.replaceFirstChar { c -> c.uppercase() } to false)
-                                }
-                            }
-                            if (chips.isNotEmpty()) {
-                                Row(
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                    modifier = Modifier.fillMaxWidth(),
-                                ) {
-                                    chips.forEach { (label, primary) ->
-                                        QuestionMetaChip(label, primary)
+                            Column(
+                                modifier = Modifier
+                                    .verticalScroll(rememberScrollState())
+                                    .padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp),
+                            ) {
+                                val chips = buildList {
+                                    question.subject?.takeIf { it.isNotBlank() }?.let { add(it to true) }
+                                    question.difficulty?.takeIf { it.isNotBlank() }?.let {
+                                        add(it.replaceFirstChar { c -> c.uppercase() } to false)
                                     }
                                 }
-                            }
+                                if (chips.isNotEmpty()) {
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                        modifier = Modifier.fillMaxWidth(),
+                                    ) {
+                                        chips.forEach { (label, primary) ->
+                                            QuestionMetaChip(label, primary)
+                                        }
+                                    }
+                                }
 
-                            HtmlText(
-                                html = q.question,
-                                modifier = Modifier.fillMaxWidth(),
-                                textSizeSp = 16f,
-                            )
-
-                            Spacer(modifier = Modifier.height(4.dp))
-
-                            q.options().forEach { (letter, text) ->
-                                val isSelected = selected.equals(letter, ignoreCase = true)
-                                MockOptionRow(
-                                    letter = letter,
-                                    html = text,
-                                    selected = isSelected,
-                                    onClick = { vm.selectOption(letter) },
+                                HtmlText(
+                                    html = question.question,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    textSizeSp = 16f,
                                 )
+
+                                Spacer(modifier = Modifier.height(4.dp))
+
+                                question.options().forEach { (letter, text) ->
+                                    val isSelected = sel.equals(letter, ignoreCase = true)
+                                    MockOptionRow(
+                                        letter = letter,
+                                        html = text,
+                                        selected = isSelected,
+                                        onClick = { vm.selectOption(letter) },
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
                             }
-                            Spacer(modifier = Modifier.height(8.dp))
                         }
                     }
                 }
@@ -816,184 +836,191 @@ private fun MockPreflightContent(
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Card(
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            border = androidx.compose.foundation.BorderStroke(1.dp, Border.copy(alpha = 0.9f)),
-        ) {
-            Box {
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .background(
-                            Brush.linearGradient(
-                                colors = listOf(EmeraldSoft.copy(alpha = 0.25f), Color.Transparent),
+        OgFadeSlideIn(delayMillis = 0, durationMillis = 350) {
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Border.copy(alpha = 0.9f)),
+            ) {
+                Box {
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .background(
+                                Brush.linearGradient(
+                                    colors = listOf(EmeraldSoft.copy(alpha = 0.25f), Color.Transparent),
+                                ),
                             ),
-                        ),
-                )
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = Emerald, modifier = Modifier.size(12.dp))
+                    )
+                    Column(modifier = Modifier.padding(16.dp)) {
                         Text(
-                            "MOCK TEST",
+                            "BEFORE YOU START",
                             fontSize = 10.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = EmeraldDark,
                             letterSpacing = 0.6.sp,
                         )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            test?.name ?: "Mock test",
+                            fontWeight = FontWeight.Bold,
+                            color = Ink,
+                            style = MaterialTheme.typography.titleLarge,
+                        )
+                        val subtitle = buildList {
+                            add(categoryLabel)
+                            add("$questionCount questions")
+                            if (durationMin > 0) add(formatMockDurationList(durationMin)) else add("Untimed")
+                        }.joinToString(" · ")
+                        Text(subtitle, color = Muted, fontSize = 14.sp)
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        test?.name ?: "Mock test",
-                        fontWeight = FontWeight.Bold,
-                        color = Ink,
-                        style = MaterialTheme.typography.titleLarge,
-                    )
-                    val subtitle = buildList {
-                        add(categoryLabel)
-                        add("$questionCount questions")
-                        if (durationMin > 0) add(formatMockDurationList(durationMin)) else add("Untimed")
-                    }.joinToString(" · ")
-                    Text(subtitle, color = Muted, fontSize = 14.sp)
                 }
             }
         }
 
-        Card(
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            border = androidx.compose.foundation.BorderStroke(1.dp, Border.copy(alpha = 0.9f)),
-        ) {
-            Column {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 14.dp)
-                        .border(
-                            width = androidx.compose.ui.unit.Dp.Hairline,
-                            color = Border,
-                            shape = RoundedCornerShape(0.dp),
-                        ),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    Surface(
-                        shape = RoundedCornerShape(6.dp),
-                        color = EmeraldSoft,
-                        border = androidx.compose.foundation.BorderStroke(1.dp, EmeraldBorder),
-                        modifier = Modifier.size(24.dp),
+        OgFadeSlideIn(delayMillis = 60, durationMillis = 350, fromOffsetY = 10.dp) {
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Border.copy(alpha = 0.9f)),
+            ) {
+                Column {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 14.dp)
+                            .border(
+                                width = androidx.compose.ui.unit.Dp.Hairline,
+                                color = Border,
+                                shape = RoundedCornerShape(0.dp),
+                            ),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Text("01", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = EmeraldDark)
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = EmeraldSoft,
+                            border = androidx.compose.foundation.BorderStroke(1.dp, EmeraldBorder),
+                            modifier = Modifier.size(24.dp),
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text("01", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = EmeraldDark)
+                            }
+                        }
+                        Column {
+                            Text("OVERVIEW", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = EmeraldDark, letterSpacing = 0.6.sp)
+                            Text("Test details", fontWeight = FontWeight.Bold, color = Ink, fontSize = 14.sp)
                         }
                     }
-                    Column {
-                        Text("OVERVIEW", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = EmeraldDark, letterSpacing = 0.6.sp)
-                        Text("Test details", fontWeight = FontWeight.Bold, color = Ink, fontSize = 14.sp)
-                    }
-                }
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                        PreflightStatTile(
-                            icon = Icons.Default.TrackChanges,
-                            label = "Questions",
-                            value = "$questionCount",
-                            modifier = Modifier.weight(1f),
-                        )
-                        PreflightStatTile(
-                            icon = Icons.Default.Timer,
-                            label = "Duration",
-                            value = if (durationMin > 0) formatMockDurationList(durationMin) else "—",
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                        PreflightStatTile(
-                            icon = Icons.Default.Warning,
-                            label = "Difficulty",
-                            value = test?.difficulty?.replaceFirstChar { it.uppercase() } ?: "Mixed",
-                            modifier = Modifier.weight(1f),
-                        )
-                        PreflightStatTile(
-                            icon = Icons.Default.CheckCircle,
-                            label = "Type",
-                            value = "MCQ",
-                            modifier = Modifier.weight(1f),
-                        )
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                            PreflightStatTile(
+                                icon = Icons.Default.TrackChanges,
+                                label = "Questions",
+                                value = "$questionCount",
+                                modifier = Modifier.weight(1f),
+                            )
+                            PreflightStatTile(
+                                icon = Icons.Default.Timer,
+                                label = "Duration",
+                                value = if (durationMin > 0) formatMockDurationList(durationMin) else "—",
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                            PreflightStatTile(
+                                icon = Icons.Default.Warning,
+                                label = "Difficulty",
+                                value = test?.difficulty?.replaceFirstChar { it.uppercase() } ?: "Mixed",
+                                modifier = Modifier.weight(1f),
+                            )
+                            PreflightStatTile(
+                                icon = Icons.Default.CheckCircle,
+                                label = "Type",
+                                value = "MCQ",
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
                     }
                 }
             }
         }
 
-        Card(
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            border = androidx.compose.foundation.BorderStroke(1.dp, Border.copy(alpha = 0.9f)),
-        ) {
-            Column {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 14.dp)
-                        .border(
-                            width = androidx.compose.ui.unit.Dp.Hairline,
-                            color = Border,
-                            shape = RoundedCornerShape(0.dp),
-                        ),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    Surface(
-                        shape = RoundedCornerShape(6.dp),
-                        color = EmeraldSoft,
-                        border = androidx.compose.foundation.BorderStroke(1.dp, EmeraldBorder),
-                        modifier = Modifier.size(24.dp),
+        OgFadeSlideIn(delayMillis = 120, durationMillis = 350, fromOffsetY = 10.dp) {
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Border.copy(alpha = 0.9f)),
+            ) {
+                Column {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 14.dp)
+                            .border(
+                                width = androidx.compose.ui.unit.Dp.Hairline,
+                                color = Border,
+                                shape = RoundedCornerShape(0.dp),
+                            ),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Text("02", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = EmeraldDark)
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = EmeraldSoft,
+                            border = androidx.compose.foundation.BorderStroke(1.dp, EmeraldBorder),
+                            modifier = Modifier.size(24.dp),
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text("02", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = EmeraldDark)
+                            }
+                        }
+                        Column {
+                            Text("BEFORE YOU BEGIN", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = EmeraldDark, letterSpacing = 0.6.sp)
+                            Text("Instructions", fontWeight = FontWeight.Bold, color = Ink, fontSize = 14.sp)
                         }
                     }
-                    Column {
-                        Text("BEFORE YOU BEGIN", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = EmeraldDark, letterSpacing = 0.6.sp)
-                        Text("Instructions", fontWeight = FontWeight.Bold, color = Ink, fontSize = 14.sp)
-                    }
-                }
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    listOf(
-                        "Use nav or grid to move between questions",
-                        "Answers auto-saved on this device",
-                        "Open web after submit to sync credits & rank",
-                    ).forEach { line ->
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Emerald, modifier = Modifier.size(16.dp))
-                            Text(line, style = MaterialTheme.typography.bodyMedium, color = Muted, fontSize = 14.sp)
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        listOf(
+                            "Timer starts when you begin the first question",
+                            "Use nav or grid to move between questions",
+                            "Answers auto-saved on this device",
+                            "Submit before time runs out to save your score",
+                            "Open web after submit to sync credits & rank",
+                        ).forEach { line ->
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Emerald, modifier = Modifier.size(16.dp))
+                                Text(line, style = MaterialTheme.typography.bodyMedium, color = Muted, fontSize = 14.sp)
+                            }
                         }
                     }
                 }
             }
         }
 
-        Surface(
-            color = Color.White.copy(alpha = 0.95f),
-            shadowElevation = 8.dp,
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            border = androidx.compose.foundation.BorderStroke(1.dp, Border),
-        ) {
-            Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(
-                    onClick = onStart,
-                    enabled = state.questions.isNotEmpty(),
-                    colors = ButtonDefaults.buttonColors(containerColor = Emerald700),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text("Start $questionCount question test", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+        OgFadeSlideIn(delayMillis = 180, durationMillis = 350, fromOffsetY = 10.dp) {
+            Surface(
+                color = Color.White.copy(alpha = 0.95f),
+                shadowElevation = 8.dp,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Border),
+            ) {
+                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = onStart,
+                        enabled = state.questions.isNotEmpty(),
+                        colors = ButtonDefaults.buttonColors(containerColor = Emerald700),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("Start $questionCount question test", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                    }
+                    TextButton(
+                        onClick = {
+                            openSite(context, "/mock-test/$category/attempt/${test?.id.orEmpty()}")
+                        },
+                        modifier = Modifier.align(Alignment.CenterHorizontally),
+                    ) { Text("Prefer full web attempt", fontSize = 13.sp) }
                 }
-                TextButton(
-                    onClick = {
-                        openSite(context, "/mock-test/$category/attempt/${test?.id.orEmpty()}")
-                    },
-                    modifier = Modifier.align(Alignment.CenterHorizontally),
-                ) { Text("Prefer full web attempt", fontSize = 13.sp) }
             }
         }
     }
@@ -1043,50 +1070,56 @@ private fun MockScoreContent(
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Card(
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            border = androidx.compose.foundation.BorderStroke(1.dp, Border.copy(alpha = 0.9f)),
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text("Your score", style = MaterialTheme.typography.titleLarge, color = Ink, fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    "${r.percent}%",
-                    fontWeight = FontWeight.Black,
-                    color = Emerald,
-                    style = MaterialTheme.typography.displaySmall,
-                )
-                Text("${r.correct} of ${r.total} correct", fontWeight = FontWeight.SemiBold, color = Ink)
-                Spacer(modifier = Modifier.height(14.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                    ScoreStat("${r.percent}%", "Percentage", Modifier.weight(1f))
-                    ScoreStat("${r.attempted}", "Attempted", Modifier.weight(1f))
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                    ScoreStat("${r.incorrect}", "Incorrect", Modifier.weight(1f))
-                    ScoreStat(formatClock(r.secondsUsed), "Time", Modifier.weight(1f))
+        OgFadeSlideIn(delayMillis = 0, durationMillis = 350) {
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Border.copy(alpha = 0.9f)),
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("Your score", style = MaterialTheme.typography.titleLarge, color = Ink, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "${r.percent}%",
+                        fontWeight = FontWeight.Black,
+                        color = Emerald,
+                        style = MaterialTheme.typography.displaySmall,
+                    )
+                    Text("${r.correct} of ${r.total} correct", fontWeight = FontWeight.SemiBold, color = Ink)
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                        ScoreStat("${r.percent}%", "Percentage", Modifier.weight(1f))
+                        ScoreStat("${r.attempted}", "Attempted", Modifier.weight(1f))
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                        ScoreStat("${r.incorrect}", "Incorrect", Modifier.weight(1f))
+                        ScoreStat(formatClock(r.secondsUsed), "Time", Modifier.weight(1f))
+                    }
                 }
             }
         }
-        state.submitHint?.let {
-            Text(it, style = MaterialTheme.typography.bodyMedium, color = Muted)
+        OgFadeSlideIn(delayMillis = 80, durationMillis = 300, fromOffsetY = 8.dp) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                state.submitHint?.let {
+                    Text(it, style = MaterialTheme.typography.bodyMedium, color = Muted)
+                }
+                Button(
+                    onClick = {
+                        val id = state.test?.id.orEmpty()
+                        openSite(context, "/mock-test/$category/attempt/$id")
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Ink),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text("Save / sync on web", fontWeight = FontWeight.SemiBold) }
+                OutlinedButton(
+                    onClick = onBack,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text("Done") }
+            }
         }
-        Button(
-            onClick = {
-                val id = state.test?.id.orEmpty()
-                openSite(context, "/mock-test/$category/attempt/$id")
-            },
-            colors = ButtonDefaults.buttonColors(containerColor = Ink),
-            shape = RoundedCornerShape(12.dp),
-            modifier = Modifier.fillMaxWidth(),
-        ) { Text("Save / sync on web", fontWeight = FontWeight.SemiBold) }
-        OutlinedButton(
-            onClick = onBack,
-            shape = RoundedCornerShape(12.dp),
-            modifier = Modifier.fillMaxWidth(),
-        ) { Text("Done") }
     }
 }
 
