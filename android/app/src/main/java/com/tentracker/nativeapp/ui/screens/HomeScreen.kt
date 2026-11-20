@@ -46,6 +46,7 @@ fun HomeScreen(
         LaunchedEffect(Unit) {
             dashboardVm.setEnabled(true)
         }
+        // Native signed-in StudentHomeDashboard — layout + motion parity with web (no WebView).
         StudentSignedHomeScreen(
             dashboardVm = dashboardVm,
             onSignOut = onSignOut,
