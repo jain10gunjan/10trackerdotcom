@@ -59,6 +59,7 @@ fun MainShell(
     onOpenPath: (String) -> Unit,
     onOpenExam: (slug: String, name: String) -> Unit,
     onOpenArticle: (slug: String) -> Unit,
+    onOpenRoadmaps: () -> Unit,
     onSignIn: () -> Unit,
     initialTab: String = "tab_home",
 ) {
@@ -102,33 +103,21 @@ fun MainShell(
             modifier = Modifier.padding(padding),
         ) {
             composable("tab_home") {
+                fun goTab(route: String) {
+                    tabNav.navigate(route) {
+                        popUpTo(tabNav.graph.findStartDestination().id) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                }
                 HomeScreen(
                     vm = homeVm,
                     onOpenPath = onOpenPath,
-                    onOpenExams = {
-                        tabNav.navigate("tab_exams") {
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    },
-                    onOpenTrackers = {
-                        tabNav.navigate("tab_trackers") {
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    },
-                    onOpenArticles = {
-                        tabNav.navigate("tab_updates") {
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    },
-                    onOpenMore = {
-                        tabNav.navigate("tab_more") {
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    },
+                    onOpenExams = { goTab("tab_exams") },
+                    onOpenTrackers = { goTab("tab_trackers") },
+                    onOpenArticles = { goTab("tab_updates") },
+                    onOpenMore = { goTab("tab_more") },
+                    onOpenRoadmaps = onOpenRoadmaps,
                     onSignIn = onSignIn,
                     onSignOut = {
                         sessionStore.clear()
@@ -155,6 +144,13 @@ fun MainShell(
             }
             composable("tab_more") {
                 val moreVm: MoreViewModel = viewModel(factory = MoreViewModel.factory(api, sessionStore))
+                fun goTab(route: String) {
+                    tabNav.navigate(route) {
+                        popUpTo(tabNav.graph.findStartDestination().id) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                }
                 MoreScreen(
                     vm = moreVm,
                     signedInHint = homeState.signedIn,
@@ -164,6 +160,10 @@ fun MainShell(
                         moreVm.onSignedOut()
                         homeVm.refresh()
                     },
+                    onOpenRoadmaps = onOpenRoadmaps,
+                    onOpenExams = { goTab("tab_exams") },
+                    onOpenTrackers = { goTab("tab_trackers") },
+                    onOpenArticles = { goTab("tab_updates") },
                 )
             }
         }

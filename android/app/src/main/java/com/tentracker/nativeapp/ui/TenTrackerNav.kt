@@ -14,10 +14,14 @@ import com.tentracker.nativeapp.ui.screens.ExamDetailScreen
 import com.tentracker.nativeapp.ui.screens.LoginScreen
 import com.tentracker.nativeapp.ui.screens.PathScreen
 import com.tentracker.nativeapp.ui.screens.PracticeScreen
+import com.tentracker.nativeapp.ui.screens.RoadmapDetailScreen
+import com.tentracker.nativeapp.ui.screens.RoadmapsScreen
 import com.tentracker.nativeapp.ui.screens.VideoPlayerScreen
 import com.tentracker.nativeapp.ui.viewmodel.ExamDetailViewModel
 import com.tentracker.nativeapp.ui.viewmodel.PathViewModel
 import com.tentracker.nativeapp.ui.viewmodel.PracticeViewModel
+import com.tentracker.nativeapp.ui.viewmodel.RoadmapDetailViewModel
+import com.tentracker.nativeapp.ui.viewmodel.RoadmapsViewModel
 import java.net.URLDecoder
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -54,7 +58,34 @@ fun TenTrackerNav(api: ApiClient, sessionStore: SessionStore) {
                 onOpenPath = { slug -> nav.navigate("path/$slug") },
                 onOpenExam = { slug, name -> nav.navigate("exam/${enc(slug)}/${enc(name)}") },
                 onOpenArticle = { slug -> nav.navigate("article/${enc(slug)}") },
+                onOpenRoadmaps = { nav.navigate("roadmaps") },
                 onSignIn = { nav.navigate("login") },
+            )
+        }
+
+        composable("roadmaps") {
+            val vm: RoadmapsViewModel = viewModel(factory = RoadmapsViewModel.factory(api))
+            RoadmapsScreen(
+                vm = vm,
+                onBack = { nav.popBackStack() },
+                onOpenRoadmap = { roadmap ->
+                    nav.navigate("roadmap/${enc(roadmap.slug)}")
+                },
+            )
+        }
+
+        composable(
+            route = "roadmap/{slug}",
+            arguments = listOf(navArgument("slug") { type = NavType.StringType }),
+        ) { entry ->
+            val slug = dec(entry.arguments?.getString("slug"))
+            val vm: RoadmapDetailViewModel = viewModel(
+                key = slug,
+                factory = RoadmapDetailViewModel.factory(api, slug),
+            )
+            RoadmapDetailScreen(
+                vm = vm,
+                onBack = { nav.popBackStack() },
             )
         }
 

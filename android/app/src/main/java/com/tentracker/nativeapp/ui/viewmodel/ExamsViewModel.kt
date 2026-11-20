@@ -14,6 +14,11 @@ import kotlinx.coroutines.launch
 data class ExamsUiState(
     val loading: Boolean = true,
     val exams: List<ActiveExam> = emptyList(),
+    val filtered: List<ActiveExam> = emptyList(),
+    val categories: List<String> = listOf("All"),
+    val selectedCategory: String = "All",
+    val searchQuery: String = "",
+    val totalQuestions: Int = 0,
     val error: String? = null,
 )
 
@@ -31,12 +36,20 @@ class ExamsViewModel(private val api: ApiClient) : ViewModel() {
             try {
                 val res = api.getActiveExams()
                 val list = res.exams.filter { it.active || it.is_active }
-                _state.update {
-                    it.copy(
+                val categories = listOf("All") + list
+                    .map { it.category?.takeIf { c -> c.isNotBlank() } ?: "General" }
+                    .distinct()
+                    .sorted()
+                val totalQuestions = list.sumOf { questionCount(it) }
+                _state.update { current ->
+                    val next = current.copy(
                         loading = false,
                         exams = list,
+                        categories = categories,
+                        totalQuestions = totalQuestions,
                         error = if (res.success || list.isNotEmpty()) null else "Could not load exams",
                     )
+                    next.copy(filtered = applyFilters(next))
                 }
             } catch (e: Exception) {
                 _state.update { it.copy(loading = false, error = e.message ?: "Failed to load exams") }
@@ -44,7 +57,39 @@ class ExamsViewModel(private val api: ApiClient) : ViewModel() {
         }
     }
 
+    fun setSearch(query: String) {
+        _state.update { current ->
+            val next = current.copy(searchQuery = query)
+            next.copy(filtered = applyFilters(next))
+        }
+    }
+
+    fun setCategory(category: String) {
+        _state.update { current ->
+            val next = current.copy(selectedCategory = category)
+            next.copy(filtered = applyFilters(next))
+        }
+    }
+
+    private fun applyFilters(state: ExamsUiState): List<ActiveExam> {
+        val q = state.searchQuery.trim().lowercase()
+        return state.exams.filter { exam ->
+            val category = exam.category?.takeIf { it.isNotBlank() } ?: "General"
+            val categoryOk = state.selectedCategory == "All" || category == state.selectedCategory
+            val searchOk = q.isEmpty() || listOf(
+                exam.name,
+                exam.slug,
+                exam.description.orEmpty(),
+                category,
+            ).any { it.lowercase().contains(q) }
+            categoryOk && searchOk
+        }
+    }
+
     companion object {
+        fun questionCount(exam: ActiveExam): Int =
+            exam.question_count.takeIf { it > 0 } ?: exam.count
+
         fun factory(api: ApiClient) = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T = ExamsViewModel(api) as T
