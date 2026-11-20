@@ -19,7 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -66,8 +66,9 @@ import com.tentracker.nativeapp.data.ArticleSummary
 import com.tentracker.nativeapp.ui.components.EmptyState
 import com.tentracker.nativeapp.ui.components.ErrorState
 import com.tentracker.nativeapp.ui.components.LoadingState
-import com.tentracker.nativeapp.ui.theme.Border
+import com.tentracker.nativeapp.ui.motion.OgFadeSlideIn
 import com.tentracker.nativeapp.ui.theme.AmberCoin
+import com.tentracker.nativeapp.ui.theme.Border
 import com.tentracker.nativeapp.ui.theme.Brand
 import com.tentracker.nativeapp.ui.theme.Emerald
 import com.tentracker.nativeapp.ui.theme.EmeraldBorder
@@ -75,7 +76,9 @@ import com.tentracker.nativeapp.ui.theme.EmeraldDark
 import com.tentracker.nativeapp.ui.theme.EmeraldSoft
 import com.tentracker.nativeapp.ui.theme.Ink
 import com.tentracker.nativeapp.ui.theme.Muted
+import com.tentracker.nativeapp.ui.theme.Neutral600
 import com.tentracker.nativeapp.ui.theme.SurfaceMuted
+import com.tentracker.nativeapp.ui.theme.Tw
 import com.tentracker.nativeapp.ui.util.absoluteSiteUrl
 import com.tentracker.nativeapp.ui.viewmodel.ArticlesViewModel
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -85,7 +88,6 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 private val AccentFallback = Emerald
-private val Neutral600 = Color(0xFF525252)
 private val VioletGlow = Color(0xFFC4B5FD)
 
 @Composable
@@ -111,72 +113,86 @@ fun ArticlesScreen(
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            contentPadding = PaddingValues(bottom = Tw.Space.s8),
+            verticalArrangement = Arrangement.spacedBy(Tw.Space.s4),
         ) {
             item {
-                Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    UpdatesHeroCard(
-                        title = state.selectedCategory?.replace('-', ' ')?.replaceFirstChar { it.uppercase() }
-                            ?: "Stay exam-ready with the latest updates",
-                        subtitle = if (state.selectedCategory != null) {
-                            "Browse ${state.selectedCategory!!.replace('-', ' ')} articles, alerts, and prep notes."
-                        } else {
-                            "Current affairs, exam alerts, admit cards, and preparation notes — clear and searchable."
-                        },
-                        searchQuery = state.searchQuery,
-                        onSearchChange = vm::setSearchQuery,
-                        onSearch = { vm.submitSearch() },
-                        totalCount = state.totalCount,
-                        hasFilters = hasFilters,
-                        onClearFilters = { vm.clearFilters() },
-                    )
+                OgFadeSlideIn(delayMillis = 0) {
+                    Column(modifier = Modifier.padding(horizontal = Tw.Space.s4)) {
+                        Spacer(modifier = Modifier.height(Tw.Space.s2))
+                        UpdatesHeroCard(
+                            title = state.selectedCategory?.replace('-', ' ')?.replaceFirstChar { it.uppercase() }
+                                ?: "Stay exam-ready with the latest updates",
+                            subtitle = if (state.selectedCategory != null) {
+                                "Browse ${state.selectedCategory!!.replace('-', ' ')} articles, alerts, and prep notes."
+                            } else {
+                                "Current affairs, exam alerts, admit cards, and preparation notes — clear and searchable."
+                            },
+                            searchQuery = state.searchQuery,
+                            onSearchChange = vm::setSearchQuery,
+                            onSearch = { vm.submitSearch() },
+                            totalCount = state.totalCount,
+                            hasFilters = hasFilters,
+                            onClearFilters = { vm.clearFilters() },
+                        )
+                    }
                 }
             }
 
             if (state.categories.isNotEmpty()) {
                 item {
-                    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(
-                                "Categories",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.SemiBold,
-                                color = Emerald,
-                                letterSpacing = 0.5.sp,
-                                fontSize = 12.sp,
-                            )
-                            if (hasFilters) {
-                                TextButton(onClick = { vm.clearFilters() }) {
-                                    Icon(Icons.Default.Close, contentDescription = null, tint = Muted, modifier = Modifier.size(14.dp))
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Clear filters", fontSize = 12.sp, color = Muted, fontWeight = FontWeight.SemiBold)
+                    OgFadeSlideIn(delayMillis = 70) {
+                        Column(modifier = Modifier.padding(horizontal = Tw.Space.s4)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    "CATEGORIES",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Emerald,
+                                    letterSpacing = 0.8.sp,
+                                    fontSize = Tw.Type.textXs,
+                                )
+                                if (hasFilters) {
+                                    TextButton(onClick = { vm.clearFilters() }) {
+                                        Icon(
+                                            Icons.Default.Close,
+                                            contentDescription = null,
+                                            tint = Muted,
+                                            modifier = Modifier.size(14.dp),
+                                        )
+                                        Spacer(modifier = Modifier.width(Tw.Space.s1))
+                                        Text(
+                                            "Clear filters",
+                                            fontSize = Tw.Type.textXs,
+                                            color = Muted,
+                                            fontWeight = FontWeight.SemiBold,
+                                        )
+                                    }
                                 }
                             }
-                        }
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            CategoryChip(
-                                label = "All",
-                                active = state.selectedCategory == null,
-                                onClick = { vm.setCategory(null) },
-                            )
-                            state.categories.forEach { slug ->
+                            Spacer(modifier = Modifier.height(Tw.Space.s3))
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(Tw.Space.s2),
+                            ) {
                                 CategoryChip(
-                                    label = slug.replace('-', ' ').replaceFirstChar { it.uppercase() },
-                                    active = state.selectedCategory == slug,
-                                    onClick = { vm.setCategory(slug) },
+                                    label = "All",
+                                    active = state.selectedCategory == null,
+                                    onClick = { vm.setCategory(null) },
                                 )
+                                state.categories.forEach { slug ->
+                                    CategoryChip(
+                                        label = slug.replace('-', ' ').replaceFirstChar { it.uppercase() },
+                                        active = state.selectedCategory == slug,
+                                        onClick = { vm.setCategory(slug) },
+                                    )
+                                }
                             }
                         }
                     }
@@ -187,7 +203,7 @@ fun ArticlesScreen(
                 state.loading && state.articles.isEmpty() -> {
                     item {
                         LoadingState(
-                            modifier = Modifier.padding(horizontal = 16.dp),
+                            modifier = Modifier.padding(horizontal = Tw.Space.s4),
                             message = "Loading updates…",
                         )
                     }
@@ -195,7 +211,7 @@ fun ArticlesScreen(
                 state.error != null && state.articles.isEmpty() -> {
                     item {
                         ErrorState(
-                            modifier = Modifier.padding(horizontal = 16.dp),
+                            modifier = Modifier.padding(horizontal = Tw.Space.s4),
                             message = state.error ?: "Could not load updates",
                             onRetry = { vm.refresh() },
                         )
@@ -204,7 +220,7 @@ fun ArticlesScreen(
                 state.articles.isEmpty() -> {
                     item {
                         EmptyState(
-                            modifier = Modifier.padding(horizontal = 16.dp),
+                            modifier = Modifier.padding(horizontal = Tw.Space.s4),
                             message = if (hasFilters) "No updates match your filters." else "No updates yet.",
                             actionLabel = if (hasFilters) "Clear filters" else "Retry",
                             onAction = {
@@ -216,23 +232,28 @@ fun ArticlesScreen(
                 else -> {
                     state.featuredArticle?.let { featured ->
                         item {
-                            Box(modifier = Modifier.padding(horizontal = 16.dp)) {
-                                FeaturedArticleCard(
-                                    article = featured,
-                                    onClick = { onOpenArticle(featured) },
-                                )
+                            OgFadeSlideIn(delayMillis = 110) {
+                                Box(modifier = Modifier.padding(horizontal = Tw.Space.s4)) {
+                                    FeaturedArticleCard(
+                                        article = featured,
+                                        onClick = { onOpenArticle(featured) },
+                                    )
+                                }
                             }
                         }
                     }
-                    items(state.gridArticles, key = { it.id }) { article ->
-                        Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                    itemsIndexed(state.gridArticles, key = { _, it -> it.id }) { index, article ->
+                        OgFadeSlideIn(
+                            delayMillis = 140 + (index * 45).coerceAtMost(360),
+                            modifier = Modifier.padding(horizontal = Tw.Space.s4),
+                        ) {
                             ArticleListCard(article = article, onClick = { onOpenArticle(article) })
                         }
                     }
                     if (state.loadingMore) {
                         item {
                             Box(
-                                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                modifier = Modifier.fillMaxWidth().padding(Tw.Space.s4),
                                 contentAlignment = Alignment.Center,
                             ) {
                                 CircularProgressIndicator(color = Brand, modifier = Modifier.size(28.dp))
@@ -258,7 +279,7 @@ private fun UpdatesHeroCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
+        shape = Tw.Radius.shape3xl,
         colors = CardDefaults.cardColors(containerColor = Color.White),
         border = androidx.compose.foundation.BorderStroke(1.dp, Border),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
@@ -294,88 +315,105 @@ private fun UpdatesHeroCard(
                     ),
             )
 
-            Column(modifier = Modifier.padding(24.dp)) {
+            Column(modifier = Modifier.padding(Tw.Space.s6)) {
                 Row(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(999.dp))
+                        .clip(Tw.Radius.shapeFull)
                         .background(EmeraldSoft.copy(alpha = 0.8f))
-                        .border(1.dp, EmeraldBorder, RoundedCornerShape(999.dp))
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                        .border(1.dp, EmeraldBorder, Tw.Radius.shapeFull)
+                        .padding(horizontal = Tw.Space.s3, vertical = Tw.Space.s1_5),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(Tw.Space.s2),
                 ) {
-                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Emerald, modifier = Modifier.size(14.dp))
+                    Icon(
+                        Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        tint = Emerald,
+                        modifier = Modifier.size(14.dp),
+                    )
                     Text(
                         "10Tracker · News & updates",
-                        fontSize = 12.sp,
+                        fontSize = Tw.Type.textXs,
                         color = EmeraldDark,
                         fontWeight = FontWeight.Medium,
                     )
                 }
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(Tw.Space.s4))
                 Text(
                     title,
-                    fontSize = 30.sp,
+                    fontSize = Tw.Type.text3xl,
                     lineHeight = 34.sp,
                     fontWeight = FontWeight.Bold,
                     color = Ink,
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = Neutral600, lineHeight = 22.sp)
-                Spacer(modifier = Modifier.height(24.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
+                Spacer(modifier = Modifier.height(Tw.Space.s3))
+                Text(
+                    subtitle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Neutral600,
+                    lineHeight = 22.sp,
+                )
+                Spacer(modifier = Modifier.height(Tw.Space.s6))
+                Column(verticalArrangement = Arrangement.spacedBy(Tw.Space.s3)) {
                     OutlinedTextField(
                         value = searchQuery,
                         onValueChange = onSearchChange,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                         placeholder = { Text("Search updates…", color = Muted) },
-                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Muted) },
-                        shape = RoundedCornerShape(12.dp),
+                        leadingIcon = {
+                            Icon(Icons.Default.Search, contentDescription = null, tint = Muted)
+                        },
+                        shape = Tw.Radius.shapeXl,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                         keyboardActions = KeyboardActions(onSearch = { onSearch() }),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = Color(0xFF6EE7B7),
                             unfocusedBorderColor = Border,
+                            focusedContainerColor = Color.White,
+                            unfocusedContainerColor = Color.White,
                         ),
                     )
                     Button(
                         onClick = onSearch,
-                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = Tw.Radius.shapeXl,
                         colors = ButtonDefaults.buttonColors(containerColor = Ink, contentColor = Color.White),
-                        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 14.dp),
+                        contentPadding = PaddingValues(horizontal = Tw.Space.s5, vertical = Tw.Space.s3_5),
                     ) {
-                        Text("Search", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                        Text("Search", fontSize = Tw.Type.sm, fontWeight = FontWeight.SemiBold)
                     }
                 }
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(Tw.Space.s4))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         "${"%,d".format(Locale.US, totalCount)} ${if (totalCount == 1) "article" else "articles"}",
-                        fontSize = 14.sp,
+                        fontSize = Tw.Type.sm,
                         fontWeight = FontWeight.Medium,
                         color = Ink,
                     )
                     if (searchQuery.isNotBlank()) {
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Text(
-                            "Matching “$searchQuery”",
-                            fontSize = 14.sp,
-                            color = Muted,
-                        )
+                        Spacer(modifier = Modifier.width(Tw.Space.s4))
+                        Text("Matching “$searchQuery”", fontSize = Tw.Type.sm, color = Muted)
                         TextButton(onClick = onClearFilters) {
-                            Text("Clear", color = EmeraldDark, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                            Text(
+                                "Clear",
+                                color = EmeraldDark,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 13.sp,
+                            )
                         }
                     } else if (hasFilters) {
-                        Spacer(modifier = Modifier.width(12.dp))
+                        Spacer(modifier = Modifier.width(Tw.Space.s3))
                         TextButton(onClick = onClearFilters) {
-                            Text("Clear", color = EmeraldDark, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                            Text(
+                                "Clear",
+                                color = EmeraldDark,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 13.sp,
+                            )
                         }
                     }
                 }
@@ -386,16 +424,21 @@ private fun UpdatesHeroCard(
 
 @Composable
 private fun CategoryChip(label: String, active: Boolean, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(12.dp)
+    val shape = Tw.Radius.shapeXl
     Box(
         modifier = Modifier
             .clip(shape)
             .clickable(onClick = onClick)
             .background(if (active) Ink else Color.White)
             .border(1.dp, if (active) Ink else Border, shape)
-            .padding(horizontal = 14.dp, vertical = 8.dp),
+            .padding(horizontal = Tw.Space.s3_5, vertical = Tw.Space.s2),
     ) {
-        Text(label, color = if (active) Color.White else Ink, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+        Text(
+            label,
+            color = if (active) Color.White else Ink,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = Tw.Type.textXs,
+        )
     }
 }
 
@@ -404,7 +447,7 @@ private fun FeaturedArticleCard(article: ArticleSummary, onClick: () -> Unit) {
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
+        shape = Tw.Radius.shape3xl,
         colors = CardDefaults.cardColors(containerColor = Color.White),
         border = androidx.compose.foundation.BorderStroke(1.dp, Border),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
@@ -413,22 +456,22 @@ private fun FeaturedArticleCard(article: ArticleSummary, onClick: () -> Unit) {
             ArticleHeroImage(
                 article = article,
                 modifier = Modifier.fillMaxWidth().aspectRatio(16f / 10f),
-                topRadius = 24.dp,
+                topRadius = Tw.Radius.r3xl,
             )
-            Column(modifier = Modifier.padding(24.dp)) {
+            Column(modifier = Modifier.padding(Tw.Space.s6)) {
                 ArticleMetaRow(article = article, showFeaturedBadge = true)
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(Tw.Space.s3))
                 Text(
                     article.title,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 24.sp,
+                    fontSize = Tw.Type.text2xl,
                     lineHeight = 30.sp,
                     color = Ink,
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                 )
                 article.excerpt?.takeIf { it.isNotBlank() }?.let {
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(Tw.Space.s3))
                     Text(
                         it,
                         style = MaterialTheme.typography.bodyMedium,
@@ -438,7 +481,7 @@ private fun FeaturedArticleCard(article: ArticleSummary, onClick: () -> Unit) {
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(Tw.Space.s6))
                 ReadLink()
             }
         }
@@ -450,56 +493,69 @@ private fun ArticleListCard(article: ArticleSummary, onClick: () -> Unit) {
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = Tw.Radius.shape2xl,
         colors = CardDefaults.cardColors(containerColor = Color.White),
         border = androidx.compose.foundation.BorderStroke(1.dp, Border),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
         Column {
             Box {
-                ArticleHeroImage(article = article, modifier = Modifier.fillMaxWidth().aspectRatio(16f / 10f))
+                ArticleHeroImage(
+                    article = article,
+                    modifier = Modifier.fillMaxWidth().aspectRatio(16f / 10f),
+                )
                 if (article.is_featured) {
                     Row(
                         modifier = Modifier
                             .align(Alignment.TopStart)
-                            .padding(12.dp)
-                            .clip(RoundedCornerShape(8.dp))
+                            .padding(Tw.Space.s3)
+                            .clip(RoundedCornerShape(Tw.Radius.lg))
                             .background(Color.White.copy(alpha = 0.95f))
-                            .border(1.dp, Color(0xFFFEF3C7), RoundedCornerShape(8.dp))
-                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                            .border(1.dp, Color(0xFFFEF3C7), RoundedCornerShape(Tw.Radius.lg))
+                            .padding(horizontal = Tw.Space.s2, vertical = Tw.Space.s1),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(Tw.Space.s1),
                     ) {
-                        Icon(Icons.Default.Star, contentDescription = null, tint = AmberCoin, modifier = Modifier.size(12.dp))
-                        Text("FEATURED", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF92400E))
+                        Icon(
+                            Icons.Default.Star,
+                            contentDescription = null,
+                            tint = AmberCoin,
+                            modifier = Modifier.size(12.dp),
+                        )
+                        Text(
+                            "FEATURED",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF92400E),
+                        )
                     }
                 }
             }
-            Column(modifier = Modifier.padding(16.dp)) {
+            Column(modifier = Modifier.padding(Tw.Space.s4)) {
                 ArticleMetaRow(article = article, showFeaturedBadge = false)
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(Tw.Space.s2))
                 Text(
                     article.title,
                     fontWeight = FontWeight.SemiBold,
-                    fontSize = 16.sp,
+                    fontSize = Tw.Type.base,
                     lineHeight = 22.sp,
                     color = Ink,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
                 article.excerpt?.takeIf { it.isNotBlank() }?.let {
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(Tw.Space.s2))
                     Text(
                         it,
                         style = MaterialTheme.typography.bodySmall,
-                        fontSize = 14.sp,
+                        fontSize = Tw.Type.sm,
                         color = Muted,
                         lineHeight = 20.sp,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(Tw.Space.s4))
                 ReadLink(label = "Read")
             }
         }
@@ -510,23 +566,30 @@ private fun ArticleListCard(article: ArticleSummary, onClick: () -> Unit) {
 private fun ArticleHeroImage(
     article: ArticleSummary,
     modifier: Modifier = Modifier,
-    topRadius: androidx.compose.ui.unit.Dp = 16.dp,
+    topRadius: androidx.compose.ui.unit.Dp = Tw.Radius.r2xl,
 ) {
     val shape = RoundedCornerShape(topStart = topRadius, topEnd = topRadius)
     val imageUrl = absoluteSiteUrl(article.featured_image_url)
     if (imageUrl != null) {
-        AsyncImage(
-            model = imageUrl,
-            contentDescription = null,
-            modifier = modifier.clip(shape),
-            contentScale = ContentScale.Crop,
-        )
+        Box(modifier = modifier.clip(shape).background(Color(0xFFF5F5F5))) {
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+            )
+        }
     } else {
         Box(
             modifier = modifier.clip(shape).background(AccentFallback),
             contentAlignment = Alignment.Center,
         ) {
-            Text("10Tracker", color = Color.White.copy(alpha = 0.9f), fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+            Text(
+                "10Tracker",
+                color = Color.White.copy(alpha = 0.9f),
+                fontWeight = FontWeight.SemiBold,
+                fontSize = Tw.Type.textXs,
+            )
         }
     }
 }
@@ -534,27 +597,45 @@ private fun ArticleHeroImage(
 @Composable
 private fun ArticleMetaRow(article: ArticleSummary, showFeaturedBadge: Boolean) {
     Row(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(Tw.Space.s2),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (showFeaturedBadge && article.is_featured) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(Tw.Space.s1),
                 modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
+                    .clip(RoundedCornerShape(Tw.Radius.lg))
                     .background(Color(0xFFFFFBEB))
-                    .border(1.dp, Color(0xFFFEF3C7), RoundedCornerShape(8.dp))
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                    .border(1.dp, Color(0xFFFEF3C7), RoundedCornerShape(Tw.Radius.lg))
+                    .padding(horizontal = Tw.Space.s2, vertical = Tw.Space.s1),
             ) {
-                Icon(Icons.Default.Star, contentDescription = null, tint = AmberCoin, modifier = Modifier.size(12.dp))
-                Text("Featured", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF92400E))
+                Icon(
+                    Icons.Default.Star,
+                    contentDescription = null,
+                    tint = AmberCoin,
+                    modifier = Modifier.size(12.dp),
+                )
+                Text(
+                    "Featured",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF92400E),
+                )
             }
         }
         formatArticleListDate(article.created_at).takeIf { it.isNotBlank() }?.let { date ->
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                Icon(Icons.Default.CalendarToday, contentDescription = null, tint = Muted, modifier = Modifier.size(14.dp))
-                Text(date, fontSize = 12.sp, color = Muted)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Tw.Space.s1),
+            ) {
+                Icon(
+                    Icons.Default.CalendarToday,
+                    contentDescription = null,
+                    tint = Muted,
+                    modifier = Modifier.size(14.dp),
+                )
+                Text(date, fontSize = Tw.Type.textXs, color = Muted)
             }
         }
     }
@@ -562,9 +643,17 @@ private fun ArticleMetaRow(article: ArticleSummary, showFeaturedBadge: Boolean) 
 
 @Composable
 private fun ReadLink(label: String = "Read article") {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(label, color = EmeraldDark, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = EmeraldDark, modifier = Modifier.size(16.dp))
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Tw.Space.s1_5),
+    ) {
+        Text(label, color = EmeraldDark, fontWeight = FontWeight.SemiBold, fontSize = Tw.Type.sm)
+        Icon(
+            Icons.AutoMirrored.Filled.ArrowForward,
+            contentDescription = null,
+            tint = EmeraldDark,
+            modifier = Modifier.size(16.dp),
+        )
     }
 }
 
