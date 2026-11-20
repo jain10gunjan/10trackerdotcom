@@ -26,10 +26,16 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -52,9 +58,13 @@ fun GuestHomeExamSpotlight(
     onViewAllExams: () -> Unit,
     onPracticeExam: (ActiveExam) -> Unit,
     onMockExam: (ActiveExam) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
+    val animate = rememberGuestAnimate()
+    val (revealModifier, show) = rememberGuestSectionRevealed(threshold = 0.2f)
     Column(
-        modifier = Modifier
+        modifier = modifier
+            .then(revealModifier)
             .fillMaxWidth()
             .padding(horizontal = GuestGutter)
             .padding(bottom = 56.dp),
@@ -64,12 +74,14 @@ fun GuestHomeExamSpotlight(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.Bottom,
         ) {
+            GuestRevealFadeSlide(show = show, animate = animate, modifier = Modifier.weight(1f)) {
             GuestSectionHeader(
                 eyebrow = "Practice",
                 title = "Popular exams to start with",
                 subtitle = "Jump into topic-wise MCQs or timed mocks — featured by activity across the platform.",
-                modifier = Modifier.weight(1f),
             )
+            }
+            GuestRevealFadeSlide(show = show, animate = animate, delayMillis = 80) {
             OutlinedButton(
                 onClick = onViewAllExams,
                 shape = RoundedCornerShape(RadiusXl),
@@ -78,19 +90,31 @@ fun GuestHomeExamSpotlight(
                 Text("View all", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Ink)
                 Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(16.dp))
             }
+            }
         }
         Spacer(modifier = Modifier.height(16.dp))
         if (exams.isEmpty()) {
             BoxLoadingPlaceholder("Exams loading — check back shortly.")
         } else {
+            GuestRevealFadeSlide(show = show, animate = animate, delayMillis = 50) {
             FeaturedExamCard(
                 exam = exams.first(),
                 onPractice = { onPracticeExam(exams.first()) },
                 onMock = { onMockExam(exams.first()) },
+                animate = animate,
             )
+            }
             exams.drop(1).forEachIndexed { index, exam ->
                 Spacer(modifier = Modifier.height(10.dp))
-                RankedExamRow(exam = exam, index = index, onPractice = { onPracticeExam(exam) }, onMock = { onMockExam(exam) })
+                GuestStaggeredFadeSlide(show = show, animate = animate, index = index + 1) {
+                RankedExamRow(
+                    exam = exam,
+                    index = index,
+                    onPractice = { onPracticeExam(exam) },
+                    onMock = { onMockExam(exam) },
+                    animate = animate,
+                )
+                }
             }
         }
     }
@@ -112,7 +136,14 @@ private fun BoxLoadingPlaceholder(message: String) {
 }
 
 @Composable
-private fun FeaturedExamCard(exam: ActiveExam, onPractice: () -> Unit, onMock: () -> Unit) {
+private fun FeaturedExamCard(exam: ActiveExam, onPractice: () -> Unit, onMock: () -> Unit, animate: Boolean) {
+    val practiceInteraction = rememberGuestPressInteractionSource()
+    val practicePressed by practiceInteraction.collectIsPressedAsState()
+    val practiceScale by animateFloatAsState(
+        if (practicePressed) 0.99f else 1f,
+        spring(dampingRatio = 0.62f, stiffness = 380f),
+        label = "practice",
+    )
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
@@ -178,9 +209,10 @@ private fun FeaturedExamCard(exam: ActiveExam, onPractice: () -> Unit, onMock: (
             ) {
                 Button(
                     onClick = onPractice,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).scale(practiceScale),
                     shape = RoundedCornerShape(RadiusXl),
                     colors = ButtonDefaults.buttonColors(containerColor = Brand),
+                    interactionSource = practiceInteraction,
                 ) {
                     Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(6.dp))
@@ -207,6 +239,7 @@ private fun RankedExamRow(
     index: Int,
     onPractice: () -> Unit,
     onMock: () -> Unit,
+    animate: Boolean,
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),

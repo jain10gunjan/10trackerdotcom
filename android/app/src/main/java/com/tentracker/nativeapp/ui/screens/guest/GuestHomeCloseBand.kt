@@ -3,6 +3,7 @@ package com.tentracker.nativeapp.ui.screens.guest
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
@@ -22,6 +24,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
@@ -36,13 +39,45 @@ fun GuestHomeCloseBand(
     onBrowseExams: () -> Unit,
     onExplorePlans: () -> Unit,
     onSignIn: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
+    val animate = rememberGuestAnimate()
+    val (revealModifier, show) = rememberGuestSectionRevealed(threshold = 0.3f)
     Column(
-        modifier = Modifier
+        modifier = modifier
+            .then(revealModifier)
             .fillMaxWidth()
             .padding(horizontal = GuestGutter)
             .padding(bottom = 64.dp),
     ) {
+        GuestRevealFadeSlide(show = show, animate = animate) {
+        Box(
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+        if (animate) {
+            GuestFloatOrb(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .size(180.dp)
+                    .background(Brand.copy(alpha = 0.33f), CircleShape),
+                color = Brand,
+                animate = true,
+                durationMillis = 10_000,
+                driftXPx = 18f,
+                driftYPx = 12f,
+            )
+            GuestFloatOrb(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .size(140.dp)
+                    .background(Color(0xFF38BDF8).copy(alpha = 0.2f), CircleShape),
+                color = Color(0xFF38BDF8),
+                animate = true,
+                durationMillis = 12_000,
+                driftXPx = -12f,
+                driftYPx = 16f,
+            )
+        }
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -109,6 +144,8 @@ fun GuestHomeCloseBand(
             ) {
                 Text("Sign in with Google", color = Color.White, fontWeight = FontWeight.SemiBold)
             }
+        }
+        }
         }
     }
 }
