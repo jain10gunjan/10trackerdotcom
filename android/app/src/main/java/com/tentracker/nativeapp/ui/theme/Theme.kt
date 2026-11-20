@@ -12,7 +12,8 @@ import androidx.compose.ui.unit.sp
 
 val Brand = Color(0xFF3F5EB9)
 val BrandSoft = Color(0xFFE8EDF8)
-val Bg = Color(0xFFF8FAFC)
+val BrandDeep = Color(0xFF1E2F6B)
+val Bg = Color(0xFFFAFAFA)
 val Ink = Color(0xFF171717)
 val Muted = Color(0xFF737373)
 val Border = Color(0xFFE5E5E5)
