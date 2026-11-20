@@ -6,8 +6,11 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -91,8 +94,17 @@ import com.tentracker.nativeapp.data.SubjectGroup
 import com.tentracker.nativeapp.data.Subtopic
 import com.tentracker.nativeapp.ui.components.ErrorState
 import com.tentracker.nativeapp.ui.components.LoadingState
+import com.tentracker.nativeapp.ui.motion.OgFadeSlideIn
+import com.tentracker.nativeapp.ui.motion.framerSpringDampingRatio
+import com.tentracker.nativeapp.ui.theme.Tw
 import com.tentracker.nativeapp.ui.viewmodel.ExamDetailViewModel
 import kotlinx.coroutines.launch
+
+/** ExamHubFAB framer spring → scaleIn/Out (stiffness 300, damping 22). */
+private val FabVisibilitySpring = spring<Float>(
+    dampingRatio = framerSpringDampingRatio(stiffness = 300f, damping = 22f),
+    stiffness = 300f,
+)
 
 private val Emerald = Color(0xFF059669)
 private val Emerald500 = Color(0xFF10B981)
@@ -216,7 +228,13 @@ fun ExamDetailScreen(
             )
         },
         floatingActionButton = {
-            AnimatedVisibility(visible = showFab && state.subjects.isNotEmpty()) {
+            AnimatedVisibility(
+                visible = showFab && state.subjects.isNotEmpty(),
+                enter = fadeIn(animationSpec = FabVisibilitySpring) +
+                    scaleIn(initialScale = 0.8f, animationSpec = FabVisibilitySpring),
+                exit = fadeOut(animationSpec = tween(160)) +
+                    scaleOut(targetScale = 0.8f, animationSpec = tween(160)),
+            ) {
                 ExamHubFab(
                     onBackToTop = { scope.launch { listState.animateScrollToItem(0) } },
                     onQuickStart = ::quickStart,
@@ -244,46 +262,56 @@ fun ExamDetailScreen(
                         .fillMaxSize()
                         .padding(padding),
                     state = listState,
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(20.dp),
+                    contentPadding = PaddingValues(horizontal = Tw.Space.s4, vertical = Tw.Space.s2),
+                    verticalArrangement = Arrangement.spacedBy(Tw.Space.s5),
                 ) {
                     item(key = "hero") {
-                        ExamHubHeroCard(
-                            title = title,
-                            exam = state.exam,
-                            subjects = state.subjects,
-                            mockTestCount = state.mockTestCount,
-                            overallPercent = if (state.isSignedIn) state.overallPercent else null,
-                            onScrollToPractice = ::scrollToPractice,
-                            onOpenMocks = onOpenMocks,
-                            onBrowseExams = onBack,
-                        )
+                        OgFadeSlideIn(delayMillis = 0) {
+                            ExamHubHeroCard(
+                                title = title,
+                                exam = state.exam,
+                                subjects = state.subjects,
+                                mockTestCount = state.mockTestCount,
+                                overallPercent = if (state.isSignedIn) state.overallPercent else null,
+                                onScrollToPractice = ::scrollToPractice,
+                                onOpenMocks = onOpenMocks,
+                                onBrowseExams = onBack,
+                            )
+                        }
                     }
 
                     item(key = "workflow") {
-                        ExamHubWorkflowCard()
+                        OgFadeSlideIn(delayMillis = 60) {
+                            ExamHubWorkflowCard()
+                        }
                     }
 
                     item(key = "paths") {
-                        ExamHubPathCards(cards = pathCards)
+                        OgFadeSlideIn(delayMillis = 100) {
+                            ExamHubPathCards(cards = pathCards)
+                        }
                     }
 
                     if (state.isSignedIn) {
                         item(key = "continue") {
-                            ExamHubContinueCard(
-                                continueItem = state.continueItem,
-                                loading = state.progressLoading,
-                                onContinue = { handleContinue(state.continueItem) },
-                            )
+                            OgFadeSlideIn(delayMillis = 120) {
+                                ExamHubContinueCard(
+                                    continueItem = state.continueItem,
+                                    loading = state.progressLoading,
+                                    onContinue = { handleContinue(state.continueItem) },
+                                )
+                            }
                         }
                         item(key = "progress-strip") {
-                            ExamHubProgressStrip(
-                                subjects = state.progressSubjects,
-                                loading = state.progressLoading,
-                                onOpenSubject = { progress ->
-                                    openSubjectFromProgress(progress, state.subjects, onOpenChapter)
-                                },
-                            )
+                            OgFadeSlideIn(delayMillis = 140) {
+                                ExamHubProgressStrip(
+                                    subjects = state.progressSubjects,
+                                    loading = state.progressLoading,
+                                    onOpenSubject = { progress ->
+                                        openSubjectFromProgress(progress, state.subjects, onOpenChapter)
+                                    },
+                                )
+                            }
                         }
                     }
 
@@ -293,10 +321,12 @@ fun ExamDetailScreen(
                         }
                     } else {
                         item(key = PracticeScrollKey) {
-                            PracticeSectionHeader(
-                                filteredCount = filteredSubjects.size,
-                                totalCount = state.subjects.size,
-                            )
+                            OgFadeSlideIn(delayMillis = 160) {
+                                PracticeSectionHeader(
+                                    filteredCount = filteredSubjects.size,
+                                    totalCount = state.subjects.size,
+                                )
+                            }
                         }
                         item(key = "search") {
                             SubjectSearchBar(
@@ -310,21 +340,25 @@ fun ExamDetailScreen(
                                 NoSearchMatches(onClear = { searchQuery = "" })
                             }
                         } else {
-                            items(filteredSubjects, key = { it.subject }) { group ->
-                                HubSubjectCard(
-                                    group = group,
-                                    onOpenChapter = onOpenChapter,
-                                )
+                            items(filteredSubjects.withIndex().toList(), key = { it.value.subject }) { (index, group) ->
+                                OgFadeSlideIn(delayMillis = 180 + (index * 35).coerceAtMost(280)) {
+                                    HubSubjectCard(
+                                        group = group,
+                                        onOpenChapter = onOpenChapter,
+                                    )
+                                }
                             }
                         }
                     }
 
                     item(key = "bottom-cta") {
-                        ExamHubBottomCta(
-                            isSignedIn = state.isSignedIn,
-                            onGoToDashboard = onGoToDashboard,
-                            onSignIn = onSignIn,
-                        )
+                        OgFadeSlideIn(delayMillis = 200) {
+                            ExamHubBottomCta(
+                                isSignedIn = state.isSignedIn,
+                                onGoToDashboard = onGoToDashboard,
+                                onSignIn = onSignIn,
+                            )
+                        }
                     }
 
                     item { Spacer(modifier = Modifier.height(72.dp)) }
@@ -1229,7 +1263,7 @@ private fun HubSubjectCard(
         modifier = Modifier
             .fillMaxWidth()
             .animateContentSize(animationSpec = tween(200)),
-        shape = RoundedCornerShape(24.dp),
+        shape = Tw.Radius.shape3xl,
         colors = CardDefaults.cardColors(containerColor = Color.White),
         border = androidx.compose.foundation.BorderStroke(1.dp, Neutral200),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
@@ -1238,7 +1272,7 @@ private fun HubSubjectCard(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .padding(Tw.Space.s4),
                 verticalAlignment = Alignment.Top,
             ) {
                 Box(

@@ -2,11 +2,13 @@ package com.tentracker.nativeapp.ui.motion
 
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -28,14 +30,71 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
+import kotlin.math.sqrt
 
 /** Matches web `easeOut` — [0.22, 1, 0.36, 1]. */
 val OgEaseOut = CubicBezierEasing(0.22f, 1f, 0.36f, 1f)
+
+/**
+ * Framer `spring({ stiffness, damping })` → Compose [spring] dampingRatio.
+ * dampingRatio = damping / (2 * sqrt(stiffness)) with mass = 1.
+ */
+fun framerSpringDampingRatio(stiffness: Float, damping: Float): Float =
+    damping / (2f * sqrt(stiffness))
+
+/** ExamHubFAB: spring stiffness 300, damping 22. */
+val ExamHubFabSpring = spring<Float>(
+    dampingRatio = framerSpringDampingRatio(stiffness = 300f, damping = 22f),
+    stiffness = 300f,
+)
+
+/** SubjectPractice / ChapterPractice mobile sheet: damping 28, stiffness 300. */
+val PracticeSheetSpring = spring<IntOffset>(
+    dampingRatio = framerSpringDampingRatio(stiffness = 300f, damping = 28f),
+    stiffness = 300f,
+)
+
+/** ChapterPracticePage options sheet: spring damping 25 (default stiffness). */
+val PracticeOptionsSheetSpring = spring<IntOffset>(
+    dampingRatio = framerSpringDampingRatio(stiffness = Spring.StiffnessMediumLow, damping = 25f),
+    stiffness = Spring.StiffnessMediumLow,
+)
+
+/**
+ * Scale+fade entrance matching ExamHubFAB / loading cards
+ * (`initial={{ opacity: 0, scale: 0.8 }}` + spring).
+ */
+@Composable
+fun OgScaleFadeIn(
+    delayMillis: Int = 0,
+    initialScale: Float = 0.8f,
+    modifier: Modifier = Modifier,
+    content: @Composable BoxScope.() -> Unit,
+) {
+    var armed by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        if (delayMillis > 0) delay(delayMillis.toLong())
+        armed = true
+    }
+    val alpha by animateFloatAsState(
+        targetValue = if (armed) 1f else 0f,
+        animationSpec = ExamHubFabSpring,
+        label = "ogScaleAlpha",
+    )
+    val scale by animateFloatAsState(
+        targetValue = if (armed) 1f else initialScale,
+        animationSpec = ExamHubFabSpring,
+        label = "ogScale",
+    )
+    Box(modifier = modifier.alpha(alpha).scale(scale), content = content)
+}
 
 @Composable
 fun OgFadeSlideIn(
