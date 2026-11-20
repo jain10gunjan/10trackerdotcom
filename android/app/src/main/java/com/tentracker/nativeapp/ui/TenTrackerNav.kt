@@ -136,7 +136,7 @@ fun TenTrackerNav(api: ApiClient, sessionStore: SessionStore) {
             ),
         ) { entry ->
             val resourceId = entry.arguments?.getString("resourceId").orEmpty()
-            val youtubeId = entry.arguments?.getString("youtubeId").orEmpty()
+            val youtubeId = dec(entry.arguments?.getString("youtubeId"))
             val title = dec(entry.arguments?.getString("title")).ifBlank { "Lesson" }
             VideoPlayerScreen(
                 api = api,

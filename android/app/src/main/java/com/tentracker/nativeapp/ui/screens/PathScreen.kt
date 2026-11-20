@@ -37,6 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.Modifier
 import com.tentracker.nativeapp.data.OgResource
+import com.tentracker.nativeapp.ui.util.extractYouTubeVideoId
 import com.tentracker.nativeapp.ui.util.resourceOpenUrl
 import com.tentracker.nativeapp.ui.viewmodel.PathViewModel
 
@@ -116,8 +117,9 @@ fun PathScreen(
                             resource = resource,
                             onClick = {
                                 val type = resource.type.uppercase()
-                                if (type == "VIDEO" && !resource.youtubeVideoId.isNullOrBlank() && !resource.locked) {
-                                    onPlayVideo(resource.id, resource.youtubeVideoId!!, resource.title)
+                                val ytId = extractYouTubeVideoId(resource.youtubeVideoId)
+                                if (type == "VIDEO" && ytId != null && !resource.locked) {
+                                    onPlayVideo(resource.id, ytId, resource.title)
                                 } else {
                                     val url = resourceOpenUrl(resource, path?.slug.orEmpty())
                                     if (url != null) {

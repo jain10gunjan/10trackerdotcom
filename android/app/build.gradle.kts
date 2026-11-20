@@ -74,8 +74,8 @@ dependencies {
     implementation("androidx.webkit:webkit:1.11.0")
     implementation("io.coil-kt:coil-compose:2.6.0")
 
-    // In-app YouTube player for progress tracking
-    implementation("com.pierfrancescosoffritti.androidyoutubeplayer:core:12.1.0")
+    // In-app YouTube player — 12.1.2 + manual IFrame init (auto-init breaks in Compose)
+    implementation("com.pierfrancescosoffritti.androidyoutubeplayer:core:12.1.2")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
