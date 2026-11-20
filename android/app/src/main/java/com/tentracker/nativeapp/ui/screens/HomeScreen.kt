@@ -98,21 +98,10 @@ fun HomeScreen(
             modifier = Modifier
                 .matchParentSize()
                 .background(
-                    Brush.linearGradient(
-                        colors = listOf(Color(0xFFF8FAFC), Color(0xFFF1F5F9), Color(0xFFF5F5F5)),
-                        start = Offset(0f, 0f),
-                        end = Offset(0f, Float.POSITIVE_INFINITY),
-                    ),
-                ),
-        )
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .background(
                     Brush.radialGradient(
-                        colors = listOf(BrandSoft.copy(alpha = 0.9f), Color.Transparent),
-                        center = Offset(900f, 120f),
-                        radius = 520f,
+                        colors = listOf(BrandSoft.copy(alpha = 0.55f), Color.Transparent),
+                        center = Offset(280f, 0f),
+                        radius = 480f,
                     ),
                 ),
         )
@@ -126,7 +115,12 @@ fun HomeScreen(
             else -> {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                    contentPadding = PaddingValues(
+                        start = 16.dp,
+                        end = 16.dp,
+                        top = 16.dp,
+                        bottom = 12.dp,
+                    ),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
                     item {
@@ -226,7 +220,7 @@ fun HomeScreen(
                         }
                     }
 
-                    item { Spacer(modifier = Modifier.height(8.dp)) }
+                    item { Spacer(modifier = Modifier.height(4.dp)) }
                 }
             }
         }
