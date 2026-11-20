@@ -24,10 +24,18 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.BottomAppBar
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -72,7 +80,9 @@ private val WrongBorder = Color(0xFFFECACA)
 private val SolutionIndigo = Color(0xFF3730A3)
 private val SolutionBg = Color(0xFFEEF2FF)
 private val SolutionBorder = Color(0xFFC7D2FE)
-private val Emerald = Color(0xFF059669)
+private val Emerald = Color(0xFF10B981)
+private val Neutral50 = Color(0xFFFAFAFA)
+private val Neutral900 = Color(0xFF171717)
 private val EmeraldSoft = Color(0xFFECFDF5)
 private val EmeraldBorder = Color(0xFFA7F3D0)
 private val RoseSoft = Color(0xFFFFF1F2)
@@ -88,31 +98,54 @@ fun PracticeScreen(
     val state by vm.state.collectAsState()
     val q = state.questions.getOrNull(state.index)
     val totalLabel = if (state.totalCount > 0) state.totalCount else state.questions.size
+    var listFilter by remember { mutableStateOf("all") }
 
     Scaffold(
-        containerColor = Color(0xFFFAFAFA),
+        containerColor = Neutral50,
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(title, maxLines = 1, fontWeight = FontWeight.SemiBold)
-                        if (state.totalCount > 0 || state.questions.isNotEmpty()) {
-                            val plus = if (state.hasMore) "+" else ""
-                            Text(
-                                "Q ${state.index + 1} of ${state.questions.size}$plus · $totalLabel total",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = Muted,
-                            )
+            Column {
+                TopAppBar(
+                    title = {
+                        Column {
+                            Text("$title — Practice", maxLines = 1, fontWeight = FontWeight.SemiBold)
+                            if (state.totalCount > 0 || state.questions.isNotEmpty()) {
+                                Text(
+                                    "$totalLabel questions",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Muted,
+                                )
+                            }
                         }
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White),
-            )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Neutral50),
+                )
+                if (q != null) {
+                    StickyProgressStrip(
+                        state = state,
+                        listFilter = listFilter,
+                        onFilter = { listFilter = it },
+                        onJumpOpen = { vm.jumpToFirstOpen() },
+                    )
+                }
+            }
+        },
+        bottomBar = {
+            if (q != null) {
+                Surface(shadowElevation = 8.dp, tonalElevation = 0.dp) {
+                    MobilePracticeNavBar(
+                        state = state,
+                        onPrev = { vm.prev() },
+                        onNext = { if (state.revealed) vm.next() else vm.checkAnswer() },
+                        onToggleMap = { vm.togglePalette() },
+                        mapExpanded = state.paletteExpanded,
+                    )
+                }
+            }
         },
     ) { innerPadding ->
         when {
@@ -140,13 +173,16 @@ fun PracticeScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     Spacer(modifier = Modifier.height(4.dp))
-                    ScoreStrip(state = state, onJumpOpen = { vm.jumpToFirstOpen() })
-                    QuestionPalette(
-                        state = state,
-                        onToggle = { vm.togglePalette() },
-                        onJump = { vm.jumpTo(it) },
-                        onJumpOpen = { vm.jumpToFirstOpen() },
-                    )
+                    MobileScoreChips(state = state)
+                    if (state.paletteExpanded) {
+                        QuestionPalette(
+                            state = state,
+                            listFilter = listFilter,
+                            onToggle = { vm.togglePalette() },
+                            onJump = { vm.jumpTo(it) },
+                            onJumpOpen = { vm.jumpToFirstOpen() },
+                        )
+                    }
                     QuestionCardBody(
                         question = q,
                         index = state.index,
@@ -157,13 +193,185 @@ fun PracticeScreen(
                     state.saveHint?.let {
                         Text(it, style = MaterialTheme.typography.labelSmall, color = Muted)
                     }
-                    NavRow(
-                        state = state,
-                        onPrev = { vm.prev() },
-                        onCheck = { vm.checkAnswer() },
-                        onNext = { vm.next() },
-                    )
-                    Spacer(modifier = Modifier.height(24.dp))
+                    if (state.revealed) {
+                        NavRow(
+                            state = state,
+                            onPrev = { vm.prev() },
+                            onCheck = { vm.checkAnswer() },
+                            onNext = { vm.next() },
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(88.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StickyProgressStrip(
+    state: PracticeUiState,
+    listFilter: String,
+    onFilter: (String) -> Unit,
+    onJumpOpen: () -> Unit,
+) {
+    val total = if (state.totalCount > 0) state.totalCount else state.questions.size
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Neutral50.copy(alpha = 0.97f))
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(
+                "${state.index + 1}",
+                fontWeight = FontWeight.Bold,
+                color = Ink,
+                fontSize = 13.sp,
+            )
+            Text("/$total", color = Muted, fontSize = 12.sp)
+            LinearProgressIndicator(
+                progress = { state.progressPct / 100f },
+                modifier = Modifier
+                    .weight(1f)
+                    .height(6.dp)
+                    .clip(RoundedCornerShape(999.dp)),
+                color = Emerald,
+                trackColor = Color(0xFFE5E5E5),
+            )
+            Text(
+                "${state.progressPct}% done",
+                style = MaterialTheme.typography.labelSmall,
+                color = Muted,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
+        Row(
+            modifier = Modifier.padding(top = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            PracticeFilterChip("All", listFilter == "all") { onFilter("all") }
+            PracticeFilterChip("Wrong", listFilter == "wrong") { onFilter("wrong") }
+            if (state.firstPendingIndex >= 0) {
+                TextButton(onClick = onJumpOpen) {
+                    Text("Jump to open", color = Emerald, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                }
+            }
+        }
+        HorizontalDivider(modifier = Modifier.padding(top = 10.dp), color = Color(0xFFE5E5E5).copy(alpha = 0.85f))
+    }
+}
+
+@Composable
+private fun PracticeFilterChip(label: String, active: Boolean, onClick: () -> Unit) {
+    val bg = if (active) Neutral900 else Color.White
+    val fg = if (active) Color.White else Muted
+    val borderColor = if (active) Neutral900 else Border
+    Text(
+        label,
+        modifier = Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(bg)
+            .border(1.dp, borderColor, RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        fontSize = 12.sp,
+        fontWeight = FontWeight.SemiBold,
+        color = fg,
+    )
+}
+
+@Composable
+private fun MobileScoreChips(state: PracticeUiState) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        MiniStatChip("Correct ${state.correctInChapter()}", EmeraldSoft, EmeraldBorder, Color(0xFF065F46))
+        MiniStatChip("Wrong ${state.wrongInChapter}", RoseSoft, RoseBorder, Color(0xFF9F1239))
+        MiniStatChip("Left ${state.pendingInChapter}", Color(0xFFFAFAFA), Border, Ink)
+    }
+}
+
+@Composable
+private fun MiniStatChip(label: String, bg: Color, border: Color, color: Color) {
+    Text(
+        label,
+        modifier = Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(bg)
+            .border(1.dp, border, RoundedCornerShape(12.dp))
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        fontSize = 11.sp,
+        fontWeight = FontWeight.SemiBold,
+        color = color,
+    )
+}
+
+@Composable
+private fun MobilePracticeNavBar(
+    state: PracticeUiState,
+    onPrev: () -> Unit,
+    onNext: () -> Unit,
+    onToggleMap: () -> Unit,
+    mapExpanded: Boolean,
+) {
+    BottomAppBar(containerColor = Color.White.copy(alpha = 0.97f)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            IconButton(onClick = onPrev, enabled = state.index > 0) {
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Previous")
+            }
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color(0xFFFAFAFA))
+                    .border(1.dp, Border, RoundedCornerShape(16.dp))
+                    .clickable(onClick = onToggleMap)
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(
+                    "${state.index + 1}/${state.questions.size}",
+                    fontWeight = FontWeight.Bold,
+                    color = Ink,
+                    fontSize = 12.sp,
+                )
+                Text(
+                    if (mapExpanded) "Hide map" else "Question map",
+                    color = Muted,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+            Button(
+                onClick = onNext,
+                enabled = if (state.revealed) true else state.selected != null,
+                colors = ButtonDefaults.buttonColors(containerColor = Emerald),
+                shape = RoundedCornerShape(14.dp),
+            ) {
+                Text(
+                    when {
+                        !state.revealed -> "Check"
+                        state.index < state.questions.lastIndex -> "Next"
+                        state.hasMore -> if (state.loadingMore) "…" else "More"
+                        else -> "Done"
+                    },
+                )
+                if (state.revealed) {
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, modifier = Modifier.size(18.dp))
                 }
             }
         }
@@ -312,6 +520,7 @@ private fun StatChip(
 @Composable
 private fun QuestionPalette(
     state: PracticeUiState,
+    listFilter: String,
     onToggle: () -> Unit,
     onJump: (Int) -> Unit,
     onJumpOpen: () -> Unit,
@@ -362,6 +571,7 @@ private fun QuestionPalette(
                     val id = question.id
                     val ok = id in state.correctIds
                     val bad = id in state.completedIds && !ok
+                    if (listFilter == "wrong" && !bad) return@forEachIndexed
                     val cur = i == state.index
                     val bg = when {
                         cur -> Emerald
