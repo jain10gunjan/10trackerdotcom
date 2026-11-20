@@ -32,14 +32,16 @@ fun TenTrackerNav(api: ApiClient, sessionStore: SessionStore) {
     fun dec(value: String?): String =
         URLDecoder.decode(value ?: "", StandardCharsets.UTF_8.toString())
 
+    fun openPractice(category: String, subject: String, chapter: String, title: String) {
+        nav.navigate("practice/${enc(category)}/${enc(subject)}/${enc(chapter)}/${enc(title)}")
+    }
+
     NavHost(navController = nav, startDestination = "main") {
         composable("login") {
             LoginScreen(
                 onSignedIn = {
                     sessionStore.markSignedInFromCookies()
-                    nav.navigate("main") {
-                        popUpTo("login") { inclusive = true }
-                    }
+                    nav.navigate("main") { popUpTo("login") { inclusive = true } }
                 },
                 onBack = { nav.popBackStack() },
             )
@@ -50,9 +52,7 @@ fun TenTrackerNav(api: ApiClient, sessionStore: SessionStore) {
                 api = api,
                 sessionStore = sessionStore,
                 onOpenPath = { slug -> nav.navigate("path/$slug") },
-                onOpenExam = { slug, name ->
-                    nav.navigate("exam/${enc(slug)}/${enc(name)}")
-                },
+                onOpenExam = { slug, name -> nav.navigate("exam/${enc(slug)}/${enc(name)}") },
                 onOpenArticle = { slug -> nav.navigate("article/${enc(slug)}") },
                 onSignIn = { nav.navigate("login") },
             )
@@ -67,19 +67,14 @@ fun TenTrackerNav(api: ApiClient, sessionStore: SessionStore) {
         ) { entry ->
             val slug = dec(entry.arguments?.getString("slug"))
             val name = dec(entry.arguments?.getString("name"))
-            val vm: ExamDetailViewModel = viewModel(
-                key = slug,
-                factory = ExamDetailViewModel.factory(api, slug),
-            )
+            val vm: ExamDetailViewModel = viewModel(key = slug, factory = ExamDetailViewModel.factory(api, slug))
             ExamDetailScreen(
                 title = name.ifBlank { slug },
                 category = slug,
                 vm = vm,
                 onBack = { nav.popBackStack() },
                 onOpenChapter = { subject, chapter, chapterTitle ->
-                    nav.navigate(
-                        "practice/${enc(slug)}/${enc(subject)}/${enc(chapter)}/${enc(chapterTitle)}"
-                    )
+                    openPractice(slug, subject, chapter, chapterTitle)
                 },
             )
         }
@@ -113,37 +108,39 @@ fun TenTrackerNav(api: ApiClient, sessionStore: SessionStore) {
             arguments = listOf(navArgument("slug") { type = NavType.StringType }),
         ) { entry ->
             val slug = entry.arguments?.getString("slug").orEmpty()
-            val vm: PathViewModel = viewModel(
-                key = slug,
-                factory = PathViewModel.factory(api, slug),
-            )
+            val vm: PathViewModel = viewModel(key = slug, factory = PathViewModel.factory(api, slug))
             PathScreen(
                 vm = vm,
                 onBack = { nav.popBackStack() },
                 onPlayVideo = { resourceId, youtubeId, title ->
-                    val t = enc(title)
-                    nav.navigate("video/$resourceId/$youtubeId/$t")
+                    nav.navigate("video/${enc(slug)}/${enc(resourceId)}/${enc(youtubeId)}/${enc(title)}")
                 },
             )
         }
 
         composable(
-            route = "video/{resourceId}/{youtubeId}/{title}",
+            route = "video/{pathSlug}/{resourceId}/{youtubeId}/{title}",
             arguments = listOf(
+                navArgument("pathSlug") { type = NavType.StringType },
                 navArgument("resourceId") { type = NavType.StringType },
                 navArgument("youtubeId") { type = NavType.StringType },
                 navArgument("title") { type = NavType.StringType },
             ),
         ) { entry ->
-            val resourceId = entry.arguments?.getString("resourceId").orEmpty()
+            val pathSlug = dec(entry.arguments?.getString("pathSlug"))
+            val resourceId = dec(entry.arguments?.getString("resourceId"))
             val youtubeId = dec(entry.arguments?.getString("youtubeId"))
             val title = dec(entry.arguments?.getString("title")).ifBlank { "Lesson" }
             VideoPlayerScreen(
                 api = api,
+                pathSlug = pathSlug,
                 resourceId = resourceId,
                 youtubeVideoId = youtubeId,
                 title = title,
                 onBack = { nav.popBackStack() },
+                onOpenPractice = { category, subject, chapter, t ->
+                    openPractice(category, subject, chapter, t)
+                },
             )
         }
 
@@ -151,9 +148,8 @@ fun TenTrackerNav(api: ApiClient, sessionStore: SessionStore) {
             route = "article/{slug}",
             arguments = listOf(navArgument("slug") { type = NavType.StringType }),
         ) { entry ->
-            val slug = dec(entry.arguments?.getString("slug"))
             ArticleDetailScreen(
-                slug = slug,
+                slug = dec(entry.arguments?.getString("slug")),
                 api = api,
                 onBack = { nav.popBackStack() },
             )
