@@ -168,6 +168,13 @@ fun RoadmapDetailScreen(
                                     detail.noRefundsNotice?.takeIf { it.isNotBlank() }?.let { notice ->
                                         Text(notice, style = MaterialTheme.typography.labelSmall, color = Muted)
                                     }
+                                } else {
+                                    Text(
+                                        "Owned · full access",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = EmeraldDark,
+                                        fontWeight = FontWeight.SemiBold,
+                                    )
                                 }
                             }
                         }
@@ -175,8 +182,13 @@ fun RoadmapDetailScreen(
 
                     if (detail.days.isNotEmpty()) {
                         item {
+                            val previewLabel = if (detail.purchased) {
+                                "YOUR ROADMAP"
+                            } else {
+                                "FREE PREVIEW"
+                            }
                             Text(
-                                "PREVIEW DAYS",
+                                previewLabel,
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.SemiBold,
                                 color = EmeraldDark,
@@ -271,10 +283,13 @@ private fun DaySummaryRow(summary: RoadmapDaySummary) {
                 Text(labels, style = MaterialTheme.typography.labelSmall, color = Muted)
             }
         }
-        Text(
-            "${summary.tasks} tasks",
-            style = MaterialTheme.typography.labelSmall,
-            color = Muted,
-        )
+        val taskCount = if (summary.taskCount > 0) summary.taskCount else summary.task_count
+        if (taskCount > 0) {
+            Text(
+                "$taskCount tasks",
+                style = MaterialTheme.typography.labelSmall,
+                color = Muted,
+            )
+        }
     }
 }
