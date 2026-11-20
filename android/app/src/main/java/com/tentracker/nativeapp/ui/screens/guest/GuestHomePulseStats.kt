@@ -1,10 +1,5 @@
 package com.tentracker.nativeapp.ui.screens.guest
 
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -15,25 +10,21 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tentracker.nativeapp.ui.theme.Border
 import com.tentracker.nativeapp.ui.theme.Brand
-import com.tentracker.nativeapp.ui.theme.BrandSoft
 import com.tentracker.nativeapp.ui.theme.Ink
 import com.tentracker.nativeapp.ui.theme.Muted
-import java.text.NumberFormat
+import com.tentracker.nativeapp.ui.theme.Tw
 
 @Composable
 fun GuestHomePulseStats(
@@ -42,27 +33,20 @@ fun GuestHomePulseStats(
     questionCount: Int,
     modifier: Modifier = Modifier,
 ) {
-    val animate = rememberGuestAnimate()
-    val (revealModifier, show) = rememberGuestSectionRevealed(threshold = 0.4f)
-    val questionTarget = if (questionCount >= 1000) questionCount / 1000 else questionCount
+    val animate = rememberGuestMotionEnabled()
+    val questionNumeric = if (questionCount >= 1000) questionCount / 1000 else questionCount
     val questionSuffix = if (questionCount >= 1000) "k+" else ""
-    val roadmapLabel = if (roadmapCount > 0) roadmapCount.toString() else "Soon"
+    val countedExams = rememberGuestCountUp(examCount, play = animate)
+    val countedQuestions = rememberGuestCountUp(questionNumeric, play = animate)
+    val countedRoadmaps = rememberGuestCountUp(roadmapCount, play = animate)
 
-    val countedExams = rememberGuestCountUp(examCount, show && animate)
-    val countedRoadmaps = rememberGuestCountUp(
-        if (roadmapCount > 0) roadmapCount else 0,
-        show && animate && roadmapCount > 0,
-    )
-    val countedQuestions = rememberGuestCountUp(questionTarget, show && animate)
-
-    Box(
-        modifier = modifier
-            .then(revealModifier)
-            .fillMaxWidth()
-            .padding(horizontal = GuestGutter)
-            .padding(bottom = 40.dp),
-    ) {
-        GuestRevealFadeSlide(show = show, animate = animate) {
+    GuestReveal(play = animate) {
+        Box(
+            modifier = modifier
+                .fillMaxWidth()
+                .padding(horizontal = GuestGutter)
+                .padding(bottom = Tw.Space.s10),
+        ) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -70,41 +54,41 @@ fun GuestHomePulseStats(
                     .background(Color.White.copy(alpha = 0.92f))
                     .border(1.dp, Border.copy(alpha = 0.9f), RoundedCornerShape(Radius2xl)),
             ) {
-                if (animate && show) {
-                    PulseStatsGlow(modifier = Modifier.align(Alignment.BottomCenter))
-                }
+                GuestPulseGlow(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .offset(y = 20.dp)
+                        .fillMaxWidth(0.66f)
+                        .height(48.dp),
+                )
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 8.dp),
+                        .padding(vertical = Tw.Space.s2),
                     horizontalArrangement = Arrangement.SpaceEvenly,
                 ) {
-                    GuestStaggeredFadeSlide(show = show, animate = animate, index = 0) {
+                    GuestStaggerItem(index = 0, play = animate) {
                         StatCell(
-                            value = NumberFormat.getIntegerInstance().format(countedExams),
+                            value = countedExams.toString(),
                             label = "Active exams",
                             accent = true,
                         )
                     }
-                    GuestStaggeredFadeSlide(show = show, animate = animate, index = 1) {
+                    GuestStaggerItem(index = 1, play = animate) {
                         StatCell(
-                            value = if (roadmapCount > 0) {
-                                NumberFormat.getIntegerInstance().format(countedRoadmaps)
-                            } else {
-                                roadmapLabel
-                            },
+                            value = if (roadmapCount > 0) countedRoadmaps.toString() else "Soon",
                             label = "Study plans",
                             accent = false,
                         )
                     }
-                    GuestStaggeredFadeSlide(show = show, animate = animate, index = 2) {
+                    GuestStaggerItem(index = 2, play = animate) {
                         StatCell(
-                            value = NumberFormat.getIntegerInstance().format(countedQuestions) + questionSuffix,
+                            value = "$countedQuestions$questionSuffix",
                             label = "Practice questions",
                             accent = false,
                         )
                     }
-                    GuestStaggeredFadeSlide(show = show, animate = animate, index = 3) {
+                    GuestStaggerItem(index = 3, play = animate) {
                         StatCell(value = "₹0", label = "Free to start", accent = false)
                     }
                 }
@@ -114,39 +98,10 @@ fun GuestHomePulseStats(
 }
 
 @Composable
-private fun PulseStatsGlow(modifier: Modifier = Modifier) {
-    val infinite = rememberInfiniteTransition(label = "pulseGlow")
-    val alpha by infinite.animateFloat(
-        initialValue = 0.35f,
-        targetValue = 0.55f,
-        animationSpec = infiniteRepeatable(tween(5500), RepeatMode.Reverse),
-        label = "glowA",
-    )
-    val scaleX by infinite.animateFloat(
-        initialValue = 0.92f,
-        targetValue = 1.05f,
-        animationSpec = infiniteRepeatable(tween(5500), RepeatMode.Reverse),
-        label = "glowX",
-    )
-    Box(
-        modifier = modifier
-            .offset(y = 32.dp)
-            .width(200.dp)
-            .height(64.dp)
-            .graphicsLayer {
-                this.alpha = alpha
-                this.scaleX = scaleX
-            }
-            .clip(RoundedCornerShape(50))
-            .background(Brand.copy(alpha = 0.2f)),
-    )
-}
-
-@Composable
 private fun StatCell(value: String, label: String, accent: Boolean) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.padding(horizontal = 4.dp, vertical = 12.dp),
+        modifier = Modifier.padding(horizontal = Tw.Space.s1, vertical = Tw.Space.s3),
     ) {
         Text(
             text = value,
@@ -160,7 +115,7 @@ private fun StatCell(value: String, label: String, accent: Boolean) {
             fontWeight = FontWeight.Medium,
             letterSpacing = 1.sp,
             color = Muted,
-            modifier = Modifier.padding(top = 8.dp),
+            modifier = Modifier.padding(top = Tw.Space.s2),
         )
     }
 }

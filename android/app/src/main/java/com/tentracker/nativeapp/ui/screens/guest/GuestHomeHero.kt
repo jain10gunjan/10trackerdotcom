@@ -1,20 +1,12 @@
 package com.tentracker.nativeapp.ui.screens.guest
 
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -23,7 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -46,8 +37,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -60,6 +51,7 @@ import com.tentracker.nativeapp.ui.theme.BrandDeep
 import com.tentracker.nativeapp.ui.theme.BrandSoft
 import com.tentracker.nativeapp.ui.theme.Ink
 import com.tentracker.nativeapp.ui.theme.Muted
+import com.tentracker.nativeapp.ui.theme.Tw
 import kotlinx.coroutines.delay
 import java.text.NumberFormat
 
@@ -70,6 +62,11 @@ private val RotatingHooks = listOf(
     "streaks that stick",
 )
 
+private val StreakHeat = listOf(
+    0.2f, 0.5f, 0.8f, 0.3f, 1f, 0.6f, 0.9f,
+    0.4f, 0.7f, 1f, 0.5f, 0.85f, 0.3f, 0.95f,
+)
+
 @Composable
 fun GuestHomeHero(
     examCount: Int,
@@ -78,17 +75,8 @@ fun GuestHomeHero(
     onBrowseExams: () -> Unit,
     onExploreTrackers: () -> Unit,
     onSignIn: () -> Unit,
-    modifier: Modifier = Modifier,
 ) {
-    val animate = rememberGuestAnimate()
-    var hookIndex by remember { mutableIntStateOf(0) }
-    LaunchedEffect(animate) {
-        if (!animate) return@LaunchedEffect
-        while (true) {
-            delay(2600)
-            hookIndex = (hookIndex + 1) % RotatingHooks.size
-        }
-    }
+    val animate = rememberGuestMotionEnabled()
 
     val questionLabel = if (questionCount >= 1000) {
         "${questionCount / 1000}k+"
@@ -97,7 +85,7 @@ fun GuestHomeHero(
     }
 
     Box(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxWidth()
             .background(
                 Brush.verticalGradient(
@@ -116,200 +104,187 @@ fun GuestHomeHero(
                     ),
                 ),
         )
-        GuestFloatOrb(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(top = 24.dp, end = 48.dp)
-                .size(200.dp)
-                .background(Brand.copy(alpha = 0.16f), CircleShape),
-            color = Brand,
-            animate = animate,
-            durationMillis = 12_000,
-            driftXPx = 20f,
-            driftYPx = 14f,
-        )
-        GuestFloatOrb(
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .padding(start = 16.dp, top = 80.dp)
-                .size(160.dp)
-                .background(Color(0xFFBAE6FD).copy(alpha = 0.4f), CircleShape),
-            color = Color(0xFFBAE6FD),
-            animate = animate,
-            durationMillis = 14_000,
-            driftXPx = -16f,
-            driftYPx = 18f,
-        )
+        GuestHeroAmbientOrbs(modifier = Modifier.matchParentSize())
+
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = GuestGutter)
-                .padding(top = 12.dp, bottom = 40.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+                .padding(top = Tw.Space.s3, bottom = Tw.Space.s10),
+            verticalArrangement = Arrangement.spacedBy(Tw.Space.s3),
         ) {
-            GuestMountFadeSlide(animate = animate, delayMillis = 0) {
-            Text(
-                text = "EXAM PRACTICE · PATHS · YOUTUBE SYNC",
-                fontSize = 11.sp,
-                fontWeight = FontWeight.SemiBold,
-                letterSpacing = 1.5.sp,
-                color = Muted,
-            )
-            }
-            GuestMountFadeSlide(animate = animate, delayMillis = 50) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            GuestEnter(play = animate, delayMillis = 0) {
                 Text(
-                    text = "10tracker",
-                    fontSize = 34.sp,
-                    fontWeight = FontWeight.Black,
-                    color = Ink,
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = ".COM",
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(Brand)
-                        .padding(horizontal = 6.dp, vertical = 3.dp),
-                )
-            }
-            }
-            GuestMountFadeSlide(animate = animate, delayMillis = 100) {
-            Column {
-                Text(
-                    text = "Practice that sticks — with",
-                    fontSize = 20.sp,
+                    text = "EXAM PRACTICE · PATHS · YOUTUBE SYNC",
+                    fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = Ink,
+                    letterSpacing = 1.5.sp,
+                    color = Muted,
                 )
-                GuestAnimatedSwap(target = RotatingHooks[hookIndex], animate = animate) { hook ->
+            }
+            GuestEnter(play = animate, delayMillis = 50) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = hook,
+                        text = "10tracker",
+                        fontSize = 34.sp,
+                        fontWeight = FontWeight.Black,
+                        color = Ink,
+                    )
+                    Spacer(modifier = Modifier.width(Tw.Space.s1_5))
+                    Text(
+                        text = ".COM",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(Brand)
+                            .padding(horizontal = Tw.Space.s1_5, vertical = 3.dp),
+                    )
+                }
+            }
+            GuestEnter(play = animate, delayMillis = 100) {
+                Column {
+                    Text(
+                        text = "Practice that sticks — with",
                         fontSize = 20.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = Brand,
+                        color = Ink,
                     )
+                    GuestRotatingHook(hooks = RotatingHooks, animate = animate) { hook ->
+                        Text(
+                            text = hook,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Brand,
+                        )
+                    }
                 }
             }
+            GuestEnter(play = animate, delayMillis = 150) {
+                Text(
+                    text = "MCQs, timed mocks, OG Tracker paths, and in-app YouTube progress — one app for your prep.",
+                    fontSize = 14.sp,
+                    color = Muted,
+                    lineHeight = 20.sp,
+                )
             }
-            GuestMountFadeSlide(animate = animate, delayMillis = 150) {
-            Text(
-                text = "MCQs, timed mocks, OG Tracker paths, and in-app YouTube progress — one app for your prep.",
-                fontSize = 14.sp,
-                color = Muted,
-                lineHeight = 20.sp,
-            )
-            }
-            GuestMountFadeSlide(animate = animate, delayMillis = 200) {
-            val browseInteraction = rememberGuestPressInteractionSource()
-            val browsePressed by browseInteraction.collectIsPressedAsState()
-            val browseScale by animateFloatAsState(
-                if (browsePressed) 0.99f else 1f,
-                spring(dampingRatio = 0.62f, stiffness = 380f),
-                label = "browseScale",
-            )
-            Button(
-                onClick = onBrowseExams,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(48.dp)
-                    .scale(browseScale),
-                shape = RoundedCornerShape(RadiusXl),
-                colors = ButtonDefaults.buttonColors(containerColor = Brand),
-                interactionSource = browseInteraction,
-            ) {
-                Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Browse exams", fontWeight = FontWeight.SemiBold)
-                Spacer(modifier = Modifier.weight(1f))
-                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(18.dp))
-            }
-            OutlinedButton(
-                onClick = onExploreTrackers,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(48.dp),
-                shape = RoundedCornerShape(RadiusXl),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Border),
-            ) {
-                Icon(Icons.Default.Map, contentDescription = null, tint = Brand, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Explore paths", fontWeight = FontWeight.SemiBold, color = Ink)
-            }
-            OutlinedButton(
-                onClick = onSignIn,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(48.dp),
-                shape = RoundedCornerShape(RadiusXl),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Border),
-            ) {
-                Text("Sign in with Google", fontWeight = FontWeight.SemiBold, color = Ink)
-            }
-            Text(
-                text = "Save streaks, YouTube progress, and rankings in one tap",
-                fontSize = 12.sp,
-                color = Muted,
-            )
-            }
-            GuestMountFadeSlide(animate = animate, delayMillis = 280) {
-            QuickLinksRow(onBrowseExams = onBrowseExams, onExploreTrackers = onExploreTrackers, animate = animate)
-            }
-            GuestMountFadeSlide(animate = animate, delayMillis = 320) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                if (examCount > 0) {
+            GuestEnter(play = animate, delayMillis = 200) {
+                Column(verticalArrangement = Arrangement.spacedBy(Tw.Space.s2_5)) {
+                    Button(
+                        onClick = onBrowseExams,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp),
+                        shape = RoundedCornerShape(RadiusXl),
+                        colors = ButtonDefaults.buttonColors(containerColor = Brand),
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(Tw.Space.s2))
+                        Text("Browse exams", fontWeight = FontWeight.SemiBold)
+                        Spacer(modifier = Modifier.weight(1f))
+                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(18.dp))
+                    }
+                    OutlinedButton(
+                        onClick = onExploreTrackers,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp),
+                        shape = RoundedCornerShape(RadiusXl),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Border),
+                    ) {
+                        Icon(Icons.Default.Map, contentDescription = null, tint = Brand, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(Tw.Space.s2))
+                        Text("Explore paths", fontWeight = FontWeight.SemiBold, color = Ink)
+                    }
+                    OutlinedButton(
+                        onClick = onSignIn,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp),
+                        shape = RoundedCornerShape(RadiusXl),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Border),
+                    ) {
+                        Text("Sign in with Google", fontWeight = FontWeight.SemiBold, color = Ink)
+                    }
                     Text(
-                        text = buildString {
-                            append(NumberFormat.getIntegerInstance().format(examCount))
-                            append(if (examCount == 1) " exam" else " exams")
-                        },
-                        fontSize = 13.sp,
+                        text = "Save streaks, YouTube progress, and rankings in one tap",
+                        fontSize = 12.sp,
                         color = Muted,
                     )
                 }
-                if (questionCount > 0) {
-                    Text(
-                        text = "$questionLabel questions",
-                        fontSize = 13.sp,
-                        color = Muted,
-                    )
-                }
-                if (roadmapCount > 0) {
-                    Text(
-                        text = "${NumberFormat.getIntegerInstance().format(roadmapCount)} paths",
-                        fontSize = 13.sp,
-                        color = Muted,
-                    )
-                } else {
-                    Text(text = "Free to start", fontSize = 13.sp, color = Muted)
+            }
+            GuestEnter(play = animate, delayMillis = 280) {
+                QuickLinksRow(
+                    animate = animate,
+                    onBrowseExams = onBrowseExams,
+                    onExploreTrackers = onExploreTrackers,
+                )
+            }
+            GuestEnter(play = animate, delayMillis = 320) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(Tw.Space.s3),
+                ) {
+                    if (examCount > 0) {
+                        Text(
+                            text = buildString {
+                                append(NumberFormat.getIntegerInstance().format(examCount))
+                                append(if (examCount == 1) " exam" else " exams")
+                            },
+                            fontSize = 13.sp,
+                            color = Muted,
+                        )
+                    }
+                    if (questionCount > 0) {
+                        Text(
+                            text = "$questionLabel questions",
+                            fontSize = 13.sp,
+                            color = Muted,
+                        )
+                    }
+                    if (roadmapCount > 0) {
+                        Text(
+                            text = "${NumberFormat.getIntegerInstance().format(roadmapCount)} paths",
+                            fontSize = 13.sp,
+                            color = Muted,
+                        )
+                    } else {
+                        Text(text = "Free to start", fontSize = 13.sp, color = Muted)
+                    }
                 }
             }
-            }
-            GuestMountFadeSlide(animate = animate, delayMillis = 120) {
-            GuestFeatureShowcase(onOpenExams = onBrowseExams, animate = animate)
+            GuestEnter(play = animate, delayMillis = 120) {
+                GuestFeatureShowcase(animate = animate, onOpenExams = onBrowseExams)
             }
         }
     }
 }
 
 @Composable
-private fun QuickLinksRow(onBrowseExams: () -> Unit, onExploreTrackers: () -> Unit, animate: Boolean) {
+private fun QuickLinksRow(
+    animate: Boolean,
+    onBrowseExams: () -> Unit,
+    onExploreTrackers: () -> Unit,
+) {
     val scroll = rememberScrollState()
+    val links = listOf(
+        Triple("Exams", Icons.AutoMirrored.Filled.MenuBook, onBrowseExams),
+        Triple("OG Trackers", Icons.Default.Map, onExploreTrackers),
+        Triple("Mocks", Icons.Default.Assignment, onBrowseExams),
+    )
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .horizontalScroll(scroll),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(Tw.Space.s2),
     ) {
-        QuickChip("Exams", Icons.AutoMirrored.Filled.MenuBook, onBrowseExams, animate)
-        QuickChip("OG Trackers", Icons.Default.Map, onExploreTrackers, animate)
-        QuickChip("Mocks", Icons.Default.Assignment, onBrowseExams, animate)
+        links.forEachIndexed { i, (label, icon, onClick) ->
+            // web: duration 0.35, delay 0.28 + i * 0.05
+            GuestEnter(play = animate, delayMillis = 280 + i * 50) {
+                QuickChip(label, icon, onClick)
+            }
+        }
     }
 }
 
@@ -318,31 +293,21 @@ private fun QuickChip(
     label: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     onClick: () -> Unit,
-    animate: Boolean,
 ) {
-    val interaction = rememberGuestPressInteractionSource()
-    val pressed by interaction.collectIsPressedAsState()
-    val chipScale by animateFloatAsState(
-        if (pressed) 0.98f else if (animate) 1.03f else 1f,
-        spring(dampingRatio = 0.65f, stiffness = 340f),
-        label = "chipScale",
-    )
     OutlinedButton(
         onClick = onClick,
-        modifier = Modifier.scale(chipScale),
-        interactionSource = interaction,
         shape = RoundedCornerShape(999.dp),
         border = androidx.compose.foundation.BorderStroke(1.dp, Border),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+        contentPadding = PaddingValues(horizontal = Tw.Space.s3, vertical = Tw.Space.s1_5),
     ) {
         Icon(icon, contentDescription = null, tint = Brand, modifier = Modifier.size(14.dp))
-        Spacer(modifier = Modifier.width(4.dp))
+        Spacer(modifier = Modifier.width(Tw.Space.s1))
         Text(label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = BrandDeep)
     }
 }
 
 @Composable
-private fun GuestFeatureShowcase(onOpenExams: () -> Unit, animate: Boolean) {
+private fun GuestFeatureShowcase(animate: Boolean, onOpenExams: () -> Unit) {
     var tab by remember { mutableIntStateOf(0) }
     LaunchedEffect(animate) {
         if (!animate) return@LaunchedEffect
@@ -360,14 +325,14 @@ private fun GuestFeatureShowcase(onOpenExams: () -> Unit, animate: Boolean) {
             .clip(RoundedCornerShape(20.dp))
             .border(1.dp, Border.copy(alpha = 0.9f), RoundedCornerShape(20.dp))
             .background(Color.White)
-            .padding(16.dp),
+            .padding(Tw.Space.s4),
     ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(Tw.Space.s1_5)) {
             listOf("MCQs", "Mocks", "Streaks").forEachIndexed { i, label ->
                 val active = tab == i
                 OutlinedButton(
                     onClick = { tab = i },
-                    shape = RoundedCornerShape(8.dp),
+                    shape = RoundedCornerShape(Tw.Radius.lg),
                     border = androidx.compose.foundation.BorderStroke(
                         1.dp,
                         if (active) Brand.copy(alpha = 0.35f) else Border,
@@ -375,7 +340,7 @@ private fun GuestFeatureShowcase(onOpenExams: () -> Unit, animate: Boolean) {
                     colors = ButtonDefaults.outlinedButtonColors(
                         containerColor = if (active) Color.White else Color.Transparent,
                     ),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                    contentPadding = PaddingValues(horizontal = Tw.Space.s2_5, vertical = Tw.Space.s1),
                 ) {
                     Text(
                         label,
@@ -391,25 +356,45 @@ private fun GuestFeatureShowcase(onOpenExams: () -> Unit, animate: Boolean) {
             fontSize = 10.sp,
             fontWeight = FontWeight.SemiBold,
             color = Brand,
-            modifier = Modifier.padding(top = 12.dp),
+            modifier = Modifier.padding(top = Tw.Space.s3),
             letterSpacing = 1.2.sp,
         )
-        GuestAnimatedSwap(target = titles[tab], animate = animate, modifier = Modifier.padding(top = 4.dp)) { title ->
+        GuestTitleSwap(title = titles[tab], animate = animate) { title ->
             Text(
                 text = title,
                 fontSize = 17.sp,
                 fontWeight = FontWeight.Bold,
                 color = Ink,
+                modifier = Modifier.padding(top = Tw.Space.s1),
             )
         }
-        GuestAnimatedSwap(target = tab, animate = animate) { activeTab ->
-            when (activeTab) {
+        GuestSceneSwap(key = tab, animate = animate) { current ->
+            when (current) {
                 0 -> McqPanelPreview(animate = animate)
                 1 -> MockPanelPreview(animate = animate)
                 else -> StreakPanelPreview(animate = animate)
             }
         }
-        TextButtonLink("Open", onOpenExams, modifier = Modifier.align(Alignment.End))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = Tw.Space.s3),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Tw.Space.s1_5),
+        ) {
+            repeat(3) { i ->
+                val w = rememberGuestTabPillWidth(active = i == tab)
+                Box(
+                    modifier = Modifier
+                        .width(w)
+                        .height(4.dp)
+                        .clip(RoundedCornerShape(99.dp))
+                        .background(if (i == tab) Brand else Color(0xFFD4D4D8)),
+                )
+            }
+            Spacer(modifier = Modifier.weight(1f))
+            TextButtonLink("Open", onOpenExams)
+        }
     }
 }
 
@@ -419,10 +404,15 @@ private fun TextButtonLink(label: String, onClick: () -> Unit, modifier: Modifie
         onClick = onClick,
         modifier = modifier,
         border = androidx.compose.foundation.BorderStroke(0.dp, Color.Transparent),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
+        contentPadding = PaddingValues(0.dp),
     ) {
         Text(label, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = Muted)
-        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(12.dp), tint = Muted)
+        Icon(
+            Icons.AutoMirrored.Filled.ArrowForward,
+            contentDescription = null,
+            modifier = Modifier.size(12.dp),
+            tint = Muted,
+        )
     }
 }
 
@@ -434,58 +424,52 @@ private fun McqPanelPreview(animate: Boolean) {
             phase = 2
             return@LaunchedEffect
         }
-        while (true) {
-            phase = 0
-            delay(700)
-            phase = 1
-            delay(700)
-            phase = 2
-            delay(2000)
-        }
+        phase = 0
+        delay(700)
+        phase = 1
+        delay(700)
+        phase = 2
     }
-    Column(modifier = Modifier.padding(top = 12.dp)) {
+    Column(modifier = Modifier.padding(top = Tw.Space.s3)) {
         Text(
             text = "Q. If 3x + 5 = 20, what is x?",
             fontSize = 13.sp,
             color = Ink,
-            modifier = Modifier.padding(bottom = 8.dp),
+            modifier = Modifier.padding(bottom = Tw.Space.s2),
         )
         listOf("3", "5", "7", "15").forEachIndexed { i, opt ->
-            val selected = phase > 0 && i == 1
-            val confirmed = phase == 2 && i == 1
-            val scale by animateFloatAsState(
-                if (confirmed && animate) 1.02f else 1f,
-                tween(250, easing = GuestEaseOut),
-                label = "mcqOpt",
-            )
+            val isCorrect = i == 1
+            val selected = phase >= 1 && isCorrect
+            val confirmed = phase >= 2 && isCorrect
+            val scale = rememberGuestConfirmScale(confirmed)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 4.dp)
+                    .padding(vertical = Tw.Space.s1)
                     .scale(scale)
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(RoundedCornerShape(Tw.Radius.xl))
                     .background(if (selected) BrandSoft.copy(alpha = 0.7f) else Color(0xFFFAFAFA))
                     .border(
                         1.dp,
                         if (selected) Brand.copy(alpha = 0.35f) else Border,
-                        RoundedCornerShape(12.dp),
+                        RoundedCornerShape(Tw.Radius.xl),
                     )
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                    .padding(horizontal = Tw.Space.s3, vertical = Tw.Space.s2_5),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = ('A' + i).toString(),
+                    text = if (confirmed) "✓" else ('A' + i).toString(),
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
-                    color = if (selected) Color.White else Muted,
+                    color = if (confirmed || selected) Color.White else Muted,
                     modifier = Modifier
                         .size(24.dp)
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(if (selected) Brand else Color.White)
-                        .border(1.dp, Border, RoundedCornerShape(6.dp))
-                        .padding(4.dp),
+                        .clip(RoundedCornerShape(Tw.Radius.md))
+                        .background(if (confirmed || selected) Brand else Color.White)
+                        .border(1.dp, Border, RoundedCornerShape(Tw.Radius.md))
+                        .padding(Tw.Space.s1),
                 )
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(Tw.Space.s2))
                 Text(opt, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Ink)
             }
         }
@@ -494,33 +478,36 @@ private fun McqPanelPreview(animate: Boolean) {
 
 @Composable
 private fun MockPanelPreview(animate: Boolean) {
-    val progress = rememberAnimatedProgress(0.74f, animate)
-    Column(modifier = Modifier.padding(top = 12.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    val progress = rememberGuestProgress(
+        target = 0.74f,
+        play = animate,
+        durationMillis = 850,
+        initial = 0f,
+    )
+    Column(modifier = Modifier.padding(top = Tw.Space.s3)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(Tw.Space.s2)) {
             listOf("Score" to "68%", "Rank" to "#214", "Done" to "48/65").forEachIndexed { i, (label, value) ->
-                val cellAlpha = remember(i) { Animatable(if (animate) 0f else 1f) }
-                val cellOffset = remember(i) { Animatable(if (animate) 12f else 0f) }
-                LaunchedEffect(animate) {
-                    if (!animate) return@LaunchedEffect
-                    kotlinx.coroutines.delay((i * 80).toLong())
-                    cellOffset.animateTo(0f, tween(400, easing = GuestEaseOut))
-                    cellAlpha.animateTo(1f, tween(400, easing = GuestEaseOut))
-                }
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .graphicsLayer {
-                            alpha = cellAlpha.value
-                            translationY = cellOffset.value
+                Box(modifier = Modifier.weight(1f)) {
+                    // web MockPanel cells: opacity/y 10, duration 0.4, delay 0.08*i
+                    GuestEnter(play = animate, delayMillis = 80 * i) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(Tw.Radius.xl))
+                                .border(1.dp, Border, RoundedCornerShape(Tw.Radius.xl))
+                                .background(Color.White)
+                                .padding(Tw.Space.s3),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Text(label.uppercase(), fontSize = 9.sp, color = Muted, fontWeight = FontWeight.SemiBold)
+                            Text(
+                                value,
+                                fontSize = 17.sp,
+                                fontWeight = FontWeight.Black,
+                                color = if (label == "Score") Brand else Ink,
+                            )
                         }
-                        .clip(RoundedCornerShape(12.dp))
-                        .border(1.dp, Border, RoundedCornerShape(12.dp))
-                        .background(Color.White)
-                        .padding(12.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Text(label.uppercase(), fontSize = 9.sp, color = Muted, fontWeight = FontWeight.SemiBold)
-                    Text(value, fontSize = 17.sp, fontWeight = FontWeight.Black, color = if (label == "Score") Brand else Ink)
+                    }
                 }
             }
         }
@@ -528,7 +515,7 @@ private fun MockPanelPreview(animate: Boolean) {
             progress = { progress },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 16.dp)
+                .padding(top = Tw.Space.s4)
                 .height(6.dp)
                 .clip(RoundedCornerShape(99.dp)),
             color = Brand,
@@ -539,61 +526,52 @@ private fun MockPanelPreview(animate: Boolean) {
 
 @Composable
 private fun StreakPanelPreview(animate: Boolean) {
-    val infinite = rememberInfiniteTransition(label = "streakFlame")
-    val flameScale by infinite.animateFloat(
-        1f,
-        1.06f,
-        infiniteRepeatable(tween(2200), RepeatMode.Reverse),
-        label = "flame",
-    )
-    val heat = remember { listOf(0.2f, 0.5f, 0.8f, 0.3f, 1f, 0.6f, 0.9f, 0.4f, 0.7f, 1f, 0.5f, 0.85f, 0.3f, 0.95f) }
-    Column(modifier = Modifier.padding(top = 12.dp)) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .scale(if (animate) flameScale else 1f)
-                .clip(RoundedCornerShape(16.dp))
-                .background(Color(0xFFFFF7ED))
-                .border(1.dp, Color(0xFFFED7AA), RoundedCornerShape(16.dp)),
-            contentAlignment = Alignment.Center,
+    val (flameScale, flameRotate) = rememberGuestFlamePulse()
+    Column(modifier = Modifier.padding(top = Tw.Space.s3)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Tw.Space.s3),
         ) {
-            Icon(Icons.Default.LocalFireDepartment, contentDescription = null, tint = Color(0xFFEA580C))
-        }
-        Column {
-            Text("12", fontSize = 28.sp, fontWeight = FontWeight.Black, color = Ink)
-            Text("day streak", fontSize = 12.sp, color = Muted)
-        }
-    }
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        heat.chunked(7).forEachIndexed { rowIndex, row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                row.forEachIndexed { colIndex, v ->
-                    val i = rowIndex * 7 + colIndex
-                    val cellAlpha = remember(i) { Animatable(if (animate) 0f else 1f) }
-                    LaunchedEffect(animate) {
-                        if (!animate) return@LaunchedEffect
-                        kotlinx.coroutines.delay((i * 30).toLong())
-                        cellAlpha.animateTo(1f, tween(280, easing = GuestEaseOut))
-                    }
-                    Box(
-                        modifier = Modifier
-                            .size(20.dp)
-                            .graphicsLayer { alpha = cellAlpha.value }
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(Brand.copy(alpha = 0.12f + v * 0.88f)),
-                    )
-                }
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .scale(if (animate) flameScale else 1f)
+                    .rotate(if (animate) flameRotate else 0f)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color(0xFFFFF7ED))
+                    .border(1.dp, Color(0xFFFED7AA), RoundedCornerShape(16.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Default.LocalFireDepartment, contentDescription = null, tint = Color(0xFFEA580C))
+            }
+            Column {
+                Text("12", fontSize = 28.sp, fontWeight = FontWeight.Black, color = Ink)
+                Text("day streak", fontSize = 12.sp, color = Muted)
             }
         }
-    }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = Tw.Space.s4),
+            horizontalArrangement = Arrangement.spacedBy(Tw.Space.s1_5),
+        ) {
+            StreakHeat.take(7).forEachIndexed { i, v ->
+                val (alpha, scale) = rememberGuestHeatCell(play = animate, index = i)
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(28.dp)
+                        .scale(scale)
+                        .clip(RoundedCornerShape(Tw.Radius.md))
+                        .background(Brand.copy(alpha = (0.12f + v * 0.88f) * alpha)),
+                )
+            }
+        }
+        Text(
+            "Heatmap fills as you practice — sign in to keep it.",
+            fontSize = 12.sp,
+            color = Muted,
+            modifier = Modifier.padding(top = Tw.Space.s3),
+        )
     }
 }

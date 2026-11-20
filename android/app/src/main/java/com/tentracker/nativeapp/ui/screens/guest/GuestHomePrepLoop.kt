@@ -1,7 +1,5 @@
 package com.tentracker.nativeapp.ui.screens.guest
 
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -47,6 +45,7 @@ import com.tentracker.nativeapp.ui.theme.Brand
 import com.tentracker.nativeapp.ui.theme.BrandSoft
 import com.tentracker.nativeapp.ui.theme.Ink
 import com.tentracker.nativeapp.ui.theme.Muted
+import com.tentracker.nativeapp.ui.theme.Tw
 import kotlinx.coroutines.delay
 
 private data class PrepStep(
@@ -55,7 +54,6 @@ private data class PrepStep(
     val title: String,
     val description: String,
     val cta: String,
-    val onGoogle: Boolean = false,
 )
 
 @Composable
@@ -64,10 +62,8 @@ fun GuestHomePrepLoop(
     onOpenExams: () -> Unit,
     onOpenTrackers: () -> Unit,
     onOpenWeb: (path: String, title: String?) -> Unit,
-    modifier: Modifier = Modifier,
 ) {
-    val animate = rememberGuestAnimate()
-    val (revealModifier, show) = rememberGuestSectionRevealed(threshold = 0.25f)
+    val animate = rememberGuestMotionEnabled()
     val steps = remember {
         listOf(
             PrepStep("mcqs", Icons.AutoMirrored.Filled.MenuBook, "Topic-wise MCQs", "Chapter-level practice with solutions across active exams.", "Browse exams"),
@@ -77,21 +73,23 @@ fun GuestHomePrepLoop(
         )
     }
     var active by remember { mutableIntStateOf(0) }
-    LaunchedEffect(animate, show) {
-        if (!animate || !show) return@LaunchedEffect
+    LaunchedEffect(animate) {
+        if (!animate) return@LaunchedEffect
         while (true) {
             delay(2800)
             active = (active + 1) % steps.size
         }
     }
-    val railProgress by animateFloatAsState(
-        (active + 1) / steps.size.toFloat(),
-        tween(450, easing = GuestEaseOut),
-        label = "prepRail",
+    // web progress rail: duration 0.45 easeOut
+    val railProgress = rememberGuestProgress(
+        target = (active + 1) / steps.size.toFloat(),
+        play = animate,
+        durationMillis = 450,
+        initial = 0f,
     )
 
     Box(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxWidth()
             .background(
                 Brush.radialGradient(
@@ -103,34 +101,33 @@ fun GuestHomePrepLoop(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .then(revealModifier)
                 .padding(horizontal = GuestGutter)
-                .padding(bottom = 56.dp),
+                .padding(bottom = Tw.Space.s14),
         ) {
-            GuestRevealFadeSlide(show = show, animate = animate) {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                GuestSectionEyebrow("How it works")
-                Text(
-                    "Your prep loop on 10tracker",
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Ink,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(top = 6.dp),
-                )
-                Text(
-                    "Practice, mock, follow a path, sync YouTube — the loop that keeps you coming back.",
-                    fontSize = 14.sp,
-                    color = Muted,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(top = 8.dp),
-                )
+            GuestReveal(play = animate) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    GuestSectionEyebrow("How it works")
+                    Text(
+                        "Your prep loop on 10tracker",
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Ink,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(top = Tw.Space.s1_5),
+                    )
+                    Text(
+                        "Practice, mock, follow a path, sync YouTube — the loop that keeps you coming back.",
+                        fontSize = 14.sp,
+                        color = Muted,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(top = Tw.Space.s2),
+                    )
+                }
             }
-            }
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(Tw.Space.s5))
             LinearProgressIndicator(
                 progress = { railProgress },
                 modifier = Modifier
@@ -139,7 +136,7 @@ fun GuestHomePrepLoop(
                 color = Brand,
                 trackColor = Border,
             )
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(Tw.Space.s3))
             steps.forEachIndexed { index, step ->
                 val isActive = active == index
                 val onClick: () -> Unit = when (step.id) {
@@ -148,9 +145,10 @@ fun GuestHomePrepLoop(
                     "extension" -> { { onOpenWeb("/extension/connect", "YouTube sync") } }
                     else -> onOpenExams
                 }
-                if (index > 0) Spacer(modifier = Modifier.height(10.dp))
-                GuestStaggeredFadeSlide(show = show, animate = animate, index = index) {
-                PrepStepCard(step = step, index = index, isActive = isActive, animate = animate, onClick = onClick)
+                if (index > 0) Spacer(modifier = Modifier.height(Tw.Space.s2_5))
+                // web revealProps delay 0.06 * i
+                GuestReveal(play = animate, delayMillis = 60 * index) {
+                    PrepStepCard(step = step, index = index, isActive = isActive, onClick = onClick)
                 }
             }
         }
@@ -158,34 +156,37 @@ fun GuestHomePrepLoop(
 }
 
 @Composable
-private fun PrepStepCard(step: PrepStep, index: Int, isActive: Boolean, animate: Boolean, onClick: () -> Unit) {
-    val cardScale by animateFloatAsState(
-        if (isActive && animate) 1.02f else 1f,
-        tween(300, easing = GuestEaseOut),
-        label = "prepCard",
-    )
+private fun PrepStepCard(step: PrepStep, index: Int, isActive: Boolean, onClick: () -> Unit) {
+    val scale = rememberGuestActiveScale(isActive)
     Card(
         onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
-            .scale(cardScale),
+            .scale(scale),
         shape = RoundedCornerShape(Radius2xl),
-        colors = CardDefaults.cardColors(containerColor = if (isActive) Color.White else Color.White.copy(alpha = 0.85f)),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isActive) Color.White else Color.White.copy(alpha = 0.85f),
+        ),
         border = androidx.compose.foundation.BorderStroke(
             1.dp,
             if (isActive) Brand.copy(alpha = 0.4f) else Border.copy(alpha = 0.9f),
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = if (isActive) 4.dp else 0.dp),
     ) {
-        Column(modifier = Modifier.padding(18.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(modifier = Modifier.padding(Tw.Space.s5)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Tw.Space.s2_5),
+            ) {
                 Box(
                     modifier = Modifier
                         .size(40.dp)
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(RoundedCornerShape(Tw.Radius.xl))
                         .then(
                             if (isActive) Modifier.background(Brand)
-                            else Modifier.background(BrandSoft).border(1.dp, Brand.copy(alpha = 0.2f), RoundedCornerShape(12.dp)),
+                            else Modifier
+                                .background(BrandSoft)
+                                .border(1.dp, Brand.copy(alpha = 0.2f), RoundedCornerShape(Tw.Radius.xl)),
                         ),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -198,16 +199,35 @@ private fun PrepStepCard(step: PrepStep, index: Int, isActive: Boolean, animate:
                     color = Muted,
                 )
             }
-            Text(step.title, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Ink, modifier = Modifier.padding(top = 12.dp))
-            Text(step.description, fontSize = 14.sp, color = Muted, modifier = Modifier.padding(top = 6.dp))
-            Row(modifier = Modifier.padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                step.title,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = Ink,
+                modifier = Modifier.padding(top = Tw.Space.s3),
+            )
+            Text(
+                step.description,
+                fontSize = 14.sp,
+                color = Muted,
+                modifier = Modifier.padding(top = Tw.Space.s1_5),
+            )
+            Row(
+                modifier = Modifier.padding(top = Tw.Space.s3),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Text(
                     step.cta,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = if (isActive) Brand else Ink,
                 )
-                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(14.dp), tint = if (isActive) Brand else Ink)
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = null,
+                    modifier = Modifier.size(14.dp),
+                    tint = if (isActive) Brand else Ink,
+                )
             }
         }
     }
