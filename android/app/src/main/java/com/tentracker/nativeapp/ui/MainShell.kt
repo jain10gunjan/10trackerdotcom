@@ -40,6 +40,7 @@ import com.tentracker.nativeapp.ui.theme.Muted
 import com.tentracker.nativeapp.ui.viewmodel.ArticlesViewModel
 import com.tentracker.nativeapp.ui.viewmodel.ExamsViewModel
 import com.tentracker.nativeapp.ui.viewmodel.HomeViewModel
+import com.tentracker.nativeapp.ui.viewmodel.MoreViewModel
 
 private data class Tab(val route: String, val label: String, val icon: ImageVector)
 
@@ -153,11 +154,14 @@ fun MainShell(
                 )
             }
             composable("tab_more") {
+                val moreVm: MoreViewModel = viewModel(factory = MoreViewModel.factory(api, sessionStore))
                 MoreScreen(
-                    signedIn = homeState.signedIn,
+                    vm = moreVm,
+                    signedInHint = homeState.signedIn,
                     onSignIn = onSignIn,
                     onSignOut = {
                         sessionStore.clear()
+                        moreVm.onSignedOut()
                         homeVm.refresh()
                     },
                 )

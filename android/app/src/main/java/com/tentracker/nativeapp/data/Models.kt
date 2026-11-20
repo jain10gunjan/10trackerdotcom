@@ -241,3 +241,67 @@ data class MockOfDayMock(
     val href: String? = null,
     val isActive: Boolean = true,
 )
+
+/** Auth.js GET /api/auth/session — empty / null when signed out. */
+data class AuthSessionResponse(
+    val user: AuthSessionUser? = null,
+    val expires: String? = null,
+)
+
+data class AuthSessionUser(
+    val name: String? = null,
+    val email: String? = null,
+    val image: String? = null,
+    val id: String? = null,
+)
+
+/** GET /api/mock-test/profile (alias /api/user/profile). */
+data class UserProfileResponse(
+    val success: Boolean = false,
+    val profile: UserProfile? = null,
+    val suggested: UserProfileSuggested? = null,
+    val needsProfile: Boolean = false,
+    val needsProfileCompletion: Boolean = false,
+    val needsTermsReacceptance: Boolean = false,
+    val error: String? = null,
+    val dbSetupRequired: Boolean = false,
+    val setupHint: String? = null,
+)
+
+data class UserProfile(
+    val user_email: String? = null,
+    val email: String? = null,
+    val first_name: String? = null,
+    val last_name: String? = null,
+    val display_name: String? = null,
+    val country: String? = null,
+    val avatar_url: String? = null,
+    val target_exam: String? = null,
+    val profile_completed: Boolean = false,
+)
+
+data class UserProfileSuggested(
+    val first_name: String? = null,
+    val last_name: String? = null,
+    val email: String? = null,
+    val avatar_url: String? = null,
+)
+
+/** GET /api/credits/wallet */
+data class CreditsWalletResponse(
+    val success: Boolean = false,
+    val email: String? = null,
+    val credits: Int? = null,
+    val unlimited: Boolean = false,
+    val signupBonusGranted: Boolean = false,
+    val subscription: CreditsSubscription? = null,
+    val signupBonus: Int? = null,
+    val error: String? = null,
+)
+
+data class CreditsSubscription(
+    val planId: String? = null,
+    val planName: String? = null,
+    val expiresAt: String? = null,
+)
+
