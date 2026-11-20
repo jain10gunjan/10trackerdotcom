@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -33,9 +34,11 @@ import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Stars
 import androidx.compose.material.icons.filled.Timeline
-import androidx.compose.material.icons.filled.WorkspacePremium
+import androidx.compose.material.icons.filled.AllInclusive
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -105,13 +108,12 @@ fun MoreScreen(
         }
 
         if (state.signedIn) {
-            SignedInAccountHeader(state = state)
+            SignedInAccountHeader(
+                state = state,
+                onOpenPricing = { onOpenWeb("/pricing", "Pricing") },
+            )
         } else {
             GuestAccountCard(onSignIn = onSignIn)
-        }
-
-        if (state.signedIn) {
-            WalletCreditsRow(state = state, onOpenPricing = { onOpenWeb("/pricing", "Pricing") })
         }
 
         SectionLabel("Practice")
@@ -121,13 +123,20 @@ fun MoreScreen(
         SheetLinkRow("Updates", Icons.Default.Article, onClick = onOpenArticles)
 
         SectionLabel("More")
-        SheetLinkRow("Latest jobs", Icons.Default.CardGiftcard) { onOpenWeb("/article/latest-jobs", "Jobs") }
+        SheetLinkRow("Jobs", Icons.Default.CardGiftcard) { onOpenWeb("/article/latest-jobs", "Jobs") }
         SheetLinkRow("About", Icons.Default.Info) { onOpenWeb("/about-us", "About") }
         SheetLinkRow("Contact", Icons.Default.Email) { onOpenWeb("/contact-us", "Contact") }
 
         SectionLabel("Pricing")
         Text(
-            "Unlimited practice plans · one-time purchase · checkout on 10tracker.com",
+            "Unlimited practice plans",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = Ink,
+            fontSize = 18.sp,
+        )
+        Text(
+            "One-time purchase · no auto-renewal · practice & mock tests for the plan duration",
             style = MaterialTheme.typography.bodyMedium,
             color = Muted,
         )
@@ -210,7 +219,10 @@ private fun SectionLabel(text: String) {
 }
 
 @Composable
-private fun SignedInAccountHeader(state: MoreUiState) {
+private fun SignedInAccountHeader(
+    state: MoreUiState,
+    onOpenPricing: () -> Unit,
+) {
     val label = when {
         state.loading && state.signedIn -> "Loading account…"
         else -> state.displayName ?: "Signed in"
@@ -249,8 +261,18 @@ private fun SignedInAccountHeader(state: MoreUiState) {
                 )
             }
         }
-        if (state.loading || state.refreshing) {
-            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = Brand)
+        when {
+            state.loading && state.credits == null && !state.unlimited ->
+                Box(
+                    modifier = Modifier
+                        .size(width = 72.dp, height = 32.dp)
+                        .clip(RoundedCornerShape(999.dp))
+                        .background(Color(0xFFF5F5F5)),
+                )
+            else -> CompactWalletChip(state = state, onClick = onOpenPricing)
+        }
+        if (state.refreshing) {
+            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = Brand)
         }
     }
 }
@@ -270,62 +292,56 @@ private fun GuestAccountCard(onSignIn: () -> Unit) {
                 style = MaterialTheme.typography.bodyMedium,
                 color = Muted,
             )
-            Button(
+            OutlinedButton(
                 onClick = onSignIn,
-                colors = ButtonDefaults.buttonColors(containerColor = Brand),
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier.fillMaxWidth(),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Border),
+                colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White),
             ) {
-                Text("Sign in with Google")
+                Text("Sign in with Google", color = Ink, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
             }
         }
     }
 }
 
+/** Compact wallet chip aligned with web [WalletBar] `compact` mode. */
 @Composable
-private fun WalletCreditsRow(state: MoreUiState, onOpenPricing: () -> Unit) {
+private fun CompactWalletChip(state: MoreUiState, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(999.dp)
+    val bg = if (state.unlimited) EmeraldSoft else Color.White
+    val borderColor = if (state.unlimited) EmeraldBorder else Border
     Row(
         modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .clickable(onClick = onOpenPricing)
-            .background(if (state.unlimited) EmeraldSoft else Color.White)
-            .border(
-                1.dp,
-                if (state.unlimited) EmeraldBorder else Border,
-                RoundedCornerShape(12.dp),
-            )
-            .padding(horizontal = 14.dp, vertical = 10.dp),
+            .clip(shape)
+            .clickable(onClick = onClick)
+            .background(bg)
+            .border(1.dp, borderColor, shape)
+            .padding(horizontal = 10.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         if (state.unlimited) {
-            Icon(Icons.Default.WorkspacePremium, contentDescription = null, tint = EmeraldDark, modifier = Modifier.size(18.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    state.subscription?.planName ?: "Unlimited",
-                    fontWeight = FontWeight.SemiBold,
-                    color = EmeraldDark,
-                    fontSize = 14.sp,
-                )
-                state.subscription?.expiresAt?.takeIf { it.isNotBlank() }?.let {
-                    Text("until $it", fontSize = 12.sp, color = EmeraldDark.copy(alpha = 0.8f))
-                }
-            }
+            Icon(Icons.Default.AllInclusive, contentDescription = null, tint = EmeraldDark, modifier = Modifier.size(14.dp))
+            Text(
+                state.subscription?.planName?.takeIf { it.isNotBlank() } ?: "Unlimited",
+                fontWeight = FontWeight.SemiBold,
+                color = EmeraldDark,
+                fontSize = 12.sp,
+            )
         } else {
-            Icon(Icons.Default.Stars, contentDescription = null, tint = AmberCoin, modifier = Modifier.size(18.dp))
+            Icon(Icons.Default.Stars, contentDescription = null, tint = AmberCoin, modifier = Modifier.size(14.dp))
             Text(
                 when (val credits = state.credits) {
                     null -> if (state.loading) "…" else "—"
                     else -> "$credits"
                 },
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.SemiBold,
                 color = Ink,
-                fontSize = 15.sp,
+                fontSize = 12.sp,
             )
-            Text("credits", color = Muted, fontSize = 13.sp, modifier = Modifier.weight(1f))
+            Text("credits", color = Muted, fontSize = 12.sp)
         }
-        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = Muted, modifier = Modifier.size(16.dp))
     }
 }
 
@@ -360,36 +376,61 @@ private data class PlanCard(
 
 @Composable
 private fun PricingPlanCard(plan: PlanCard) {
-    Column(
+    val durationSuffix = when (plan.name) {
+        "24-Hour Unlimited" -> "/ 24h"
+        "3 Months Unlimited" -> "/ 90d"
+        "6 Months Unlimited" -> "/ 180d"
+        else -> ""
+    }
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(24.dp))
             .background(if (plan.highlighted) BrandSoft else Color.White)
-            .border(1.dp, if (plan.highlighted) Brand else Border, RoundedCornerShape(16.dp))
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+            .border(1.dp, if (plan.highlighted) Brand else Border, RoundedCornerShape(24.dp))
+            .padding(20.dp),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(plan.name, fontWeight = FontWeight.SemiBold, color = Ink)
-            Text(plan.price, fontWeight = FontWeight.Bold, color = if (plan.highlighted) SheetActiveText else Ink)
-        }
-        plan.badge?.let {
+        plan.badge?.let { badge ->
             Text(
-                it,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = EmeraldDark,
+                badge.uppercase(),
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                letterSpacing = 0.6.sp,
                 modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(y = (-28).dp)
                     .clip(RoundedCornerShape(999.dp))
-                    .background(EmeraldSoft)
-                    .padding(horizontal = 8.dp, vertical = 3.dp),
+                    .background(Ink)
+                    .padding(horizontal = 10.dp, vertical = 4.dp),
             )
         }
-        Text(plan.description, style = MaterialTheme.typography.bodyMedium, color = Muted)
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(plan.name, fontWeight = FontWeight.SemiBold, color = Ink, fontSize = 18.sp)
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text(plan.price, fontWeight = FontWeight.Bold, color = Ink, fontSize = 28.sp)
+                Text(
+                    durationSuffix,
+                    fontSize = 14.sp,
+                    color = Muted,
+                    modifier = Modifier.padding(start = 4.dp, bottom = 4.dp),
+                )
+            }
+            Text(plan.description, style = MaterialTheme.typography.bodyMedium, color = Muted)
+            listOf(
+                "Unlimited practice",
+                "Unlimited mock tests",
+                "Progress & analytics",
+            ).forEach { perk ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Icon(Icons.Default.Check, contentDescription = null, tint = EmeraldDark, modifier = Modifier.size(16.dp))
+                    Text(perk, fontSize = 14.sp, color = Ink)
+                }
+            }
+        }
     }
 }
 

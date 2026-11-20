@@ -15,18 +15,22 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.CardGiftcard
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -103,33 +107,60 @@ fun RoadmapsScreen(
                         shape = RoundedCornerShape(24.dp),
                         colors = CardDefaults.cardColors(containerColor = Color.White),
                         border = androidx.compose.foundation.BorderStroke(1.dp, Border),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
                     ) {
-                        Column(modifier = Modifier.padding(20.dp)) {
-                            Text(
-                                "10Tracker roadmap marketplace",
-                                fontSize = 12.sp,
-                                color = EmeraldDark,
-                                fontWeight = FontWeight.Medium,
+                        Box(modifier = Modifier.fillMaxWidth()) {
+                            Box(
                                 modifier = Modifier
-                                    .clip(RoundedCornerShape(999.dp))
-                                    .background(EmeraldSoft)
-                                    .border(1.dp, EmeraldBorder, RoundedCornerShape(999.dp))
-                                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                                    .size(140.dp)
+                                    .align(Alignment.TopEnd)
+                                    .offset(x = 40.dp, y = (-48).dp)
+                                    .clip(CircleShape)
+                                    .background(EmeraldSoft.copy(alpha = 0.65f)),
                             )
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Text(
-                                "Structured plans. One-time purchase.",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = Ink,
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                "Day-by-day study roadmaps with tasks and progress tracking. Preview free days, then unlock the full plan.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = Muted,
-                            )
+                            Column(modifier = Modifier.padding(20.dp)) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(999.dp))
+                                        .background(EmeraldSoft)
+                                        .border(1.dp, EmeraldBorder, RoundedCornerShape(999.dp))
+                                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                                ) {
+                                    Icon(
+                                        Icons.Default.Verified,
+                                        contentDescription = null,
+                                        tint = Emerald,
+                                        modifier = Modifier.size(14.dp),
+                                    )
+                                    Text(
+                                        "10Tracker roadmap marketplace",
+                                        fontSize = 12.sp,
+                                        color = EmeraldDark,
+                                        fontWeight = FontWeight.Medium,
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Text(
+                                    "Structured plans. One-time purchase.",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Ink,
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    "Day-by-day study roadmaps with tasks, resources, and progress tracking. " +
+                                        "Preview free days, then unlock the full plan when you are ready.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = Muted,
+                                )
+                            }
                         }
+                    }
+                    state.disclaimer?.takeIf { it.isNotBlank() }?.let { disclaimer ->
+                        Spacer(modifier = Modifier.height(12.dp))
+                        RoadmapsDisclaimerBanner(text = disclaimer)
                     }
                     Spacer(modifier = Modifier.height(12.dp))
                     OutlinedTextField(
@@ -246,16 +277,6 @@ fun RoadmapsScreen(
                             RoadmapCatalogCard(roadmap = roadmap, onClick = { onOpenRoadmap(roadmap) })
                         }
                     }
-                    state.disclaimer?.takeIf { it.isNotBlank() }?.let { disclaimer ->
-                        item {
-                            Text(
-                                disclaimer,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = Muted,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                            )
-                        }
-                    }
                 }
             }
         }
@@ -275,7 +296,7 @@ private fun RoadmapCatalogCard(roadmap: RoadmapSummary, onClick: () -> Unit) {
             Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.Top) {
                 Box(
                     modifier = Modifier
-                        .size(56.dp)
+                        .size(48.dp)
                         .clip(RoundedCornerShape(16.dp))
                         .background(
                             Brush.linearGradient(
@@ -285,7 +306,7 @@ private fun RoadmapCatalogCard(roadmap: RoadmapSummary, onClick: () -> Unit) {
                         .border(1.dp, EmeraldBorder, RoundedCornerShape(16.dp)),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(Icons.Default.Map, contentDescription = null, tint = EmeraldDark, modifier = Modifier.size(28.dp))
+                    Icon(Icons.Default.Map, contentDescription = null, tint = EmeraldDark, modifier = Modifier.size(24.dp))
                 }
                 Column(modifier = Modifier.weight(1f)) {
                     Row(
@@ -350,7 +371,7 @@ private fun RoadmapCatalogCard(roadmap: RoadmapSummary, onClick: () -> Unit) {
                                 Icon(Icons.Default.CardGiftcard, contentDescription = null, tint = EmeraldDark, modifier = Modifier.size(12.dp))
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text(
-                                    "${roadmap.freePreviewDays} free preview",
+                                    previewDaysLabel(roadmap.freePreviewDays),
                                     fontSize = 12.sp,
                                     color = EmeraldDark,
                                     fontWeight = FontWeight.Medium,
@@ -377,6 +398,25 @@ private fun RoadmapCatalogCard(roadmap: RoadmapSummary, onClick: () -> Unit) {
                 Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(18.dp))
             }
         }
+    }
+}
+
+private fun previewDaysLabel(days: Int): String =
+    "$days free preview day${if (days == 1) "" else "s"}"
+
+@Composable
+private fun RoadmapsDisclaimerBanner(text: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color(0xFFFFFBEB))
+            .border(1.dp, Color(0xFFFDE68A), RoundedCornerShape(16.dp))
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Icon(Icons.Default.Info, contentDescription = null, tint = Color(0xFFB45309), modifier = Modifier.size(16.dp))
+        Text(text, style = MaterialTheme.typography.bodySmall, color = Color(0xFF78350F), lineHeight = 18.sp)
     }
 }
 
