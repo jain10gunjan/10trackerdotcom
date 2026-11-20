@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.PlayArrow
@@ -38,6 +39,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -95,9 +97,76 @@ fun PathScreen(
     val path = state.detail?.path
     val resources = state.detail?.resources.orEmpty()
     val sections = groupBySection(resources)
+    val continueResource = remember(resources, path?.locked) {
+        if (path?.locked == true) null
+        else resources.firstOrNull { r ->
+            !r.locked && !r.sequenceLocked && r.progress?.status != "COMPLETED"
+        }
+    }
 
     Scaffold(
         containerColor = Neutral50,
+        bottomBar = {
+            continueResource?.let { resource ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color.White)
+                        .border(1.dp, Color(0xE6E5E5E5))
+                        .clickable {
+                            val type = resource.type.uppercase()
+                            val ytId = extractYouTubeVideoId(resource.youtubeVideoId)
+                            if (type == "VIDEO" && ytId != null) {
+                                onPlayVideo(resource.id, ytId, resource.title)
+                            } else {
+                                val url = resourceOpenUrl(resource, path?.slug.orEmpty())
+                                if (url != null) onOpenWeb(url, resource.title)
+                            }
+                        }
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            "CONTINUE",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            letterSpacing = 1.4.sp,
+                            color = Brand,
+                        )
+                        Text(
+                            resource.title,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Neutral900,
+                            maxLines = 1,
+                        )
+                    }
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Brand)
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Text(
+                            continueCtaLabel(resource.type, resource.progress?.status),
+                            color = Color.White,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(16.dp),
+                        )
+                    }
+                }
+            }
+        },
         topBar = {
             TopAppBar(
                 title = { },
@@ -200,7 +269,10 @@ fun PathScreen(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                             ) {
                                 Text(
-                                    "$completed/$total complete",
+                                    buildString {
+                                        append("$completed/$total complete")
+                                        if (state.refreshing) append(" · syncing…")
+                                    },
                                     fontSize = 12.sp,
                                     color = Neutral500,
                                 )
@@ -430,6 +502,20 @@ private fun typeLabel(type: String): String = when (type) {
     "CODESTUDIO_PROBLEM" -> "CodeStudio"
     "HACKERRANK_PROBLEM" -> "HackerRank"
     else -> type
+}
+
+private fun continueCtaLabel(type: String, status: String?): String {
+    val s = status ?: "NOT_STARTED"
+    return when (type.uppercase()) {
+        "VIDEO" -> if (s == "IN_PROGRESS") "Resume" else "Watch"
+        "PRACTICE_CHAPTER" -> if (s == "IN_PROGRESS") "Continue" else "Practice"
+        "MOCK_TEST" -> when (s) {
+            "COMPLETED" -> "Retake"
+            "IN_PROGRESS" -> "Resume"
+            else -> "Start mock"
+        }
+        else -> "Open"
+    }
 }
 
 private fun progressCaption(_resource: OgResource, type: String, pct: Int, status: String): String? {
