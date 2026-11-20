@@ -241,3 +241,94 @@ data class MockOfDayMock(
     val href: String? = null,
     val isActive: Boolean = true,
 )
+
+/** Unified mock row for native list UI. */
+data class MockTestSummary(
+    val id: String = "",
+    val name: String = "",
+    val description: String? = null,
+    val duration: Int = 0,
+    val totalQuestions: Int = 0,
+    val difficulty: String? = null,
+    val category: String? = null,
+    val isMockOfDay: Boolean = false,
+)
+
+/** GET /api/gate-cse/mock-test/available */
+data class AvailableMocksResponse(
+    val success: Boolean = false,
+    val tests: List<MockTestSummary> = emptyList(),
+    val error: String? = null,
+)
+
+/** GET /api/mock-test/leaderboard — includes `tests` catalog for the category. */
+data class MockLeaderboardResponse(
+    val success: Boolean = false,
+    val tests: List<MockLeaderboardTest> = emptyList(),
+    val error: String? = null,
+)
+
+data class MockLeaderboardTest(
+    val id: String = "",
+    val name: String = "",
+    val description: String? = null,
+    val duration: Int = 0,
+    val total_questions: Int = 0,
+    val difficulty: String? = null,
+    val category: String? = null,
+    val creation_mode: String? = null,
+) {
+    fun toSummary(isMockOfDay: Boolean = false) = MockTestSummary(
+        id = id,
+        name = name,
+        description = description,
+        duration = duration,
+        totalQuestions = total_questions,
+        difficulty = difficulty,
+        category = category,
+        isMockOfDay = isMockOfDay,
+    )
+}
+
+/** GET /api/gate-cse/mock-test/{testId} */
+data class MockTestDetailResponse(
+    val success: Boolean = false,
+    val test: MockTestSummary? = null,
+    val error: String? = null,
+)
+
+/** GET /api/gate-cse/mock-test/{testId}/questions */
+data class MockTestQuestionsResponse(
+    val success: Boolean = false,
+    val questions: List<MockAttemptQuestion> = emptyList(),
+    val error: String? = null,
+)
+
+data class MockAttemptQuestion(
+    val id: String = "",
+    val question: String = "",
+    val type: String? = "MCQ",
+    val subject: String? = null,
+    val difficulty: String? = null,
+    val options_A: String? = null,
+    val options_B: String? = null,
+    val options_C: String? = null,
+    val options_D: String? = null,
+    val correct_option: String? = null,
+    val solution: String? = null,
+) {
+    fun options(): List<Pair<String, String>> = listOfNotNull(
+        options_A?.takeIf { it.isNotBlank() }?.let { "A" to it },
+        options_B?.takeIf { it.isNotBlank() }?.let { "B" to it },
+        options_C?.takeIf { it.isNotBlank() }?.let { "C" to it },
+        options_D?.takeIf { it.isNotBlank() }?.let { "D" to it },
+    )
+}
+
+/** POST /api/gate-cse/mock-test/submit — deprecated; graceful fallback messaging only. */
+data class MockSubmitResponse(
+    val success: Boolean = false,
+    val deprecated: Boolean = false,
+    val error: String? = null,
+    val use: String? = null,
+)

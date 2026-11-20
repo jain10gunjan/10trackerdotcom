@@ -12,10 +12,14 @@ import com.tentracker.nativeapp.data.SessionStore
 import com.tentracker.nativeapp.ui.screens.ArticleDetailScreen
 import com.tentracker.nativeapp.ui.screens.ExamDetailScreen
 import com.tentracker.nativeapp.ui.screens.LoginScreen
+import com.tentracker.nativeapp.ui.screens.MockAttemptScreen
+import com.tentracker.nativeapp.ui.screens.MockListScreen
 import com.tentracker.nativeapp.ui.screens.PathScreen
 import com.tentracker.nativeapp.ui.screens.PracticeScreen
 import com.tentracker.nativeapp.ui.screens.VideoPlayerScreen
 import com.tentracker.nativeapp.ui.viewmodel.ExamDetailViewModel
+import com.tentracker.nativeapp.ui.viewmodel.MockAttemptViewModel
+import com.tentracker.nativeapp.ui.viewmodel.MockListViewModel
 import com.tentracker.nativeapp.ui.viewmodel.PathViewModel
 import com.tentracker.nativeapp.ui.viewmodel.PracticeViewModel
 import java.net.URLDecoder
@@ -81,6 +85,70 @@ fun TenTrackerNav(api: ApiClient, sessionStore: SessionStore) {
                         "practice/${enc(slug)}/${enc(subject)}/${enc(chapter)}/${enc(chapterTitle)}"
                     )
                 },
+                onOpenMocks = {
+                    nav.navigate("mocks/${enc(slug)}/${enc(name.ifBlank { slug })}")
+                },
+                onStartMock = { testId, testName, durationMinutes ->
+                    nav.navigate(
+                        "mock-attempt/${enc(slug)}/${enc(testId)}/${enc(testName)}/$durationMinutes"
+                    )
+                },
+            )
+        }
+
+        composable(
+            route = "mocks/{category}/{title}",
+            arguments = listOf(
+                navArgument("category") { type = NavType.StringType },
+                navArgument("title") { type = NavType.StringType },
+            ),
+        ) { entry ->
+            val category = dec(entry.arguments?.getString("category"))
+            val title = dec(entry.arguments?.getString("title")).ifBlank { category }
+            val vm: MockListViewModel = viewModel(
+                key = "mocks/$category",
+                factory = MockListViewModel.factory(api, category),
+            )
+            MockListScreen(
+                title = title,
+                category = category,
+                vm = vm,
+                onBack = { nav.popBackStack() },
+                onStartNative = { test ->
+                    nav.navigate(
+                        "mock-attempt/${enc(category)}/${enc(test.id)}/${enc(test.name)}/${test.duration}"
+                    )
+                },
+            )
+        }
+
+        composable(
+            route = "mock-attempt/{category}/{testId}/{name}/{duration}",
+            arguments = listOf(
+                navArgument("category") { type = NavType.StringType },
+                navArgument("testId") { type = NavType.StringType },
+                navArgument("name") { type = NavType.StringType },
+                navArgument("duration") { type = NavType.IntType },
+            ),
+        ) { entry ->
+            val category = dec(entry.arguments?.getString("category"))
+            val testId = dec(entry.arguments?.getString("testId"))
+            val testName = dec(entry.arguments?.getString("name"))
+            val duration = entry.arguments?.getInt("duration") ?: 0
+            val vm: MockAttemptViewModel = viewModel(
+                key = "mock-attempt/$testId",
+                factory = MockAttemptViewModel.factory(
+                    api = api,
+                    category = category,
+                    testId = testId,
+                    durationMinutes = duration,
+                    name = testName,
+                ),
+            )
+            MockAttemptScreen(
+                category = category,
+                vm = vm,
+                onBack = { nav.popBackStack() },
             )
         }
 

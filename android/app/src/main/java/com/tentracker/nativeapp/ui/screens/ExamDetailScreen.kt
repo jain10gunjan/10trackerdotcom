@@ -36,7 +36,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.tentracker.nativeapp.ui.theme.Border
@@ -44,7 +43,6 @@ import com.tentracker.nativeapp.ui.theme.Brand
 import com.tentracker.nativeapp.ui.theme.BrandSoft
 import com.tentracker.nativeapp.ui.theme.Ink
 import com.tentracker.nativeapp.ui.theme.Muted
-import com.tentracker.nativeapp.ui.util.openSite
 import com.tentracker.nativeapp.ui.viewmodel.ExamDetailViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -55,9 +53,10 @@ fun ExamDetailScreen(
     vm: ExamDetailViewModel,
     onBack: () -> Unit,
     onOpenChapter: (subject: String, chapter: String, chapterTitle: String) -> Unit,
+    onOpenMocks: () -> Unit,
+    onStartMock: (testId: String, name: String, durationMinutes: Int) -> Unit,
 ) {
     val state by vm.state.collectAsState()
-    val context = LocalContext.current
 
     Scaffold(
         containerColor = Color.White,
@@ -92,31 +91,50 @@ fun ExamDetailScreen(
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    state.mock?.let { mock ->
-                        item {
-                            Card(
-                                colors = CardDefaults.cardColors(containerColor = BrandSoft),
-                                shape = RoundedCornerShape(16.dp),
+                    item {
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = BrandSoft),
+                            shape = RoundedCornerShape(16.dp),
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
-                                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(Icons.Default.Timer, contentDescription = null, tint = Brand)
-                                        Spacer(modifier = Modifier.padding(4.dp))
-                                        Text("Mock of the day", fontWeight = FontWeight.Bold, color = Ink)
-                                    }
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.Timer, contentDescription = null, tint = Brand)
+                                    Spacer(modifier = Modifier.padding(4.dp))
+                                    Text(
+                                        if (state.mock != null) "Mock of the day" else "Mock tests",
+                                        fontWeight = FontWeight.Bold,
+                                        color = Ink,
+                                    )
+                                }
+                                state.mock?.let { mock ->
                                     Text(mock.name, fontWeight = FontWeight.SemiBold, color = Ink)
                                     Text(
                                         "${mock.totalQuestions} Qs · ${mock.duration} min · ${mock.difficulty ?: "mixed"}",
                                         style = MaterialTheme.typography.bodyMedium,
                                     )
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Button(
+                                            onClick = {
+                                                onStartMock(mock.id, mock.name, mock.duration)
+                                            },
+                                            colors = ButtonDefaults.buttonColors(containerColor = Brand),
+                                            shape = RoundedCornerShape(12.dp),
+                                        ) { Text("Start native") }
+                                        TextButton(onClick = onOpenMocks) { Text("All mocks") }
+                                    }
+                                } ?: run {
+                                    Text(
+                                        "Browse published mocks for this exam in-app.",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                    )
                                     Button(
-                                        onClick = {
-                                            val href = mock.href ?: "/mock-test/$category/attempt/${mock.id}"
-                                            openSite(context, href)
-                                        },
+                                        onClick = onOpenMocks,
                                         colors = ButtonDefaults.buttonColors(containerColor = Brand),
                                         shape = RoundedCornerShape(12.dp),
-                                    ) { Text("Start mock") }
+                                    ) { Text("Browse mocks") }
                                 }
                             }
                         }
