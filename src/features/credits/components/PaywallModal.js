@@ -2,18 +2,14 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
-import { X, Coins, Sparkles } from 'lucide-react';
+import { X, Sparkles } from 'lucide-react';
 import { useCredits } from '@/context/CreditsContext';
-import { CREDIT_COST, SIGNUP_BONUS_CREDITS } from '@/features/credits/lib/constants';
 
 export default function PaywallModal() {
   const {
     showPaywall,
     setShowPaywall,
-    credits,
-    costs,
-    signupBonus,
-    signupBonusGranted,
+    freeCreditsEnabled,
     refreshWallet,
   } = useCredits();
 
@@ -26,7 +22,6 @@ export default function PaywallModal() {
     return () => window.removeEventListener('keydown', onKey);
   }, [showPaywall, setShowPaywall]);
 
-  // Refresh wallet when paywall opens so bonus/costs match admin DB settings
   useEffect(() => {
     if (!showPaywall) return;
     refreshWallet();
@@ -34,14 +29,7 @@ export default function PaywallModal() {
 
   if (!showPaywall) return null;
 
-  const practiceCost = costs?.practice_question ?? CREDIT_COST.practice_question;
-  const mockCost = costs?.mock_test ?? CREDIT_COST.mock_test;
-  const bonusCredits =
-    typeof signupBonus === 'number' && !Number.isNaN(signupBonus)
-      ? signupBonus
-      : SIGNUP_BONUS_CREDITS;
-
-  const showSignupPromo = !signupBonusGranted && bonusCredits > 0;
+  const payToPlay = freeCreditsEnabled === false;
 
   return (
     <div
@@ -62,36 +50,27 @@ export default function PaywallModal() {
 
         <div className="flex items-center gap-3 mb-4">
           <div className="w-12 h-12 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center">
-            <Coins className="w-6 h-6 text-amber-700" />
+            <Sparkles className="w-6 h-6 text-amber-700" />
           </div>
           <div>
             <h2 id="paywall-title" className="text-xl font-semibold text-neutral-900">
-              Credits exhausted
+              {payToPlay ? 'Subscription required' : 'Credits exhausted'}
             </h2>
             <p className="text-sm text-neutral-600">
-              You have <span className="font-semibold tabular-nums">{credits}</span> credits left
+              {payToPlay
+                ? 'Practice and mock tests need an active plan'
+                : 'Choose a plan for unlimited access'}
             </p>
           </div>
         </div>
 
         <p className="text-sm text-neutral-600 mb-4 leading-relaxed">
-          Practice uses {practiceCost} credit per new question. Mock tests use {mockCost} credits
-          once per test (retakes are free). Get unlimited access with a subscription — secure
-          payment via Razorpay.
+          {payToPlay
+            ? 'OG Trackers stay free. Practice, mocks, and the AI playlist builder unlock with a plan. The 24-hour pass covers practice and mocks; 3-month and 6-month plans also include AI builds.'
+            : 'Get unlimited practice and mock tests with a subscription — secure payment via Razorpay.'}
         </p>
 
         <div className="rounded-xl bg-neutral-50 border border-neutral-100 p-4 mb-6 text-xs text-neutral-600 space-y-1">
-          {showSignupPromo ? (
-            <p className="flex items-center gap-2">
-              <Sparkles className="w-3.5 h-3.5 text-neutral-500 shrink-0" />
-              One-time {bonusCredits} free credits for every account (claim on sign-in)
-            </p>
-          ) : (
-            <p className="flex items-center gap-2">
-              <Sparkles className="w-3.5 h-3.5 text-neutral-500 shrink-0" />
-              Subscribe for unlimited practice and mock tests
-            </p>
-          )}
           <p>Payments are processed securely. GST invoice available on request.</p>
         </div>
 
@@ -99,14 +78,14 @@ export default function PaywallModal() {
           <Link
             href="/pricing"
             onClick={() => setShowPaywall(false)}
-            className="w-full text-center px-6 py-3 rounded-xl bg-neutral-900 text-white font-semibold hover:bg-neutral-800 transition-colors"
+            className="w-full inline-flex items-center justify-center rounded-xl bg-neutral-900 text-white text-sm font-semibold py-3 hover:bg-neutral-800"
           >
-            View plans & subscribe
+            View plans
           </Link>
           <button
             type="button"
             onClick={() => setShowPaywall(false)}
-            className="w-full px-6 py-3 rounded-xl border border-neutral-200 text-neutral-700 font-medium hover:bg-neutral-50 transition-colors"
+            className="w-full text-sm text-neutral-500 hover:text-neutral-800 py-2"
           >
             Maybe later
           </button>

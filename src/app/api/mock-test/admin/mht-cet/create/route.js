@@ -76,7 +76,7 @@ export async function POST(request) {
       const missing = questionIds.filter((id) => !byId.has(String(id)));
       if (missing.length) {
         const { data: examRows, error: examError } = await supabase
-          .from('examtracker')
+          .from('examtracker').or('verification_status.is.null,verification_status.not.in.(unpublished_draft,publish_rejected)')
           .select('_id, subject, chapter, topic, difficulty, options_A, options_B, options_C, options_D')
           .in('_id', missing.map(String));
         if (examError) {

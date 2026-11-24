@@ -1,8 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
-import { Suspense, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ArrowRight,
   BadgeCheck,
@@ -17,6 +16,7 @@ import { useCredits } from '@/context/CreditsContext';
 import SubscriptionCheckout from '@/features/credits/components/SubscriptionCheckout';
 import PricingTermsCheckbox from '@/features/credits/components/PricingTermsCheckbox';
 import SellerDetailsFooter from '@/features/credits/components/SellerDetailsFooter';
+import { SHOW_ROADMAPS } from '@/lib/siteNav';
 import RoadmapsDisclaimerBanner from '@/features/roadmaps/components/RoadmapsDisclaimerBanner';
 import { SUBSCRIPTION_PLANS } from '@/features/credits/lib/constants';
 
@@ -29,11 +29,9 @@ function Pill({ children }) {
   );
 }
 
-function PricingContent({ initialRoadmaps = [] }) {
+export default function PricingPage({ initialRoadmaps = [], subscribed = false }) {
   const { isAuthenticated } = useAuth();
   const { credits, unlimited, subscription, planList, plans } = useCredits();
-  const searchParams = useSearchParams();
-  const subscribed = searchParams.get('subscribed') === '1';
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [termsVersion, setTermsVersion] = useState('');
 
@@ -52,7 +50,7 @@ function PricingContent({ initialRoadmaps = [] }) {
     (p) => p.isActive !== false
   );
 
-  const featuredRoadmaps = initialRoadmaps.slice(0, 3);
+  const featuredRoadmaps = SHOW_ROADMAPS ? initialRoadmaps.slice(0, 3) : [];
 
   return (
     <div className="min-h-screen bg-neutral-50 text-neutral-900">
@@ -66,11 +64,11 @@ function PricingContent({ initialRoadmaps = [] }) {
             <div className="relative p-6 sm:p-10">
               <Pill>10Tracker pricing</Pill>
               <h1 className="mt-4 text-3xl sm:text-4xl font-bold tracking-tight text-neutral-900">
-                Practice plans & study roadmaps
+                Practice plans
               </h1>
               <p className="mt-3 text-base sm:text-lg text-neutral-600 max-w-2xl leading-relaxed">
-                Unlimited practice and mock tests are sold as time-based plans. Study roadmaps are
-                separate one-time products with day-by-day structure and progress tracking.
+                OG Trackers are free. Practice and mock tests need a plan. AI playlist builder is
+                included on the 3-month and 6-month plans (not the 24-hour pass).
               </p>
 
               {isAuthenticated && (
@@ -103,9 +101,11 @@ function PricingContent({ initialRoadmaps = [] }) {
             </div>
           </div>
 
-          <div className="mt-6">
-            <RoadmapsDisclaimerBanner />
-          </div>
+          {SHOW_ROADMAPS ? (
+            <div className="mt-6">
+              <RoadmapsDisclaimerBanner />
+            </div>
+          ) : null}
         </div>
       </section>
 
@@ -162,7 +162,9 @@ function PricingContent({ initialRoadmaps = [] }) {
                   </li>
                   <li className="flex items-center gap-2">
                     <Check className="w-4 h-4 text-emerald-600 shrink-0" />
-                    Progress & analytics
+                    {plan.id === 'day_pass'
+                      ? 'AI playlist not included'
+                      : 'AI playlist builder (5 / month)'}
                   </li>
                 </ul>
                 <div className="mt-6 pt-2">
@@ -180,75 +182,77 @@ function PricingContent({ initialRoadmaps = [] }) {
         </div>
       </section>
 
-      <section className="pb-16 md:pb-20 border-t border-neutral-200/80 bg-white/50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 sm:pt-14">
-          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8">
-            <div>
-              <div className="inline-flex items-center gap-2 text-emerald-700 mb-2">
-                <Map className="w-4 h-4" />
-                <span className="text-xs font-semibold uppercase tracking-wide">Roadmaps</span>
+      {SHOW_ROADMAPS ? (
+        <section className="pb-16 md:pb-20 border-t border-neutral-200/80 bg-white/50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 sm:pt-14">
+            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8">
+              <div>
+                <div className="inline-flex items-center gap-2 text-emerald-700 mb-2">
+                  <Map className="w-4 h-4" />
+                  <span className="text-xs font-semibold uppercase tracking-wide">Roadmaps</span>
+                </div>
+                <h2 className="text-xl sm:text-2xl font-bold text-neutral-900">
+                  Structured study roadmaps
+                </h2>
+                <p className="text-sm text-neutral-500 mt-1 max-w-xl">
+                  Separate one-time products — not included in unlimited practice plans. Preview free
+                  days before you buy.
+                </p>
               </div>
-              <h2 className="text-xl sm:text-2xl font-bold text-neutral-900">
-                Structured study roadmaps
-              </h2>
-              <p className="text-sm text-neutral-500 mt-1 max-w-xl">
-                Separate one-time products — not included in unlimited practice plans. Preview free
-                days before you buy.
-              </p>
-            </div>
-            <Link
-              href="/roadmaps"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-800 shrink-0"
-            >
-              Browse all roadmaps
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-          </div>
-
-          {featuredRoadmaps.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5">
-              {featuredRoadmaps.map((roadmap) => (
-                <Link
-                  key={roadmap.id}
-                  href={`/roadmaps/${roadmap.slug}`}
-                  className="group rounded-3xl border border-neutral-200 bg-white p-5 shadow-sm hover:border-emerald-200 hover:shadow-md transition-all"
-                >
-                  <h3 className="text-base font-semibold text-neutral-900 group-hover:text-emerald-900">
-                    {roadmap.title}
-                  </h3>
-                  {roadmap.description ? (
-                    <p className="text-xs text-neutral-500 mt-1.5 line-clamp-2 leading-relaxed">
-                      {roadmap.description}
-                    </p>
-                  ) : null}
-                  <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                    <span className="px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-700 font-medium">
-                      ₹{roadmap.priceInr} · one-time
-                    </span>
-                    {roadmap.freePreviewDays > 0 ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-100 font-medium">
-                        <Gift className="w-3 h-3" />
-                        {roadmap.freePreviewDays} free
-                      </span>
-                    ) : null}
-                  </div>
-                </Link>
-              ))}
-            </div>
-          ) : (
-            <div className="rounded-3xl border border-neutral-200 bg-white py-12 text-center px-6">
-              <Map className="w-8 h-8 text-neutral-300 mx-auto mb-3" />
-              <p className="text-sm text-neutral-600">Roadmaps coming soon.</p>
               <Link
-                href="/exams"
-                className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-neutral-900 hover:underline"
+                href="/roadmaps"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-800 shrink-0"
               >
-                Explore exams instead <ArrowRight className="w-4 h-4" />
+                Browse all roadmaps
+                <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
-          )}
-        </div>
-      </section>
+
+            {featuredRoadmaps.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5">
+                {featuredRoadmaps.map((roadmap) => (
+                  <Link
+                    key={roadmap.id}
+                    href={`/roadmaps/${roadmap.slug}`}
+                    className="group rounded-3xl border border-neutral-200 bg-white p-5 shadow-sm hover:border-emerald-200 hover:shadow-md transition-all"
+                  >
+                    <h3 className="text-base font-semibold text-neutral-900 group-hover:text-emerald-900">
+                      {roadmap.title}
+                    </h3>
+                    {roadmap.description ? (
+                      <p className="text-xs text-neutral-500 mt-1.5 line-clamp-2 leading-relaxed">
+                        {roadmap.description}
+                      </p>
+                    ) : null}
+                    <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                      <span className="px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-700 font-medium">
+                        ₹{roadmap.priceInr} · one-time
+                      </span>
+                      {roadmap.freePreviewDays > 0 ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-100 font-medium">
+                          <Gift className="w-3 h-3" />
+                          {roadmap.freePreviewDays} free
+                        </span>
+                      ) : null}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-3xl border border-neutral-200 bg-white py-12 text-center px-6">
+                <Map className="w-8 h-8 text-neutral-300 mx-auto mb-3" />
+                <p className="text-sm text-neutral-600">Roadmaps coming soon.</p>
+                <Link
+                  href="/exams"
+                  className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-neutral-900 hover:underline"
+                >
+                  Explore exams instead <ArrowRight className="w-4 h-4" />
+                </Link>
+              </div>
+            )}
+          </div>
+        </section>
+      ) : null}
 
       <section className="pb-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -271,26 +275,3 @@ function PricingContent({ initialRoadmaps = [] }) {
   );
 }
 
-function PricingFallback() {
-  return (
-    <div className="min-h-screen bg-neutral-50 pt-24 pb-12">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
-        <div className="h-48 rounded-3xl bg-neutral-200/90 animate-pulse" />
-        <div className="h-24 rounded-2xl bg-neutral-200/90 animate-pulse" />
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-72 rounded-3xl bg-neutral-200/90 animate-pulse" />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export default function PricingPage({ initialRoadmaps = [] }) {
-  return (
-    <Suspense fallback={<PricingFallback />}>
-      <PricingContent initialRoadmaps={initialRoadmaps} />
-    </Suspense>
-  );
-}

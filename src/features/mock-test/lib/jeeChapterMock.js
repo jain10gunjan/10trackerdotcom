@@ -38,7 +38,7 @@ export async function listJeeMainChapters({ subject = null } = {}) {
   const page = 1000;
   while (true) {
     let q = supabase
-      .from('examtracker')
+      .from('examtracker').or('verification_status.is.null,verification_status.not.in.(unpublished_draft,publish_rejected)')
       .select('subject, chapter')
       .in('category', variants)
       .not('chapter', 'is', null)
@@ -51,7 +51,7 @@ export async function listJeeMainChapters({ subject = null } = {}) {
     let { data, error } = await q;
     if (error && from === 0) {
       let retryQ = supabase
-        .from('examtracker')
+        .from('examtracker').or('verification_status.is.null,verification_status.not.in.(unpublished_draft,publish_rejected)')
         .select('subject, chapter')
         .eq('category', 'JEE-MAIN')
         .not('chapter', 'is', null)
@@ -112,7 +112,7 @@ export async function pickRandomChapterQuestions({
   const fetchLimit = Math.min(Math.max(n * 10, 200), 2000);
 
   let { data, error } = await supabase
-    .from('examtracker')
+    .from('examtracker').or('verification_status.is.null,verification_status.not.in.(unpublished_draft,publish_rejected)')
     .select('_id, subject, chapter, topic, difficulty')
     .in('category', variants)
     .ilike('subject', subject)
@@ -121,7 +121,7 @@ export async function pickRandomChapterQuestions({
 
   if (error || !data?.length) {
     const retry = await supabase
-      .from('examtracker')
+      .from('examtracker').or('verification_status.is.null,verification_status.not.in.(unpublished_draft,publish_rejected)')
       .select('_id, subject, chapter, topic, difficulty')
       .eq('category', 'JEE-MAIN')
       .ilike('subject', subject)

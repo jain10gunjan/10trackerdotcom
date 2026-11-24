@@ -23,7 +23,7 @@ export async function GET(request) {
     const excludeIds = searchParams.get('excludeIds');
 
     let query = supabase
-      .from('examtracker')
+      .from('examtracker').or('verification_status.is.null,verification_status.not.in.(unpublished_draft,publish_rejected)')
       .select(
         '_id, question, options_A, options_B, options_C, options_D, correct_option, solution, topic, difficulty, subject',
         { count: 'exact' }

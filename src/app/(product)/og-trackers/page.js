@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import OgTrackersCatalogPage from '@/features/og-trackers/components/OgTrackersCatalogPage';
 import OgTrackersComingSoonPage from '@/features/og-trackers/components/OgTrackersComingSoonPage';
 import MetaDataJobs from '@/components/ui/Seo';
@@ -7,13 +8,23 @@ export const metadata = SHOW_OG_TRACKERS
   ? {
       title: 'OG Trackers',
       description:
-        'Structured GATE, DSA, and placement study paths — YouTube lessons, practice, mocks, and coding progress on 10Tracker.',
+        'Exam track for shared chapter paths, User track for private playlist trackers — watch, practice, and mocks on 10Tracker.',
+      alternates: { canonical: '/og-trackers' },
     }
   : {
       title: 'OG Trackers — Coming soon',
       description: 'Structured learning paths are coming soon on 10Tracker.',
       robots: { index: false, follow: false },
+      alternates: { canonical: '/og-trackers' },
     };
+
+function CatalogFallback() {
+  return (
+    <div className="flex min-h-[50vh] items-center justify-center text-sm text-neutral-500">
+      Loading trackers…
+    </div>
+  );
+}
 
 export default function Page() {
   if (!SHOW_OG_TRACKERS) {
@@ -32,9 +43,11 @@ export default function Page() {
     <>
       <MetaDataJobs
         seoTitle="OG Trackers"
-        seoDescription="Structured study paths with YouTube, practice, mocks, and coding progress"
+        seoDescription="Exam track and User track — structured study paths with YouTube, practice, and mocks"
       />
-      <OgTrackersCatalogPage />
+      <Suspense fallback={<CatalogFallback />}>
+        <OgTrackersCatalogPage />
+      </Suspense>
     </>
   );
 }

@@ -11,13 +11,13 @@ export default function ExamCatalogCard({ exam }) {
   const showImage = exam.image && !imageError;
 
   return (
-    <article className="group rounded-2xl border border-neutral-200/90 bg-white p-4 shadow-sm hover:border-emerald-200 hover:shadow-md transition-all duration-200">
+    <article className="group rounded-2xl border border-neutral-200/90 bg-white p-4 shadow-sm hover:border-[#3F5EB9]/35 hover:shadow-md transition-all duration-200">
       <div className="flex items-start gap-3.5">
-        <div className="relative w-12 h-12 sm:w-14 sm:h-14 flex-shrink-0 rounded-xl bg-emerald-50 border border-emerald-100 overflow-hidden">
+        <div className="relative w-12 h-12 sm:w-14 sm:h-14 flex-shrink-0 rounded-xl bg-[#E8EDF8] border border-[#3F5EB9]/20 overflow-hidden">
           {showImage ? (
             <Image
               src={exam.image}
-              alt=""
+              alt={exam.name || 'Exam'}
               fill
               className="object-cover group-hover:scale-105 transition-transform duration-300"
               onError={() => setImageError(true)}
@@ -41,7 +41,7 @@ export default function ExamCatalogCard({ exam }) {
               </p>
             </div>
             {exam.category ? (
-              <span className="hidden sm:inline-flex text-[10px] font-semibold text-emerald-800 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full whitespace-nowrap shrink-0">
+              <span className="hidden sm:inline-flex text-[10px] font-semibold text-[#1e2f6b] bg-[#E8EDF8] border border-[#3F5EB9]/20 px-2 py-0.5 rounded-full whitespace-nowrap shrink-0">
                 {exam.category}
               </span>
             ) : null}
@@ -63,7 +63,7 @@ export default function ExamCatalogCard({ exam }) {
             </Link>
             <Link
               href={mockTestHrefForSlug(exam.slug)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-neutral-200 bg-white text-neutral-800 text-xs font-semibold hover:bg-neutral-50 hover:border-emerald-200 transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-neutral-200 bg-white text-neutral-800 text-xs font-semibold hover:bg-neutral-50 hover:border-[#3F5EB9]/35 transition-colors"
             >
               <ClipboardList className="w-3.5 h-3.5" />
               Mock tests

@@ -33,14 +33,19 @@ import {
   filterAttemptsByPeriod,
 } from '@/features/mock-test/lib/mockTestLeaderboard';
 import { fetchLeaderboardData } from '@/features/mock-test/lib/mockTestLeaderboardFetch';
-import { formatExamSlug, mockTestHrefForSlug, practiceHrefForSlug } from '@/lib/platformExams';
+import {
+  formatExamSlug,
+  getStaticExamCatalog,
+  mockTestHrefForSlug,
+  practiceHrefForSlug,
+} from '@/lib/platformExams';
 import { normalizeCategorySlug } from '@/features/exam-hub/lib/categoryKey';
+import { applyProgressUserFilter } from '@/lib/progressIdentity';
 import { resolveChapterPracticeHref } from '@/features/exam-hub/lib/examHubUtils';
 import { listUserRoadmapSummaries } from '@/features/roadmaps/lib/roadmapService';
 import { getOrSetCached } from '@/lib/cache/serverTtlCache';
 import { fetchActiveMockTests } from '@/features/mock-test/lib/mockTestUtils';
 import { fetchArticlesList } from '@/features/articles/lib/fetchCategoryArticles';
-import { fetchActiveExamCatalog } from '@/features/exams/lib/fetchActiveExamCatalog';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import {
   resolveMockOfTheDay,
@@ -133,15 +138,25 @@ async function fetchUserProgressRows(user, examSlug = '') {
   });
 }
 
-async function fetchMockTestSummary(userEmail, examSlug = '') {
-  const supabase = getSupabaseServer(isValidServiceRoleKey());
-  const categoryVariants = mockCategoryVariants(examSlug);
+const ATTEMPT_COLUMNS =
+  'id, test_id, examcategory, is_completed, status, score, percentage, total_questions, correct_answers, started_at, submitted_at, created_at';
 
+function embeddedMockTest(row) {
+  const embedded = row?.mock_tests;
+  if (!embedded) return null;
+  return Array.isArray(embedded) ? embedded[0] || null : embedded;
+}
+
+function isMissingEmbedError(error) {
+  if (!error) return false;
+  return error.code === 'PGRST200' || /relationship|schema cache/i.test(error.message || '');
+}
+
+function queryMockAttempts(supabase, userEmail, examSlug, columns) {
+  const categoryVariants = mockCategoryVariants(examSlug);
   let query = supabase
     .from('user_test_attempts')
-    .select(
-      'id, test_id, examcategory, is_completed, status, score, percentage, total_questions, correct_answers, started_at, submitted_at, created_at'
-    )
+    .select(columns)
     .eq('user_email', userEmail)
     .order('started_at', { ascending: false })
     .limit(MOCK_ATTEMPT_LIMIT);
@@ -150,34 +165,26 @@ async function fetchMockTestSummary(userEmail, examSlug = '') {
     query = query.in('examcategory', categoryVariants);
   }
 
-  const { data: attempts, error } = await query;
+  return query;
+}
 
-  if (error) {
-    console.error('dashboard mock attempts', error);
-    return { attempts: [], stats: null, allAttempts: [] };
-  }
-
-  let rows = attempts || [];
-  // Safety net if DB category spellings differ from variants.
-  if (examSlug && rows.length) {
-    rows = filterMockAttemptsByExam(rows, examSlug);
-  }
-
+async function attachMockTestNames(supabase, rows) {
   const recentRows = rows.slice(0, MOCK_ATTEMPT_RECENT_LIMIT);
   const testIds = [...new Set(recentRows.map((a) => a.test_id).filter(Boolean))];
-  let testNames = {};
+  if (!testIds.length) return {};
 
-  if (testIds.length) {
-    const { data: tests } = await supabase
-      .from('mock_tests')
-      .select('id, name, category, total_questions')
-      .in('id', testIds);
-    testNames = (tests || []).reduce((acc, t) => {
-      acc[t.id] = t;
-      return acc;
-    }, {});
-  }
+  const { data: tests } = await supabase
+    .from('mock_tests')
+    .select('id, name, category')
+    .in('id', testIds);
 
+  return (tests || []).reduce((acc, test) => {
+    acc[test.id] = test;
+    return acc;
+  }, {});
+}
+
+function summarizeMockAttempts(rows, testNames = {}) {
   const completed = rows.filter((a) => a.is_completed);
   const inProgress = rows.filter((a) => !a.is_completed && a.status === 'in_progress');
   const scores = completed
@@ -189,20 +196,23 @@ async function fetchMockTestSummary(userEmail, examSlug = '') {
       : 0;
 
   return {
-    attempts: rows.slice(0, 20).map((a) => ({
-      id: a.id,
-      testId: a.test_id,
-      testName: testNames[a.test_id]?.name || 'Mock Test',
-      category: a.examcategory || testNames[a.test_id]?.category,
-      isCompleted: a.is_completed,
-      status: a.status,
-      score: a.score,
-      percentage: a.percentage,
-      totalQuestions: a.total_questions,
-      correctAnswers: a.correct_answers,
-      startedAt: a.started_at,
-      completedAt: a.submitted_at || a.created_at || null,
-    })),
+    attempts: rows.slice(0, MOCK_ATTEMPT_RECENT_LIMIT).map((a) => {
+      const meta = testNames[a.test_id] || embeddedMockTest(a);
+      return {
+        id: a.id,
+        testId: a.test_id,
+        testName: meta?.name || 'Mock Test',
+        category: a.examcategory || meta?.category,
+        isCompleted: a.is_completed,
+        status: a.status,
+        score: a.score,
+        percentage: a.percentage,
+        totalQuestions: a.total_questions,
+        correctAnswers: a.correct_answers,
+        startedAt: a.started_at,
+        completedAt: a.submitted_at || a.created_at || null,
+      };
+    }),
     allAttempts: rows,
     stats: {
       totalAttempts: rows.length,
@@ -212,6 +222,50 @@ async function fetchMockTestSummary(userEmail, examSlug = '') {
       byCategory: [],
     },
   };
+}
+
+const EMPTY_MOCK_SUMMARY = { attempts: [], stats: null, allAttempts: [] };
+
+/**
+ * Attempt rows for the signed-in home. Names come from the mock_tests FK in the
+ * same round trip. A second lookup is only used when that embed is unavailable.
+ * Date columns feed the heatmap; answer JSON is never selected.
+ */
+async function fetchMockTestSummary(userEmail, examSlug = '') {
+  const supabase = getSupabaseServer(isValidServiceRoleKey());
+  const embedded = await queryMockAttempts(
+    supabase,
+    userEmail,
+    examSlug,
+    `${ATTEMPT_COLUMNS}, mock_tests(id, name, category)`
+  );
+
+  if (embedded.error && isMissingEmbedError(embedded.error)) {
+    const fallback = await queryMockAttempts(supabase, userEmail, examSlug, ATTEMPT_COLUMNS);
+    if (fallback.error) {
+      console.error('dashboard mock attempts', fallback.error);
+      return { ...EMPTY_MOCK_SUMMARY };
+    }
+    let rows = fallback.data || [];
+    if (examSlug && rows.length) {
+      rows = filterMockAttemptsByExam(rows, examSlug);
+    }
+    const testNames = await attachMockTestNames(supabase, rows);
+    return summarizeMockAttempts(rows, testNames);
+  }
+
+  if (embedded.error) {
+    console.error('dashboard mock attempts', embedded.error);
+    return { ...EMPTY_MOCK_SUMMARY };
+  }
+
+  let rows = embedded.data || [];
+  // Safety net if DB category spellings differ from variants.
+  if (examSlug && rows.length) {
+    rows = filterMockAttemptsByExam(rows, examSlug);
+  }
+
+  return summarizeMockAttempts(rows);
 }
 
 const EMPTY_LEADERBOARD = { entries: [], yourRank: null, examCategory: null };
@@ -409,17 +463,85 @@ function settledValue(result, fallback) {
   return result.status === 'fulfilled' ? result.value : fallback;
 }
 
+/** Observe a prefetch without leaving an unhandled rejection if it is discarded. */
+function captureSettled(promise) {
+  return promise.then(
+    (value) => ({ status: 'fulfilled', value }),
+    (reason) => ({ status: 'rejected', reason })
+  );
+}
+
+function unwrapSettled(captured) {
+  return captured.then((result) => {
+    if (result.status === 'rejected') throw result.reason;
+    return result.value;
+  });
+}
+
+function observeDiscardedPrefetch(reuseEarly, captured, label) {
+  if (reuseEarly || !captured) return;
+  captured.then((result) => {
+    if (result.status === 'rejected') console.error(label, result.reason);
+  });
+}
+
+function buildHomeLinks(examFeed, examSlug) {
+  const slug = examSlug || '';
+  return {
+    practiceHref:
+      examFeed?.links?.practiceHref || (slug ? practiceHrefForSlug(slug) : '/exams'),
+    mockHref: examFeed?.links?.mockHref || (slug ? mockTestHrefForSlug(slug) : '/exams'),
+    dailyHref:
+      examFeed?.links?.dailyHref || (slug ? `/${slug}/daily-practice` : '/exams'),
+    updatesHref: examFeed?.updatesHref || (slug ? `/article/${slug}` : '/articles'),
+  };
+}
+
+/** Timestamps only — the standalone heatmap does not need scores or test names. */
+async function fetchMockAttemptDateRows(userEmail) {
+  const supabase = getSupabaseServer(isValidServiceRoleKey());
+  const { data, error } = await supabase
+    .from('user_test_attempts')
+    .select('submitted_at, started_at, created_at')
+    .eq('user_email', userEmail)
+    .order('started_at', { ascending: false })
+    .limit(MOCK_ATTEMPT_LIMIT);
+
+  if (error) {
+    console.error('dashboard heatmap attempts', error);
+    return [];
+  }
+  return data || [];
+}
+
+async function fetchPracticeDateRows(user) {
+  const supabase = getSupabaseServer(isValidServiceRoleKey());
+  let query = supabase
+    .from('user_progress')
+    .select('updated_at, created_at')
+    .not('area', 'is', null);
+  query = applyProgressUserFilter(query, user)
+    .order('updated_at', { ascending: false })
+    .limit(PROGRESS_ROW_LIMIT);
+
+  const { data, error } = await query;
+  if (!error) return data || [];
+
+  console.error('dashboard heatmap practice', error);
+  return fetchUserProgressRows(user);
+}
+
 export async function getHeatmapForUser({ userEmail, userId, heatmapRange = '12mo' }) {
   const range = heatmapRange === '90d' ? '90d' : '12mo';
   const progressUser = { email: userEmail, authId: userId };
 
-  const [progressRows, mockTests] = await Promise.all([
-    fetchUserProgressRows(progressUser),
-    fetchMockTestSummary(userEmail),
+  const [progressRows, attemptDates] = await Promise.all([
+    fetchPracticeDateRows(progressUser),
+    fetchMockAttemptDateRows(userEmail),
   ]);
 
   const activityEvents = mergeActivityEvents(
-    datesFromMockAttempts(mockTests.allAttempts),
+    datesFromMockAttempts(attemptDates),
     datesFromPracticeRows(progressRows)
   );
 
@@ -511,6 +633,78 @@ function mergeFeedUpdates(groups, limit = 5) {
 }
 
 const EXAM_HOME_FEED_TTL_MS = 60 * 1000;
+const HOME_ARTICLE_COLUMNS = 'id, slug, title, excerpt, category, created_at, is_featured';
+
+function mapActiveExamNames(rows) {
+  return (rows || [])
+    .filter((row) => row && row.is_active !== false)
+    .map((row) => ({
+      slug: String(row.slug || '').trim().toLowerCase(),
+      name: row.name,
+    }))
+    .filter((row) => row.slug);
+}
+
+/**
+ * Active exam slug + name only. The home switcher does not use question counts,
+ * so this skips the catalog count RPC.
+ */
+async function fetchActiveExamNames() {
+  const fromStatic = () => mapActiveExamNames(getStaticExamCatalog());
+
+  try {
+    const supabase = getSupabaseServer(false);
+    let { data, error } = await supabase
+      .from('platform_exams')
+      .select('slug, name, is_active')
+      .order('sort_order', { ascending: true });
+
+    if (error && (error.code === '42703' || error.code === 'PGRST204')) {
+      ({ data, error } = await supabase.from('platform_exams').select('slug, name, is_active'));
+    }
+
+    if (error) {
+      console.error('dashboard exam catalog', error);
+      return fromStatic();
+    }
+
+    return mapActiveExamNames(data);
+  } catch (err) {
+    console.error('dashboard exam catalog', err);
+    return fromStatic();
+  }
+}
+
+/** Four listing columns, no exact count — home only renders title, excerpt, and href. */
+async function fetchHomeExamArticles(slug) {
+  try {
+    const supabase = getSupabaseAdmin();
+    const { data, error } = await supabase
+      .from('published_articles')
+      .select(HOME_ARTICLE_COLUMNS)
+      .eq('category', slug)
+      .order('is_featured', { ascending: false })
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
+      .limit(4);
+
+    if (error) throw error;
+    return data || [];
+  } catch (err) {
+    console.error('exam home feed category updates', slug, err);
+    try {
+      const categoryResult = await fetchArticlesList({
+        page: 1,
+        pageSize: 4,
+        category: slug,
+      });
+      return categoryResult.articles || [];
+    } catch (fallbackErr) {
+      console.error('exam home feed category updates fallback', slug, fallbackErr);
+      return [];
+    }
+  }
+}
 
 async function buildExamHomeFeedUncached(slug) {
   const examName = formatExamSlug(slug);
@@ -544,18 +738,20 @@ async function buildExamHomeFeedUncached(slug) {
   };
 
   const supabase = getSupabaseAdmin();
-  const [motdStatsSettled, countdownSettled, mocksSettled] = await Promise.allSettled([
-    Promise.all([
-      resolveMockOfTheDay(slug),
-      fetchExamCatalogStats(slug, { includeSyllabusMeta: false }),
-    ]),
-    supabase
-      .from('platform_exams')
-      .select('slug, name, exam_date, exam_date_label, exam_date_visible')
-      .eq('slug', slug)
-      .maybeSingle(),
-    fetchActiveMockTests(supabase, slug),
-  ]);
+  const [motdStatsSettled, countdownSettled, mocksSettled, articlesSettled] =
+    await Promise.allSettled([
+      Promise.all([
+        resolveMockOfTheDay(slug),
+        fetchExamCatalogStats(slug, { includeSyllabusMeta: false }),
+      ]),
+      supabase
+        .from('platform_exams')
+        .select('slug, name, exam_date, exam_date_label, exam_date_visible')
+        .eq('slug', slug)
+        .maybeSingle(),
+      fetchActiveMockTests(supabase, slug),
+      fetchHomeExamArticles(slug),
+    ]);
 
   if (motdStatsSettled.status === 'fulfilled') {
     const [motd, catalogStats] = motdStatsSettled.value;
@@ -602,21 +798,11 @@ async function buildExamHomeFeedUncached(slug) {
     feed.topicMocksStatus = 'coming_soon';
   }
 
-  try {
-    // Category-only — skip search query to cut egress/latency on home.
-    const categoryResult = await fetchArticlesList({
-      page: 1,
-      pageSize: 4,
-      category: slug,
-    }).catch((err) => {
-      console.error('exam home feed category updates', slug, err);
-      return { articles: [] };
-    });
-    const categoryArticles = categoryResult.articles || [];
-    feed.updates = mergeFeedUpdates([categoryArticles]);
+  if (articlesSettled.status === 'fulfilled') {
+    feed.updates = mergeFeedUpdates([articlesSettled.value]);
     feed.updatesHref = `/article/${slug}`;
-  } catch (e) {
-    console.error('exam home feed updates', slug, e);
+  } else {
+    console.error('exam home feed updates', slug, articlesSettled.reason);
     feed.updates = [];
   }
 
@@ -650,25 +836,25 @@ export async function getDashboardForUser({
   const errors = [];
   const earlyFocus = normalizeCategorySlug(focusExam);
 
-  // Wave 1: profile + catalog + wallet (+ feed prefetch for URL exam).
-  const earlyFeedPromise = earlyFocus
-    ? buildExamHomeFeed(earlyFocus).catch((err) => {
-        console.error('dashboard early feed', earlyFocus, err);
-        return null;
-      })
-    : null;
+  // These do not depend on the focused exam. Start them before profile returns.
+  const walletPromise = getWalletSummary(userEmail);
+  const catalogPromise = fetchActiveExamNames();
+  const roadmapsPromise = SHOW_OG_TRACKERS
+    ? listUserRoadmapSummaries(userEmail)
+    : Promise.resolve([]);
 
+  // URL exam is known now, so practice, mocks, and the exam feed overlap profile.
   const earlyProgressPromise = earlyFocus
-    ? fetchUserProgressRows(progressUser, earlyFocus)
+    ? captureSettled(fetchUserProgressRows(progressUser, earlyFocus))
     : null;
   const earlyMocksPromise = earlyFocus
-    ? fetchMockTestSummary(userEmail, earlyFocus)
+    ? captureSettled(fetchMockTestSummary(userEmail, earlyFocus))
     : null;
+  const earlyFeedPromise = earlyFocus ? captureSettled(buildExamHomeFeed(earlyFocus)) : null;
 
-  const [profileResult, walletResult, catalogResult] = await Promise.allSettled([
+  const [profileResult, catalogResult] = await Promise.allSettled([
     selectProfile(profileClient, userEmail).then((r) => r.profile),
-    getWalletSummary(userEmail),
-    fetchActiveExamCatalog(),
+    catalogPromise,
   ]);
 
   let profile = null;
@@ -708,28 +894,32 @@ export async function getDashboardForUser({
     : null;
   const effectivePrimarySlug = focusSlug || primarySlug || '';
 
-  // Wave 2: exam-scoped user data only (never load every preparing exam).
+  // Exam-scoped reads only (never every preparing exam). Wallet and roadmaps
+  // were already in flight and do not block this wave.
   const reuseEarly = Boolean(earlyFocus && earlyFocus === effectivePrimarySlug);
-  const [progressResult, mockResult, roadmapsResult, examFeedSettled] =
+  observeDiscardedPrefetch(reuseEarly, earlyProgressPromise, 'dashboard progress');
+  observeDiscardedPrefetch(reuseEarly, earlyMocksPromise, 'dashboard mocks');
+  observeDiscardedPrefetch(reuseEarly, earlyFeedPromise, 'dashboard exam feed');
+
+  const [progressResult, mockResult, roadmapsResult, examFeedSettled, walletResult] =
     await Promise.allSettled([
       reuseEarly && earlyProgressPromise
-        ? earlyProgressPromise
+        ? unwrapSettled(earlyProgressPromise)
         : effectivePrimarySlug
           ? fetchUserProgressRows(progressUser, effectivePrimarySlug)
           : Promise.resolve([]),
       reuseEarly && earlyMocksPromise
-        ? earlyMocksPromise
+        ? unwrapSettled(earlyMocksPromise)
         : effectivePrimarySlug
           ? fetchMockTestSummary(userEmail, effectivePrimarySlug)
-          : Promise.resolve({ attempts: [], stats: null, allAttempts: [] }),
-      SHOW_OG_TRACKERS
-        ? listUserRoadmapSummaries(userEmail)
-        : Promise.resolve([]),
+          : Promise.resolve(EMPTY_MOCK_SUMMARY),
+      roadmapsPromise,
       reuseEarly && earlyFeedPromise
-        ? earlyFeedPromise
+        ? unwrapSettled(earlyFeedPromise)
         : effectivePrimarySlug
           ? buildExamHomeFeed(effectivePrimarySlug)
           : Promise.resolve(null),
+      walletPromise,
     ]);
 
   if (progressResult.status === 'rejected') {
@@ -750,6 +940,7 @@ export async function getDashboardForUser({
   }
 
   let progressRows = settledValue(progressResult, []);
+  if (!Array.isArray(progressRows)) progressRows = [];
   if (effectivePrimarySlug) {
     progressRows = progressRows.filter((row) =>
       practiceAreaMatchesSlug(row.area, effectivePrimarySlug)
@@ -817,6 +1008,8 @@ export async function getDashboardForUser({
     errors.push('examFeed');
   }
 
+  const links = buildHomeLinks(examFeed, effectivePrimarySlug);
+
   const focusPractice = practice[0] || null;
   const practiceTotals = {
     questions: focusPractice?.totalCompleted || 0,
@@ -847,6 +1040,7 @@ export async function getDashboardForUser({
     leaderboards: {},
     myRoadmaps,
     partialErrors: errors,
+    links,
     summary: {
       practiceExams: practice.length,
       practiceQuestions: practiceTotals.questions,

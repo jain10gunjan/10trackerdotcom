@@ -12,6 +12,10 @@ const PURCHASE_META = {
     label: "Tried checkout",
     className: "bg-amber-50 text-amber-900 border-amber-100",
   },
+  assigned: {
+    label: "Assigned",
+    className: "bg-sky-50 text-sky-800 border-sky-100",
+  },
   none: {
     label: "No purchase",
     className: "bg-neutral-50 text-neutral-600 border-neutral-200",
@@ -44,7 +48,11 @@ function formatDateTime(iso) {
   });
 }
 
-function sourceLabel(source) {
+function sourceLabel(order) {
+  if (order?.origin === "admin" || String(order?.status || "").toLowerCase() === "admin_grant") {
+    return "Admin grant";
+  }
+  const source = typeof order === "string" ? order : order?.source;
   if (source === "subscription") return "Subscription";
   if (source === "roadmap") return "Roadmap";
   if (source === "legacy") return "Legacy plan";
@@ -56,6 +64,7 @@ export default function AdminUserDetailDrawer({
   open,
   onClose,
   onAdjustCredits,
+  onAssignSubscription,
   formatRelativeTime,
 }) {
   if (!open || !user) return null;
@@ -241,10 +250,21 @@ export default function AdminUserDetailDrawer({
           </section>
 
           <section className="rounded-2xl border border-neutral-200 p-4 space-y-3">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-neutral-500 flex items-center gap-1.5">
-              <CreditCard className="h-3.5 w-3.5" />
-              Active subscription
-            </h3>
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-neutral-500 flex items-center gap-1.5">
+                <CreditCard className="h-3.5 w-3.5" />
+                Active subscription
+              </h3>
+              {user.email ? (
+                <button
+                  type="button"
+                  onClick={() => onAssignSubscription?.(user)}
+                  className="text-xs font-medium text-neutral-700 hover:underline"
+                >
+                  Assign plan
+                </button>
+              ) : null}
+            </div>
             {activeSub ? (
               <div className="space-y-1 text-sm">
                 <p className="font-medium text-neutral-900">{activeSub.planId}</p>
@@ -252,8 +272,15 @@ export default function AdminUserDetailDrawer({
                   Expires {formatDateTime(activeSub.expiresAt)}
                 </p>
                 <p className="text-neutral-600 tabular-nums">
-                  {formatMoneyPaise(activeSub.amountPaise)}
+                  {activeSub.source === "admin"
+                    ? "Assigned · no payment"
+                    : formatMoneyPaise(activeSub.amountPaise)}
                 </p>
+                {activeSub.grantedBy ? (
+                  <p className="text-[11px] text-neutral-400 break-all">
+                    By {activeSub.grantedBy}
+                  </p>
+                ) : null}
                 {activeSub.razorpayPaymentId ? (
                   <p className="text-[11px] text-neutral-400 break-all">
                     Payment: {activeSub.razorpayPaymentId}
@@ -312,7 +339,7 @@ export default function AdminUserDetailDrawer({
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                           <p className="text-sm font-medium text-neutral-900 truncate">
-                            {sourceLabel(order.source)} · {order.planId || "—"}
+                            {sourceLabel(order)} · {order.planId || "—"}
                           </p>
                           <p className="text-xs text-neutral-500 mt-0.5">
                             {formatDateTime(order.at || order.createdAt)}
@@ -325,8 +352,16 @@ export default function AdminUserDetailDrawer({
                         </span>
                       </div>
                       <p className="mt-2 text-sm tabular-nums text-neutral-800">
-                        {formatMoneyPaise(order.amountPaise)}
+                        {order.origin === "admin" || String(order.status || "").toLowerCase() === "admin_grant"
+                          ? `No charge · list ${formatMoneyPaise(order.listAmountPaise)}`
+                          : formatMoneyPaise(order.amountPaise)}
                       </p>
+                      {order.note ? (
+                        <p className="mt-1 text-[11px] text-neutral-500">{order.note}</p>
+                      ) : null}
+                      {order.grantedBy ? (
+                        <p className="text-[11px] text-neutral-400 break-all">By {order.grantedBy}</p>
+                      ) : null}
                       {order.razorpayOrderId ? (
                         <p className="mt-1 text-[11px] text-neutral-400 break-all">
                           Order: {order.razorpayOrderId}

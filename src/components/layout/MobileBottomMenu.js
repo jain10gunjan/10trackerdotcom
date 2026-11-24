@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import { easeOut, useGuestMotion } from '@/features/guest/components/guestMotion';
 import {
   LayoutGrid,
   X,
@@ -37,6 +38,7 @@ const MobileBottomMenu = () => {
   const [googleLoading, setGoogleLoading] = useState(false);
   const pathname = usePathname();
   const { user, signOut, isAdmin, signInWithGoogle } = useAuth();
+  const { prefersReduced } = useGuestMotion();
 
   const moreActive = isMoreNavActive(pathname);
 
@@ -64,16 +66,34 @@ const MobileBottomMenu = () => {
   }, [sheetOpen]);
 
   const tabClass = (active) =>
-    `flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-1 py-2 touch-manipulation transition-colors ${
+    `flex h-full min-h-11 min-w-0 flex-1 basis-0 flex-col items-center justify-center gap-0.5 px-0.5 touch-manipulation transition-colors ${
       active ? 'text-[#3F5EB9]' : 'text-neutral-500 hover:text-neutral-800'
     }`;
 
   const sheetLinkClass = (active) =>
-    `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors touch-manipulation ${
+    `flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-colors touch-manipulation ${
       active
         ? 'bg-[#E8EDF8] text-[#1e2f6b]'
         : 'text-neutral-700 hover:bg-neutral-50 hover:text-neutral-900'
     }`;
+
+  const overlayMotion = prefersReduced
+    ? { initial: false, animate: { opacity: 1 }, exit: { opacity: 0 }, transition: { duration: 0 } }
+    : {
+        initial: { opacity: 0 },
+        animate: { opacity: 1 },
+        exit: { opacity: 0 },
+        transition: { duration: 0.35, ease: easeOut },
+      };
+
+  const sheetMotion = prefersReduced
+    ? { initial: false, animate: { opacity: 1 }, exit: { opacity: 0 }, transition: { duration: 0 } }
+    : {
+        initial: { y: '100%' },
+        animate: { y: 0 },
+        exit: { y: '100%' },
+        transition: { duration: 0.4, ease: easeOut },
+      };
 
   const sheetExtras = PRIMARY_NAV.filter(
     (item) => !MOBILE_TAB_NAV.some((tab) => tab.path === item.path)
@@ -89,7 +109,7 @@ const MobileBottomMenu = () => {
         aria-label="Mobile navigation"
         aria-hidden={sheetOpen || undefined}
       >
-        <div className="mx-auto flex h-16 max-w-lg items-stretch px-1">
+        <div className="mx-auto flex h-16 w-full max-w-lg items-stretch px-0.5">
           {MOBILE_TAB_NAV.map((item) => {
             const active = isNavActive(pathname, item.path);
             const Icon = item.icon;
@@ -100,8 +120,14 @@ const MobileBottomMenu = () => {
                 className={tabClass(active)}
                 aria-current={active ? 'page' : undefined}
               >
-                <Icon className="h-5 w-5 shrink-0" strokeWidth={active ? 2.25 : 2} />
-                <span className="w-full truncate text-center text-[10px] font-medium leading-tight">
+                <span
+                  className={`flex h-8 w-8 items-center justify-center rounded-xl ${
+                    active ? 'bg-[#E8EDF8]' : ''
+                  }`}
+                >
+                  <Icon className="h-5 w-5 shrink-0" strokeWidth={active ? 2.25 : 2} />
+                </span>
+                <span className="w-full truncate text-center text-[10px] font-medium leading-none">
                   {item.name}
                 </span>
                 <span
@@ -120,8 +146,14 @@ const MobileBottomMenu = () => {
             aria-expanded={sheetOpen}
             aria-haspopup="dialog"
           >
-            <LayoutGrid className="h-5 w-5 shrink-0" strokeWidth={moreActive || sheetOpen ? 2.25 : 2} />
-            <span className="w-full truncate text-center text-[10px] font-medium leading-tight">More</span>
+            <span
+              className={`flex h-8 w-8 items-center justify-center rounded-xl ${
+                moreActive || sheetOpen ? 'bg-[#E8EDF8]' : ''
+              }`}
+            >
+              <LayoutGrid className="h-5 w-5 shrink-0" strokeWidth={moreActive || sheetOpen ? 2.25 : 2} />
+            </span>
+            <span className="w-full truncate text-center text-[10px] font-medium leading-none">More</span>
             <span
               className={`h-0.5 w-5 rounded-full transition-colors ${
                 moreActive || sheetOpen ? 'bg-[#3F5EB9]' : 'bg-transparent'
@@ -137,9 +169,7 @@ const MobileBottomMenu = () => {
           <>
             <motion.button
               type="button"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+              {...overlayMotion}
               className="fixed inset-0 z-[60] bg-neutral-900/30 backdrop-blur-[2px] lg:hidden touch-manipulation"
               aria-label="Close menu"
               onClick={() => setSheetOpen(false)}
@@ -148,10 +178,7 @@ const MobileBottomMenu = () => {
               role="dialog"
               aria-modal="true"
               aria-label="More navigation"
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 28, stiffness: 320 }}
+              {...sheetMotion}
               className="fixed inset-x-0 bottom-0 z-[70] max-h-[min(85vh,640px)] overflow-hidden rounded-t-2xl border border-neutral-200 bg-white shadow-2xl lg:hidden"
               style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
             >
@@ -164,7 +191,7 @@ const MobileBottomMenu = () => {
                 <button
                   type="button"
                   onClick={() => setSheetOpen(false)}
-                  className="rounded-lg p-2 text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 touch-manipulation"
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 touch-manipulation"
                   aria-label="Close"
                 >
                   <X className="h-5 w-5" />
@@ -268,7 +295,7 @@ const MobileBottomMenu = () => {
                         signOut();
                         setSheetOpen(false);
                       }}
-                      className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 touch-manipulation"
+                      className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 touch-manipulation"
                     >
                       <LogOut className="h-[18px] w-[18px] shrink-0" />
                       Sign out
@@ -296,7 +323,7 @@ const MobileBottomMenu = () => {
                       key={item.path}
                       href={item.path}
                       onClick={() => setSheetOpen(false)}
-                      className="rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-xs font-medium text-neutral-600 transition-colors hover:border-[#3F5EB9]/40 hover:bg-[#E8EDF8] hover:text-[#1e2f6b] touch-manipulation"
+                      className="inline-flex min-h-11 items-center rounded-full border border-neutral-200 bg-neutral-50 px-3 text-xs font-medium text-neutral-600 transition-colors hover:border-[#3F5EB9]/40 hover:bg-[#E8EDF8] hover:text-[#1e2f6b] touch-manipulation"
                     >
                       {item.name.replace(' Policy', '').replace(' of Service', '')}
                     </Link>

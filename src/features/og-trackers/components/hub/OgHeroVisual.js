@@ -7,7 +7,6 @@ import {
   ArrowRight,
   BookOpen,
   CheckCircle2,
-  Chrome,
   ClipboardList,
   PlayCircle,
 } from 'lucide-react';
@@ -21,7 +20,7 @@ const STEPS = [
     icon: PlayCircle,
     label: 'Watch',
     title: 'Graph Theory — Basics',
-    meta: 'YouTube · synced via extension',
+    meta: 'In-app player · progress saved',
     pct: 72,
   },
   {
@@ -37,14 +36,13 @@ const STEPS = [
     icon: ClipboardList,
     label: 'Mock',
     title: 'Topic mock — Relations',
-    meta: 'Weak topics loop back',
+    meta: 'Score feeds the checklist',
     pct: 0,
   },
 ];
 
 /**
  * OG-only product visual — exam → chapter → loop.
- * Shares brand tokens with homepage; composition is unique to /og-trackers.
  */
 export default function OgHeroVisual({
   examTitle = 'GATE CSE',
@@ -65,21 +63,6 @@ export default function OgHeroVisual({
 
   return (
     <div className="relative w-full max-w-lg sm:max-w-xl mx-auto md:max-w-none">
-      {/* Extension callout — floats above the stack */}
-      <motion.div
-        className="absolute -top-3 right-3 z-20 hidden sm:block"
-        animate={animate ? { y: [0, -4, 0] } : undefined}
-        transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut' }}
-      >
-        <Link
-          href="/extension/connect"
-          className="inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-neutral-800 shadow-md hover:border-[#3F5EB9]/40"
-        >
-          <Chrome className="h-3.5 w-3.5" style={{ color: BRAND.blue }} />
-          Extension syncs watch %
-        </Link>
-      </motion.div>
-
       <motion.div
         initial={animate ? { opacity: 0, y: 18 } : false}
         animate={{ opacity: 1, y: 0 }}
@@ -93,7 +76,6 @@ export default function OgHeroVisual({
           }}
         />
 
-        {/* Breadcrumb path */}
         <div className="px-5 pt-5 pb-4 border-b border-neutral-100">
           <p
             className="text-[10px] font-semibold uppercase tracking-[0.16em]"
@@ -118,12 +100,10 @@ export default function OgHeroVisual({
             </span>
           </div>
           <p className="mt-3 text-xs text-neutral-500 leading-relaxed">
-            One checklist: watch on YouTube, practice and mock on 10Tracker — progress stays in
-            sync when the extension is connected.
+            One checklist: watch, practice, and mock — progress stays on the path.
           </p>
         </div>
 
-        {/* Loop steps */}
         <div className="p-4 sm:p-5 space-y-2.5">
           {STEPS.map((step, i) => {
             const Icon = step.icon;

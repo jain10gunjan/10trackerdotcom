@@ -1,23 +1,8 @@
 'use client';
 
-import { motion } from 'framer-motion';
-import Link from 'next/link';
-import {
-  ArrowRight,
-  BookOpen,
-  ClipboardList,
-  Layers,
-  Sparkles,
-} from 'lucide-react';
-import { APP_GUTTER, APP_NAV_CONTENT_OFFSET } from '@/lib/appChrome';
 import DashboardContinueCard from '@/features/dashboard/components/DashboardContinueCard';
-import {
-  STUDENT_BRAND,
-  easeOut,
-  useStudentMotion,
-  staggerContainer,
-} from '@/features/dashboard/lib/studentHomeBrand';
-import { PathwayCard } from '@/features/dashboard/components/studentHome/StudentHomeCards';
+import HomeBone from '@/features/dashboard/components/studentHome/HomeBone';
+import { STUDENT_BRAND } from '@/features/dashboard/lib/studentHomeBrand';
 
 function greetingForHour() {
   const h = new Date().getHours();
@@ -31,9 +16,9 @@ export function ExamSwitcher({ exams, activeSlug, onChange, disabled }) {
 
   return (
     <div
-      className="inline-flex flex-wrap items-center gap-1 rounded-2xl border border-neutral-200/80 bg-white/90 p-1 shadow-sm backdrop-blur"
+      className="flex max-w-full flex-wrap gap-1.5"
       role="tablist"
-      aria-label="Focus exam"
+      aria-label="Exam you are studying"
     >
       {exams.map((exam) => {
         const active = exam.slug === activeSlug;
@@ -45,12 +30,11 @@ export function ExamSwitcher({ exams, activeSlug, onChange, disabled }) {
             aria-selected={active}
             disabled={disabled || active}
             onClick={() => onChange(exam.slug)}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${
+            className={`min-h-10 max-w-full rounded-full px-3.5 text-left text-xs font-semibold leading-snug transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3F5EB9] sm:text-sm ${
               active
-                ? 'text-white shadow-sm'
-                : 'text-neutral-600 hover:bg-[#E8EDF8]/80 hover:text-neutral-900 disabled:opacity-50'
+                ? 'bg-neutral-900 text-white shadow-sm'
+                : 'border border-neutral-200 bg-white text-neutral-800 hover:border-[#3F5EB9]/35 hover:bg-[#E8EDF8]/70 disabled:opacity-50'
             }`}
-            style={active ? { backgroundColor: STUDENT_BRAND.blue } : undefined}
           >
             {exam.name}
           </button>
@@ -62,18 +46,14 @@ export function ExamSwitcher({ exams, activeSlug, onChange, disabled }) {
 
 function HeroSkeleton() {
   return (
-    <div className={`max-w-7xl mx-auto ${APP_GUTTER}`}>
-      <div className="animate-pulse space-y-4 max-w-xl">
-        <div className="h-5 w-40 rounded-full bg-neutral-200/90" />
-        <div className="h-12 w-72 max-w-full rounded-xl bg-neutral-200/90" />
-        <div className="h-4 w-full max-w-md rounded bg-neutral-200/70" />
-        <div className="h-28 w-full rounded-2xl bg-white/80 border border-neutral-200" />
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-36 rounded-2xl bg-white/80 border border-neutral-200" />
-          ))}
-        </div>
-      </div>
+    <div
+      className="space-y-3 overflow-hidden rounded-2xl border border-neutral-200/90 bg-white/95 p-5 shadow-sm sm:p-6"
+      aria-hidden
+    >
+      <HomeBone className="h-3 w-24" />
+      <HomeBone className="h-8 w-52 max-w-full" />
+      <HomeBone className="h-4 w-64 max-w-full" />
+      <HomeBone className="h-36 w-full rounded-2xl" />
     </div>
   );
 }
@@ -92,201 +72,121 @@ export default function StudentHomeHero({
   practiceHref,
   mockHref,
   topicMocksHref,
+  dailyHref = '/exams',
   topicMockCount = 0,
   hasContinue = false,
+  streakDays = 0,
   topSlot = null,
 }) {
-  const { animate } = useStudentMotion();
-
-  const enter = (delay = 0) =>
-    animate
-      ? {
-          initial: { opacity: 0, y: 16 },
-          animate: { opacity: 1, y: 0 },
-          transition: { duration: 0.5, delay, ease: easeOut },
-        }
-      : { initial: false, animate: { opacity: 1, y: 0 } };
+  const studyLinks =
+    !limitedMode && examSlug
+      ? [
+          { href: practiceHref, label: 'Practice' },
+          { href: dailyHref, label: 'Daily set' },
+          { href: mockHref, label: 'Mocks' },
+          {
+            href: topicMocksHref,
+            label: topicMockCount > 0 ? `Topic mocks (${topicMockCount})` : 'Topic mocks',
+          },
+        ].filter((link) => link.href)
+      : [];
 
   return (
-    <section
-      className="relative overflow-hidden pb-8 sm:pb-10"
-      style={{ paddingTop: APP_NAV_CONTENT_OFFSET }}
-    >
-      <div className="absolute inset-0 pointer-events-none" aria-hidden>
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              'radial-gradient(ellipse 80% 55% at 85% 15%, #E8EDF8 0%, transparent 55%), radial-gradient(ellipse 60% 45% at 10% 30%, #F0F4FF 0%, transparent 50%), linear-gradient(180deg, #F8FAFC 0%, #F1F5F9 55%, #F5F5F5 100%)',
-          }}
-        />
-        {animate ? (
-          <>
-            <motion.div
-              className="absolute top-[4%] right-[12%] h-64 w-64 sm:h-80 sm:w-80 rounded-full blur-[100px] will-change-transform"
-              style={{ backgroundColor: `${STUDENT_BRAND.blue}28` }}
-              animate={{ x: [0, 20, 0], y: [0, 14, 0], opacity: [0.3, 0.5, 0.3] }}
-              transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
-            />
-            <motion.div
-              className="absolute top-[28%] left-[4%] h-56 w-56 rounded-full blur-[90px] bg-sky-200/35 will-change-transform"
-              animate={{ x: [0, -16, 0], y: [0, 18, 0], opacity: [0.2, 0.35, 0.2] }}
-              transition={{ duration: 14, repeat: Infinity, ease: 'easeInOut', delay: 0.5 }}
-            />
-          </>
-        ) : (
+    <header>
+      {topSlot ? <div className="mb-5 space-y-3 sm:mb-6">{topSlot}</div> : null}
+
+      {loading ? (
+        <HeroSkeleton />
+      ) : (
+        <div className="relative overflow-hidden rounded-2xl border border-neutral-200/90 bg-white/95 shadow-[0_20px_50px_-28px_rgba(63,94,185,0.28)]">
           <div
-            className="absolute top-[8%] right-[10%] h-72 w-72 rounded-full blur-[100px] opacity-40"
-            style={{ backgroundColor: STUDENT_BRAND.soft }}
+            className="pointer-events-none absolute inset-0"
+            style={{
+              background:
+                'linear-gradient(135deg, rgba(63,94,185,0.10), transparent 45%, rgba(75,107,199,0.05))',
+            }}
+            aria-hidden
           />
-        )}
-      </div>
+          <div
+            className="pointer-events-none absolute -right-12 -top-16 h-40 w-40 rounded-full blur-3xl"
+            style={{ backgroundColor: `${STUDENT_BRAND.blue}28` }}
+            aria-hidden
+          />
 
-      <div className={`relative max-w-7xl mx-auto ${APP_GUTTER} pt-5 sm:pt-7`}>
-        {topSlot ? <div className="mb-5 sm:mb-6 space-y-3">{topSlot}</div> : null}
-
-        {showExamSwitcher ? (
-          <motion.div
-            {...enter(0)}
-            className="mb-5 sm:mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
-          >
+          <div className="relative space-y-5 p-5 sm:space-y-6 sm:p-6 lg:p-7">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-neutral-500">
-                Focus exam
-              </p>
-              <p className="text-sm text-neutral-600 mt-0.5">
-                Switch to personalize mocks, updates, and countdown.
-              </p>
-            </div>
-            <ExamSwitcher
-              exams={examsPreparing}
-              activeSlug={examSlug}
-              onChange={onExamChange}
-              disabled={switchingExam}
-            />
-          </motion.div>
-        ) : null}
-
-        {loading ? (
-          <HeroSkeleton />
-        ) : (
-          <div className={switchingExam ? 'opacity-70 transition-opacity' : ''}>
-            <motion.div {...enter(0.04)}>
               <span
-                className="inline-flex items-center gap-2 rounded-full border border-[#3F5EB9]/20 px-3 py-1 text-xs font-medium"
-                style={{ backgroundColor: `${STUDENT_BRAND.soft}e6`, color: '#1e2f6b' }}
+                className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold"
+                style={{
+                  borderColor: `${STUDENT_BRAND.blue}33`,
+                  backgroundColor: STUDENT_BRAND.soft,
+                  color: '#1e2f6b',
+                }}
+                suppressHydrationWarning
               >
-                <Sparkles className="h-3.5 w-3.5" style={{ color: STUDENT_BRAND.blue }} />
-                {examName ? `Preparing for ${examName}` : '10Tracker · Your study home'}
+                {greetingForHour()}, {firstName}
+                {!limitedMode && streakDays > 0 ? ` · ${streakDays}-day streak` : ''}
               </span>
-            </motion.div>
 
-            <motion.h1
-              {...enter(0.08)}
-              className="mt-4 text-[clamp(1.85rem,5vw,2.75rem)] font-black tracking-tight text-neutral-950 leading-[1.08] max-w-3xl"
-              suppressHydrationWarning
+              {!limitedMode ? (
+                <div className="mt-3">
+                  <p
+                    className="text-[11px] font-semibold uppercase tracking-[0.16em]"
+                    style={{ color: STUDENT_BRAND.blue }}
+                  >
+                    Studying
+                  </p>
+                  <h1 className="mt-1 text-2xl font-bold tracking-tight text-neutral-950 sm:text-3xl">
+                    {examName || 'Choose an exam'}
+                    {switchingExam ? (
+                      <span className="ml-2 text-sm font-medium text-neutral-500">Switching…</span>
+                    ) : null}
+                  </h1>
+                  <p className="mt-2 max-w-xl text-sm leading-relaxed text-neutral-600 sm:text-[15px]">
+                    {hasContinue
+                      ? 'Pick up where you left off — practice, daily set, or a timed mock.'
+                      : 'Start a topic or open a mock. Progress stays on this home.'}
+                  </p>
+                </div>
+              ) : (
+                <div className="mt-3">
+                  <h1 className="text-2xl font-bold tracking-tight text-neutral-950 sm:text-3xl">
+                    Finish your profile
+                  </h1>
+                  <p className="mt-2 max-w-xl text-sm text-neutral-600">
+                    Add your exam focus so we can personalize practice and mocks.
+                  </p>
+                </div>
+              )}
+
+              {showExamSwitcher ? (
+                <div className="mt-4">
+                  <ExamSwitcher
+                    exams={examsPreparing}
+                    activeSlug={examSlug}
+                    onChange={onExamChange}
+                    disabled={switchingExam}
+                  />
+                </div>
+              ) : null}
+            </div>
+
+            <div
+              aria-busy={switchingExam || undefined}
+              aria-label={hasContinue ? 'Continue your session' : 'Start a session'}
             >
-              {greetingForHour()}, {firstName}
-            </motion.h1>
-
-            <motion.p
-              {...enter(0.12)}
-              className="mt-3 text-sm sm:text-[15px] text-neutral-600 max-w-2xl leading-relaxed"
-            >
-              {hasContinue
-                ? 'One clear next step — continue practice or a mock, then explore what’s new for your exam.'
-                : examName
-                  ? `Your ${examName} home: practice, mocks, updates, and a countdown to exam day.`
-                  : 'Choose an exam to practice. Your personalized home will build around it.'}
-            </motion.p>
-
-            <motion.div {...enter(0.16)} className="mt-6 sm:mt-7">
-              <p
-                className="mb-3 text-[10px] font-semibold uppercase tracking-[0.16em]"
-                style={{ color: STUDENT_BRAND.blue }}
-              >
-                Continue
-              </p>
               <DashboardContinueCard
                 continueOptions={continueOptions}
                 loading={false}
                 emptyHref={practiceHref}
                 emptyLabel={examName ? `Start ${examName} practice` : 'Browse exams'}
+                links={studyLinks}
+                emphasis={limitedMode ? 'quiet' : 'primary'}
               />
-            </motion.div>
-
-            {!limitedMode ? (
-              <motion.div
-                {...enter(0.2)}
-                className="mt-7 sm:mt-8"
-              >
-                <p
-                  className="mb-3 text-[10px] font-semibold uppercase tracking-[0.16em]"
-                  style={{ color: STUDENT_BRAND.blue }}
-                >
-                  Start a session
-                </p>
-                <motion.div
-                  variants={staggerContainer(true, animate)}
-                  initial="hidden"
-                  animate="show"
-                  className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4"
-                >
-                  <PathwayCard
-                    index={0}
-                    href={practiceHref}
-                    icon={BookOpen}
-                    title="Practice"
-                    description={
-                      examName
-                        ? `Chapter-wise MCQs for ${examName}.`
-                        : 'Topic-wise MCQs across your exams.'
-                    }
-                  />
-                  <PathwayCard
-                    index={1}
-                    href={mockHref}
-                    icon={ClipboardList}
-                    title="Mock tests"
-                    description={
-                      examName
-                        ? `Timed mocks for ${examName}.`
-                        : 'Full-length timed tests when you are ready.'
-                    }
-                  />
-                  <PathwayCard
-                    index={2}
-                    href={topicMocksHref}
-                    icon={Layers}
-                    title="Topic mocks"
-                    description={
-                      topicMockCount > 0
-                        ? `${topicMockCount} topic-wise mock${topicMockCount === 1 ? '' : 's'} ready.`
-                        : examName
-                          ? `Shorter topic-scoped mocks for ${examName}.`
-                          : 'Shorter mocks scoped to a chapter or topic.'
-                    }
-                  />
-                </motion.div>
-              </motion.div>
-            ) : (
-              <motion.div {...enter(0.2)} className="mt-6">
-                <Link
-                  href="/exams"
-                  className="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition-transform hover:scale-[1.02]"
-                  style={{
-                    backgroundColor: STUDENT_BRAND.blue,
-                    boxShadow: `0 12px 28px -12px ${STUDENT_BRAND.blue}99`,
-                  }}
-                >
-                  Browse exams
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </motion.div>
-            )}
+            </div>
           </div>
-        )}
-      </div>
-    </section>
+        </div>
+      )}
+    </header>
   );
 }

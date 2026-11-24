@@ -627,11 +627,37 @@ const QuestionCard = memo(({ question, category, index, onAnswer, onSkip, questi
               </div>
             </div>
             <div className="flex items-center gap-2 flex-wrap justify-end w-full sm:w-auto">
-              <div className="px-2.5 py-1 rounded-lg bg-white/80 text-xs font-semibold text-gray-700 border border-gray-200/60 max-w-full truncate">
-                {[isGate && questionData.year ? `GATE ${questionData.year}` : questionData.year, questionData.topic]
-                  .filter(Boolean)
-                  .join(" · ") || "Practice"}
-              </div>
+              {(() => {
+                const rawYear = questionData.year != null ? String(questionData.year).trim() : "";
+                // Numeric PYQ years → "GATE 2024". Attribution stays in year (not topic).
+                const yearLabel = rawYear
+                  ? isGate && /^\d{4}/.test(rawYear)
+                    ? `GATE ${rawYear}`
+                    : rawYear
+                  : null;
+                const topicLabel = questionData.topic ? String(questionData.topic).trim() : "";
+                if (!yearLabel && !topicLabel) {
+                  return (
+                    <div className="px-2.5 py-1 rounded-lg bg-white/80 text-xs font-semibold text-gray-700 border border-gray-200/60">
+                      Practice
+                    </div>
+                  );
+                }
+                return (
+                  <>
+                    {yearLabel ? (
+                      <div className="px-2.5 py-1 rounded-lg bg-white/80 text-xs font-semibold text-gray-700 border border-gray-200/60 max-w-full truncate" title={yearLabel}>
+                        {yearLabel}
+                      </div>
+                    ) : null}
+                    {topicLabel ? (
+                      <div className="px-2.5 py-1 rounded-lg bg-neutral-50 text-xs font-medium text-neutral-600 border border-neutral-200/60 max-w-full truncate" title={topicLabel}>
+                        {topicLabel}
+                      </div>
+                    ) : null}
+                  </>
+                );
+              })()}
               {typeof onToggleFlag === "function" ? (
                 <button
                   type="button"

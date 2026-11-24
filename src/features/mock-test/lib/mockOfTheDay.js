@@ -265,7 +265,7 @@ async function fetchBankQuestions({ examSlug, totalQuestions, difficulty }) {
   const fetchLimit = Math.min(limit * 8, 800);
 
   let query = supabase
-    .from('examtracker')
+    .from('examtracker').or('verification_status.is.null,verification_status.not.in.(unpublished_draft,publish_rejected)')
     .select('_id, subject, topic, difficulty, category')
     .in('category', variants)
     .limit(fetchLimit);
@@ -279,7 +279,7 @@ async function fetchBankQuestions({ examSlug, totalQuestions, difficulty }) {
   if (error || !data?.length) {
     for (const variant of variants) {
       let q = supabase
-        .from('examtracker')
+        .from('examtracker').or('verification_status.is.null,verification_status.not.in.(unpublished_draft,publish_rejected)')
         .select('_id, subject, topic, difficulty, category')
         .eq('category', variant)
         .limit(fetchLimit);

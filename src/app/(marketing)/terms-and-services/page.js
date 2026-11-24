@@ -10,13 +10,15 @@ import {
 } from '@/features/billing/lib/legal';
 
 export const metadata = {
-  title: 'Terms of Service - 10tracker',
+  title: 'Terms of Service',
   description:
     'Terms of Service for 10tracker — exam practice, mock tests, credits, subscription plans, and study roadmaps.',
+  alternates: { canonical: '/terms-and-services' },
   openGraph: {
-    title: 'Terms of Service - 10tracker',
+    title: 'Terms of Service',
     description: 'Rules and guidelines for using the 10tracker exam preparation platform.',
     type: 'website',
+    url: '/terms-and-services',
   },
 };
 

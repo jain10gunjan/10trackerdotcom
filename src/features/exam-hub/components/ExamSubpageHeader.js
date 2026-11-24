@@ -32,7 +32,13 @@ export default function ExamSubpageHeader({
         <div className="relative p-5 sm:p-6 flex items-start gap-4">
           {exam?.image ? (
             <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-2xl border border-neutral-200 overflow-hidden shrink-0 bg-neutral-100">
-              <Image src={exam.image} alt="" fill className="object-cover" unoptimized />
+              <Image
+                src={exam.image}
+                alt={exam.name || 'Exam'}
+                fill
+                className="object-cover"
+                unoptimized
+              />
             </div>
           ) : (
             <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-2xl shrink-0">

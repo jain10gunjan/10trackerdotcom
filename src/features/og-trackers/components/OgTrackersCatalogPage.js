@@ -1,20 +1,27 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertCircle, Loader2 } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import OgPremiumCheckout from '@/features/og-trackers/components/OgPremiumCheckout';
-import OgExamCard from '@/features/og-trackers/components/hub/OgExamCard';
+import OgExamTrackPanel from '@/features/og-trackers/components/hub/OgExamTrackPanel';
+import OgMyTrackers from '@/features/og-trackers/components/hub/OgMyTrackers';
+import OgTrackSwitcher from '@/features/og-trackers/components/hub/OgTrackSwitcher';
 import OgTrackersHero from '@/features/og-trackers/components/hub/OgTrackersHero';
 import { useGsapReady, useOgStagger } from '@/features/og-trackers/lib/ogGsap';
-import { GUEST_BRAND } from '@/features/guest/components/guestMotion';
 import { APP_GUTTER } from '@/lib/appChrome';
+
+function normalizeTrack(value) {
+  return value === 'user' ? 'user' : 'exam';
+}
 
 export default function OgTrackersCatalogPage() {
   const { user } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { animate } = useGsapReady();
 
   const [exams, setExams] = useState([]);
+  const [mine, setMine] = useState([]);
   const [paths, setPaths] = useState([]);
   const [stats, setStats] = useState(null);
   const [isPremium, setIsPremium] = useState(false);
@@ -22,7 +29,7 @@ export default function OgTrackersCatalogPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [setupHint, setSetupHint] = useState(null);
-  const [showCheckout, setShowCheckout] = useState(false);
+  const [track, setTrack] = useState(() => normalizeTrack(searchParams?.get('track')));
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -32,6 +39,7 @@ export default function OgTrackersCatalogPage() {
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || 'Failed to load');
       setExams(data.exams || []);
+      setMine(data.mine || []);
       setPaths(data.paths || []);
       setStats(data.stats || null);
       setIsPremium(Boolean(data.isPremium));
@@ -48,7 +56,24 @@ export default function OgTrackersCatalogPage() {
     load();
   }, [load]);
 
-  const gridRef = useOgStagger([loading, exams.length, animate]);
+  useEffect(() => {
+    setTrack(normalizeTrack(searchParams?.get('track')));
+  }, [searchParams]);
+
+  const onTrackChange = useCallback(
+    (next) => {
+      const value = normalizeTrack(next);
+      setTrack(value);
+      const params = new URLSearchParams(searchParams?.toString() || '');
+      if (value === 'exam') params.delete('track');
+      else params.set('track', 'user');
+      const qs = params.toString();
+      router.replace(qs ? `/og-trackers?${qs}` : '/og-trackers', { scroll: false });
+    },
+    [router, searchParams]
+  );
+
+  const gridRef = useOgStagger([loading, exams.length, animate, track]);
 
   const totalSteps = useMemo(
     () =>
@@ -80,13 +105,16 @@ export default function OgTrackersCatalogPage() {
       ? `/og-trackers/${paths[0].slug}`
       : null;
 
+  const examCount = exams.length || paths.length;
+  const userCount = mine.length;
+
   const metrics = [
-    { label: 'Exams', value: exams.length || '—' },
+    { label: 'Exam track', value: examCount || '—' },
     { label: 'Live chapters', value: liveChapters || '—' },
     { label: 'Total steps', value: totalSteps || '—' },
     {
-      label: user && userCompleted > 0 ? 'Your clears' : 'Extension',
-      value: user && userCompleted > 0 ? userCompleted : 'Required',
+      label: user && userCompleted > 0 ? 'Your clears' : 'User track',
+      value: user && userCompleted > 0 ? userCompleted : userCount || 0,
     },
   ];
 
@@ -105,72 +133,33 @@ export default function OgTrackersCatalogPage() {
         featured={featured}
         startHref={startHref}
         metrics={metrics}
-        onGoPremium={() => setShowCheckout(true)}
+        onOpenUserTrack={() => onTrackChange('user')}
       />
 
-      <section className={`max-w-7xl mx-auto ${APP_GUTTER} pb-16 sm:pb-20`}>
-        <div className="mb-6">
-          <p
-            className="text-[10px] font-semibold uppercase tracking-[0.16em]"
-            style={{ color: GUEST_BRAND.blue }}
-          >
-            Exam hub
-          </p>
-          <h2 className="mt-1 text-2xl sm:text-3xl font-bold tracking-tight text-neutral-950">
-            Choose your exam track
-          </h2>
-          <p className="mt-2 text-sm text-neutral-600 max-w-xl">
-            Each exam opens into chapters. Live chapters launch a full tracker; the rest are ready
-            for content when you add YouTube and practice later.
-          </p>
+      <section className={`mx-auto max-w-7xl ${APP_GUTTER} pb-16 sm:pb-20`}>
+        <div className="mb-8">
+          <OgTrackSwitcher
+            value={track}
+            onChange={onTrackChange}
+            examCount={examCount}
+            userCount={user ? userCount : 0}
+          />
         </div>
 
-        {setupHint ? (
-          <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            {setupHint}
-            {!hierarchyReady ? (
-              <span className="block mt-1 text-amber-800/80">
-                Also run <code className="text-xs">setup_og_exams_chapters.sql</code> for Exam →
-                Chapter structure.
-              </span>
-            ) : null}
-          </div>
-        ) : null}
-
-        {error ? (
-          <div className="mb-5 flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            <AlertCircle className="h-4 w-4 shrink-0" />
-            {error}
-          </div>
-        ) : null}
-
-        {loading ? (
-          <div className="flex items-center justify-center py-24 text-neutral-600">
-            <Loader2 className="h-5 w-5 animate-spin mr-2" style={{ color: GUEST_BRAND.blue }} />
-            Loading exams…
-          </div>
-        ) : !exams.length ? (
-          <div className="rounded-2xl border border-dashed border-neutral-200 bg-white px-6 py-16 text-center text-sm text-neutral-600">
-            No exams published yet. Run the hierarchy migration to seed GATE CSE chapters.
-          </div>
+        {track === 'user' ? (
+          <OgMyTrackers mine={mine} loading={loading} signedIn={Boolean(user)} />
         ) : (
-          <div ref={gridRef} className="grid gap-4 sm:gap-5 sm:grid-cols-2 xl:grid-cols-3">
-            {exams.map((exam) => (
-              <OgExamCard key={exam.id || exam.slug} exam={exam} />
-            ))}
-          </div>
+          <OgExamTrackPanel
+            exams={exams}
+            paths={paths}
+            loading={loading}
+            error={error}
+            setupHint={setupHint}
+            hierarchyReady={hierarchyReady}
+            gridRef={gridRef}
+          />
         )}
       </section>
-
-      {showCheckout ? (
-        <OgPremiumCheckout
-          onClose={() => setShowCheckout(false)}
-          onSuccess={() => {
-            setShowCheckout(false);
-            load();
-          }}
-        />
-      ) : null}
     </div>
   );
 }

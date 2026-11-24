@@ -18,6 +18,7 @@ import {
   X,
   ChevronRight,
   Sparkles,
+  ClipboardCheck,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
@@ -25,6 +26,7 @@ const NAV_ALL = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/mcq-creation", label: "MCQ creation", icon: Sparkles },
   { href: "/admin/mcq-extractor", label: "MCQ extractor", icon: FileText },
+  { href: "/admin/question-review", label: "Question review", icon: ClipboardCheck },
   { href: "/admin/gktoday", label: "GKToday", icon: Sparkles },
   { href: "/admin/vendors", label: "Vendors", icon: GraduationCap },
   { href: "/admin/mock-tests", label: "Mock tests", icon: ClipboardList },

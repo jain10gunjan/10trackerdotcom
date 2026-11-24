@@ -64,6 +64,7 @@ export function useYouTubeProgress({
   videoId: videoIdRaw,
   resourceId,
   initialPercent = 0,
+  startSeconds = 0,
   beaconToken = null,
   trackProgress = true,
   onMilestone,
@@ -80,6 +81,13 @@ export function useYouTubeProgress({
   const onMilestoneRef = useRef(onMilestone);
   const beaconTokenRef = useRef(beaconToken);
   const trackProgressRef = useRef(trackProgress);
+  const startSecondsRef = useRef(startSeconds);
+  const initialPercentRef = useRef(initialPercent);
+  const hasSoughtRef = useRef(false);
+  const resumeTargetRef = useRef(0);
+  const resumeCorrectedRef = useRef(false);
+  startSecondsRef.current = startSeconds;
+  initialPercentRef.current = initialPercent;
 
   const [ready, setReady] = useState(false);
   const [error, setError] = useState(null);
@@ -199,6 +207,10 @@ export function useYouTubeProgress({
   );
 
   useEffect(() => {
+    hasSoughtRef.current = false;
+    resumeTargetRef.current = 0;
+    resumeCorrectedRef.current = false;
+
     if (!videoId) {
       setError(videoIdRaw ? 'Invalid YouTube video ID or URL' : 'No video configured');
       setReady(false);
@@ -208,6 +220,91 @@ export function useYouTubeProgress({
     setError(null);
     setReady(false);
     let cancelled = false;
+    const pendingSeekTimers = [];
+    const clearPendingSeek = () => {
+      while (pendingSeekTimers.length) {
+        clearTimeout(pendingSeekTimers.pop());
+      }
+    };
+
+    // One seek per video. Reads startSeconds / initialPercent from refs so later
+    // progress updates do not recreate the player or seek again.
+    const rememberTarget = (player) => {
+      if (resumeTargetRef.current > 0) return resumeTargetRef.current;
+      const start = Number(startSecondsRef.current) || 0;
+      if (start > 0) {
+        resumeTargetRef.current = start;
+        return start;
+      }
+      const pct = Number(initialPercentRef.current) || 0;
+      if (!(pct >= 1 && pct <= 100)) return 0;
+      let duration = 0;
+      try {
+        duration = player?.getDuration?.() || 0;
+      } catch {
+        duration = 0;
+      }
+      if (!duration) return 0;
+      const seconds = Math.floor((duration * Math.min(pct, 99)) / 100);
+      resumeTargetRef.current = seconds;
+      return seconds;
+    };
+
+    const seekToTarget = (player, seconds) => {
+      if (!player?.seekTo || !seconds || seconds <= 0) return;
+      try {
+        player.seekTo(seconds, true);
+      } catch {
+        /* ignore */
+      }
+    };
+
+    const resumeFromSaved = (player) => {
+      if (cancelled || hasSoughtRef.current || !player?.seekTo) return;
+
+      const start = Number(startSecondsRef.current) || 0;
+      if (start > 0) {
+        hasSoughtRef.current = true;
+        seekToTarget(player, rememberTarget(player));
+        return;
+      }
+
+      const pct = Number(initialPercentRef.current) || 0;
+      if (!(pct >= 1 && pct <= 100)) {
+        hasSoughtRef.current = true;
+        return;
+      }
+
+      hasSoughtRef.current = true;
+      let attempts = 0;
+      const seekWhenDurationKnown = () => {
+        if (cancelled) return;
+        const seconds = rememberTarget(player);
+        if (seconds > 0) {
+          seekToTarget(player, seconds);
+          return;
+        }
+        attempts += 1;
+        if (attempts >= 15) return;
+        pendingSeekTimers.push(setTimeout(seekWhenDurationKnown, 250));
+      };
+      seekWhenDurationKnown();
+    };
+
+    // YouTube often ignores a seek made before the first play. Correct once.
+    const correctResumeOnPlay = (player) => {
+      if (cancelled || resumeCorrectedRef.current || !player?.getCurrentTime) return;
+      const target = rememberTarget(player);
+      if (!(target > 2)) return;
+      resumeCorrectedRef.current = true;
+      let current = 0;
+      try {
+        current = player.getCurrentTime() || 0;
+      } catch {
+        current = 0;
+      }
+      if (current + 2 < target) seekToTarget(player, target);
+    };
 
     loadYouTubeApi()
       .then((YT) => {
@@ -222,6 +319,8 @@ export function useYouTubeProgress({
           /* ignore */
         }
 
+        const startFloor = Math.floor(Number(startSecondsRef.current) || 0);
+
         playerRef.current = new YT.Player(mountId, {
           videoId,
           width: '100%',
@@ -231,10 +330,13 @@ export function useYouTubeProgress({
             modestbranding: 1,
             playsinline: 1,
             origin: typeof window !== 'undefined' ? window.location.origin : undefined,
+            ...(startFloor > 0 ? { start: startFloor } : {}),
           },
           events: {
-            onReady: () => {
-              if (!cancelled) setReady(true);
+            onReady: (event) => {
+              if (cancelled) return;
+              setReady(true);
+              resumeFromSaved(event?.target);
             },
             onError: (event) => {
               if (!cancelled) {
@@ -245,6 +347,7 @@ export function useYouTubeProgress({
               const state = event.data;
               if (state === 1) {
                 playingRef.current = true;
+                correctResumeOnPlay(event?.target);
                 startTick();
               } else {
                 playingRef.current = false;
@@ -275,6 +378,7 @@ export function useYouTubeProgress({
 
     return () => {
       cancelled = true;
+      clearPendingSeek();
       document.removeEventListener('visibilitychange', onVisibility);
       clearTick();
       flushCurrent(true);
@@ -285,7 +389,8 @@ export function useYouTubeProgress({
       }
       playerRef.current = null;
     };
-    // Intentionally only remount when video identity changes — not on callback churn
+    // Intentionally only remount when video identity changes — not on callback churn,
+    // startSeconds, or initialPercent. Resume seek reads those from refs once.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [videoId, mountId]);
 

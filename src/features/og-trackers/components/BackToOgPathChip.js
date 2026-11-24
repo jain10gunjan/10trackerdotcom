@@ -23,7 +23,7 @@ export default function BackToOgPathChip({ className = '' }) {
 
   return (
     <Link
-      href={`/og-trackers/${safeSlug}`}
+      href={`/og-trackers/${safeSlug}?sync=1`}
       className={`inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-800 shadow-sm hover:bg-neutral-50 ${className}`}
     >
       <Map className="w-3.5 h-3.5 text-neutral-500" />

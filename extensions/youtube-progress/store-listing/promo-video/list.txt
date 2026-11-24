@@ -1,0 +1,13 @@
+file 'card-title.jpg'
+duration 3
+file 'shot1.jpg'
+duration 4
+file 'shot2.jpg'
+duration 4
+file 'card-catalog.jpg'
+duration 3
+file 'shot3.jpg'
+duration 4
+file 'card-end.jpg'
+duration 3
+file 'card-end.jpg'

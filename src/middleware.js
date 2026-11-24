@@ -39,7 +39,7 @@ function canonicalHostRedirect(req) {
     `${req.nextUrl.pathname}${req.nextUrl.search}`,
     `https://${target}`
   );
-  return NextResponse.redirect(dest, 307);
+  return NextResponse.redirect(dest, 308);
 }
 
 const withAuth = auth((req) => {

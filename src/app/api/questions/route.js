@@ -28,14 +28,14 @@ export async function GET(request) {
     const [countsResult, subjectsResult] = await Promise.all([
       // Get question counts by difficulty
       supabase
-        .from('examtracker')
+        .from('examtracker').or('verification_status.is.null,verification_status.not.in.(unpublished_draft,publish_rejected)')
         .select('difficulty', { count: 'exact', head: true })
         .eq('topic', pagetopic)
         .eq('category', category.toUpperCase()),
       
       // Get unique subjects
       supabase
-        .from('examtracker')
+        .from('examtracker').or('verification_status.is.null,verification_status.not.in.(unpublished_draft,publish_rejected)')
         .select('subject')
         .eq('topic', pagetopic)
         .eq('category', category.toUpperCase())

@@ -1,10 +1,11 @@
 'use client';
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { motion } from 'framer-motion';
 import { AlertCircle, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { motion } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
 import { useProfileGate } from '@/context/ProfileGateContext';
 import { useCredits } from '@/context/CreditsContext';
@@ -17,6 +18,7 @@ import StudentHomeHero from '@/features/dashboard/components/studentHome/Student
 import StudentHomePulse from '@/features/dashboard/components/studentHome/StudentHomePulse';
 import StudentHomeSection from '@/features/dashboard/components/studentHome/StudentHomeSection';
 import StudentHomeActivity from '@/features/dashboard/components/studentHome/StudentHomeActivity';
+import HomeBone from '@/features/dashboard/components/studentHome/HomeBone';
 import {
   PlanStatusCard,
   CountdownCard,
@@ -32,14 +34,81 @@ import {
 } from '@/lib/platformExams';
 import { profileNeedsExamRefresh, practiceAreaMatchesSlug } from '@/lib/examProfile';
 import { SHOW_OG_TRACKERS } from '@/lib/siteNav';
-import { APP_GUTTER } from '@/lib/appChrome';
+import { APP_GUTTER, APP_NAV_CONTENT_OFFSET } from '@/lib/appChrome';
 import {
+  STUDENT_BRAND,
+  easeOut,
   useStudentMotion,
-  staggerContainer,
-  staggerItem,
+  homeCard,
+  homePrimaryBtn,
 } from '@/features/dashboard/lib/studentHomeBrand';
 
 const FOCUS_STORAGE_KEY = 'tt_home_focus_exam';
+
+function HomeError({ message, onRetry }) {
+  return (
+    <div className={`${homeCard} px-5 py-8 text-center`} role="alert">
+      <AlertCircle className="mx-auto h-6 w-6 text-red-600" />
+      <p className="mt-3 text-base font-semibold text-[#0a0a0a]">Could not load your home</p>
+      <p className="mt-1 text-sm text-neutral-600">{message}</p>
+      <button type="button" onClick={onRetry} className={`${homePrimaryBtn} mt-5`}>
+        <RefreshCw className="h-4 w-4" />
+        Try again
+      </button>
+    </div>
+  );
+}
+
+function HomeLoadingBody() {
+  return (
+    <div className="space-y-10 sm:space-y-12" aria-hidden>
+      <div className="space-y-3">
+        <HomeBone className="h-3 w-16" />
+        <HomeBone className="h-6 w-44" />
+        <HomeBone className="h-48 w-full rounded-2xl" />
+      </div>
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <HomeBone className="h-32 rounded-2xl" />
+        <HomeBone className="h-32 rounded-2xl" />
+      </div>
+      <HomeBone className="h-40 w-full rounded-2xl" />
+    </div>
+  );
+}
+
+function Atmosphere({ animate }) {
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            'radial-gradient(ellipse 80% 55% at 85% 12%, #E8EDF8 0%, transparent 55%), radial-gradient(ellipse 55% 40% at 8% 25%, #F0F4FF 0%, transparent 50%), linear-gradient(180deg, #F8FAFC 0%, #F1F5F9 50%, #F5F5F5 100%)',
+        }}
+      />
+      {animate ? (
+        <>
+          <motion.div
+            className="absolute right-[10%] top-[6%] h-72 w-72 rounded-full blur-[100px] will-change-transform"
+            style={{ backgroundColor: `${STUDENT_BRAND.blue}24` }}
+            animate={{ x: [0, 18, 0], y: [0, 12, 0], opacity: [0.35, 0.55, 0.35] }}
+            transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
+          />
+          <motion.div
+            className="absolute left-[3%] top-[22%] h-56 w-56 rounded-full bg-sky-200/35 blur-[90px] will-change-transform"
+            animate={{ x: [0, -14, 0], y: [0, 16, 0], opacity: [0.25, 0.4, 0.25] }}
+            transition={{ duration: 14, repeat: Infinity, ease: 'easeInOut', delay: 0.4 }}
+          />
+        </>
+      ) : (
+        <div
+          className="absolute right-[12%] top-[8%] h-64 w-64 rounded-full opacity-40 blur-[100px]"
+          style={{ backgroundColor: STUDENT_BRAND.soft }}
+        />
+      )}
+    </div>
+  );
+}
 
 function StudentHomeDashboardInner() {
   const searchParams = useSearchParams();
@@ -50,9 +119,8 @@ function StudentHomeDashboardInner() {
   const { user } = useAuth();
   const { profile: gateProfile, needsProfileCompletion } = useProfileGate();
   const { credits, unlimited, subscription, walletError, walletReady } = useCredits();
-  const { animate } = useStudentMotion();
-
   const [focusExam, setFocusExam] = useState(examFromUrl);
+  const { animate } = useStudentMotion();
 
   useEffect(() => {
     if (examFromUrl) {
@@ -192,251 +260,243 @@ function StudentHomeDashboardInner() {
   const updates = examFeed?.updates ?? [];
   const mockOfTheDay = examFeed?.mockOfTheDay;
   const countdown = examFeed?.countdown;
-  const catalogStats = examFeed?.catalogStats ?? {};
-  const bankQuestions = catalogStats.questionCount ?? 0;
-  const publishedMocks = catalogStats.mockCount ?? 0;
-  const syllabusTopics =
-    (catalogStats.topicCount ?? 0) ||
-    (catalogStats.chapterCount ?? 0) ||
-    practiceAreas[0]?.topicsCount ||
-    topicMocks.length;
   const topicMockCount = topicMocks.length;
+  const motdReady = mockOfTheDay?.status === 'ready' && Boolean(mockOfTheDay?.mock?.href);
+  const showAlerts =
+    subscribed ||
+    Boolean(walletError) ||
+    Boolean(partialError) ||
+    (dashboard?.partialErrors?.length ?? 0) > 0 ||
+    needsExamUpdate;
+  const hasMockLists = fullMocks.length > 0 || topicMocks.length > 0;
+
+  const bodyEnter = animate
+    ? {
+        initial: { opacity: 0.96, y: 8 },
+        animate: { opacity: 1, y: 0 },
+        transition: { duration: 0.35, ease: easeOut },
+      }
+    : { initial: false, animate: { opacity: 1, y: 0 } };
 
   return (
-    <div className="min-h-screen bg-neutral-50 text-neutral-900">
-      {error && !dashboard ? (
-        <div className={`max-w-7xl mx-auto ${APP_GUTTER} pt-24 pb-14`}>
-          <div className="rounded-3xl border border-red-200 bg-red-50 p-6 sm:p-8 text-center">
-            <AlertCircle className="w-8 h-8 text-red-500 mx-auto mb-3" />
-            <p className="text-sm font-medium text-red-900">Could not load your home</p>
-            <p className="text-sm text-red-700 mt-1">{error}</p>
-            <button
-              type="button"
-              onClick={reload}
-              className="mt-4 inline-flex items-center gap-2 rounded-xl bg-red-600 text-white px-4 py-2.5 text-sm font-semibold hover:bg-red-700 transition-colors"
-            >
-              <RefreshCw className="w-4 h-4" />
-              Try again
-            </button>
-          </div>
-        </div>
-      ) : null}
+    <div className="relative min-h-screen min-w-0 overflow-x-hidden text-neutral-950">
+      <Atmosphere animate={animate} />
 
-      {showFullDashboard ? (
-        <>
-          <StudentHomeHero
-            firstName={firstName}
-            examName={examName}
-            examSlug={examSlug}
-            examsPreparing={examsPreparing}
-            showExamSwitcher={showExamSwitcher}
-            onExamChange={handleExamChange}
-            switchingExam={switchingExam}
-            limitedMode={limitedMode}
-            loading={initialLoading}
-            continueOptions={continueOptions}
-            practiceHref={practiceHref}
-            mockHref={mockHref}
-            topicMocksHref={topicMocksHref}
-            topicMockCount={topicMockCount}
-            hasContinue={hasContinue}
-            topSlot={
-              <>
-                {limitedMode ? <DashboardSetupBanner /> : null}
-                <DashboardAlerts
-                  subscribed={subscribed}
-                  walletError={walletError}
-                  partialError={partialError}
-                  partialErrors={dashboard?.partialErrors ?? []}
-                  needsExamUpdate={needsExamUpdate}
-                  onRetry={reload}
-                />
-              </>
-            }
-          />
+      <div
+        className={`relative mx-auto min-w-0 max-w-7xl ${APP_GUTTER} pb-16 sm:pb-20`}
+        style={{ paddingTop: APP_NAV_CONTENT_OFFSET }}
+      >
+        <div className="space-y-8 pt-5 sm:space-y-10 sm:pt-8">
+          {error && !dashboard ? <HomeError message={error} onRetry={reload} /> : null}
 
-          {!limitedMode ? (
-            <StudentHomePulse
-              streak={streak.currentStreak ?? 0}
-              questions={bankQuestions}
-              mocks={publishedMocks}
-              topics={syllabusTopics}
-              loading={initialLoading}
-            />
-          ) : null}
-
-          {!limitedMode && !initialLoading ? (
-            <div className={`max-w-7xl mx-auto ${APP_GUTTER} space-y-9 sm:space-y-11 pb-16 sm:pb-20`}>
-              <StudentHomeActivity
-                summary={dashboard?.summary}
-                streak={streak}
+          {showFullDashboard ? (
+            <>
+              <StudentHomeHero
+                firstName={firstName}
                 examName={examName}
                 examSlug={examSlug}
+                examsPreparing={examsPreparing}
+                showExamSwitcher={showExamSwitcher}
+                onExamChange={handleExamChange}
+                switchingExam={switchingExam}
+                limitedMode={limitedMode}
+                loading={initialLoading}
+                continueOptions={continueOptions}
                 practiceHref={practiceHref}
+                mockHref={mockHref}
                 dailyHref={dailyHref}
-                practice={practiceAreas}
-                recentActivity={dashboard?.recentActivity}
-                heatmap={dashboard?.heatmap}
-                heatmapRange={heatmapRange}
-                onHeatmapRangeChange={changeHeatmapRange}
+                topicMocksHref={topicMocksHref}
+                topicMockCount={topicMockCount}
+                hasContinue={hasContinue}
+                streakDays={streak.currentStreak ?? 0}
+                topSlot={
+                  limitedMode || showAlerts ? (
+                    <>
+                      {limitedMode ? <DashboardSetupBanner /> : null}
+                      <DashboardAlerts
+                        subscribed={subscribed}
+                        walletError={walletError}
+                        partialError={partialError}
+                        partialErrors={dashboard?.partialErrors ?? []}
+                        needsExamUpdate={needsExamUpdate}
+                        onRetry={reload}
+                      />
+                    </>
+                  ) : null
+                }
               />
 
-              <StudentHomeSection
-                eyebrow="Plan"
-                title="Access & exam date"
-                description={
-                  examName
-                    ? `Credits and countdown for ${examName}.`
-                    : 'Credits and countdown for your exam.'
-                }
-              >
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-                  <PlanStatusCard
-                    unlimited={unlimited}
-                    subscription={subscription}
-                    credits={credits}
-                    walletReady={walletReady || Boolean(dashboard?.wallet)}
+              {!limitedMode ? (
+                <div className={switchingExam ? 'opacity-70 transition-opacity duration-200' : undefined}>
+                  <StudentHomePulse
+                    streak={streak.currentStreak ?? 0}
+                    questions={dashboard?.summary?.practiceQuestions ?? 0}
+                    mocks={dashboard?.summary?.mockTestsCompleted ?? 0}
+                    topics={dashboard?.summary?.topicsPracticed ?? 0}
+                    loading={initialLoading}
                   />
-                  <CountdownCard countdown={countdown} examName={examName} />
                 </div>
-              </StudentHomeSection>
+              ) : null}
 
-              <StudentHomeSection
-                eyebrow="Mocks"
-                title={examName ? `${examName} mocks` : 'Mocks'}
-                description="Daily, full-length, and topic-wise — this exam only."
-                href={mockHref}
-                linkLabel="All mocks"
-              >
-                <div className="space-y-4">
-                  {mockOfTheDay?.status === 'ready' && mockOfTheDay?.mock?.href ? (
-                    <MotdFeatureCard motd={mockOfTheDay} />
-                  ) : (
-                    <ComingSoonCard
-                      title={mockOfTheDay?.title || 'Mock of the day'}
-                      description={
-                        mockOfTheDay?.description ||
-                        'A fresh daily mock for this exam is coming soon.'
-                      }
-                    />
-                  )}
+              {!limitedMode && initialLoading ? <HomeLoadingBody /> : null}
 
-                  {fullMocks.length > 0 ? (
-                    <motion.div
-                      variants={staggerContainer(true, animate)}
-                      initial="hidden"
-                      animate="show"
-                      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"
-                    >
-                      {fullMocks.map((m, i) => (
-                        <motion.div key={m.id} custom={i} variants={staggerItem}>
-                          <MockCard mock={m} />
-                        </motion.div>
-                      ))}
-                    </motion.div>
-                  ) : null}
-
-                  {topicMocks.length > 0 ? (
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-sm font-semibold text-neutral-800">Topic mocks</p>
-                        <a
-                          href={topicMocksHref}
-                          className="text-xs font-medium text-neutral-500 hover:text-neutral-800"
-                        >
-                          Browse all
-                        </a>
-                      </div>
-                      <motion.div
-                        variants={staggerContainer(true, animate)}
-                        initial="hidden"
-                        animate="show"
-                        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"
-                      >
-                        {topicMocks.map((m, i) => (
-                          <motion.div key={m.id} custom={i} variants={staggerItem}>
-                            <MockCard mock={m} />
-                          </motion.div>
-                        ))}
-                      </motion.div>
-                    </div>
-                  ) : null}
-
-                  {!fullMocks.length && !topicMocks.length ? (
-                    <ComingSoonCard
-                      title="Mocks coming soon"
-                      description="Full-length and topic mocks for this exam will appear here."
-                    />
-                  ) : null}
-                </div>
-              </StudentHomeSection>
-
-              <StudentHomeSection
-                eyebrow="Practice"
-                title={examName ? `${examName} topics` : 'Your topics'}
-                description="Topics you’ve practiced on this exam."
-                href={practiceHref}
-                linkLabel="All topics"
-              >
-                <div className="rounded-2xl border border-neutral-200/90 bg-white overflow-hidden">
-                  <DashboardSubjectPractice
+              {!limitedMode && !initialLoading ? (
+                <motion.div
+                  {...bodyEnter}
+                  className={`space-y-12 sm:space-y-14 ${
+                    switchingExam ? 'opacity-70 transition-opacity duration-200' : ''
+                  }`}
+                >
+                  <StudentHomeActivity
+                    summary={dashboard?.summary}
+                    streak={streak}
+                    examName={examName}
+                    examSlug={examSlug}
+                    practiceHref={practiceHref}
+                    dailyHref={dailyHref}
                     practice={practiceAreas}
-                    primaryExam={focusedExam || (examSlug ? { slug: examSlug, name: examName } : primaryExam)}
-                    loading={false}
-                    embedded
+                    recentActivity={dashboard?.recentActivity}
+                    heatmap={dashboard?.heatmap}
+                    heatmapRange={heatmapRange}
+                    onHeatmapRangeChange={changeHeatmapRange}
                   />
-                </div>
-              </StudentHomeSection>
 
-              {updates.length > 0 ? (
-                <StudentHomeSection
-                  eyebrow="Updates"
-                  title={examName ? `${examName} news` : 'Exam updates'}
-                  description="Articles for this exam."
-                  href={articlesHref}
-                  linkLabel="All articles"
-                >
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {updates.slice(0, 3).map((item) => (
-                      <UpdateCard key={item.id || item.slug} item={item} />
-                    ))}
-                  </div>
-                </StudentHomeSection>
+                  <StudentHomeSection
+                    eyebrow="Simulate"
+                    title="Timed mock tests"
+                    description="Mock of the day, full mocks, and topic mocks for this exam."
+                    href={mockHref}
+                    linkLabel="View all mocks"
+                  >
+                    <div className="space-y-5">
+                      {motdReady ? <MotdFeatureCard motd={mockOfTheDay} /> : null}
+
+                      {fullMocks.length > 0 ? (
+                        <div className="space-y-3">
+                          <p className="text-[11px] font-semibold uppercase tracking-wider text-[#3F5EB9]">
+                            Full mocks
+                          </p>
+                          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
+                            {fullMocks.map((m) => (
+                              <MockCard key={m.id} mock={m} />
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+
+                      {topicMocks.length > 0 ? (
+                        <div className="space-y-3">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <p className="text-[11px] font-semibold uppercase tracking-wider text-[#3F5EB9]">
+                              Topic mocks
+                            </p>
+                            <Link
+                              href={topicMocksHref}
+                              className="inline-flex min-h-11 items-center text-sm font-semibold text-[#3F5EB9]"
+                            >
+                              Browse all
+                            </Link>
+                          </div>
+                          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
+                            {topicMocks.map((m) => (
+                              <MockCard key={m.id} mock={m} />
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+
+                      {!motdReady && !hasMockLists ? (
+                        <ComingSoonCard
+                          title={mockOfTheDay?.title || 'Mocks coming soon'}
+                          description={
+                            mockOfTheDay?.description ||
+                            'Full-length and topic mocks for this exam will show up here.'
+                          }
+                        />
+                      ) : null}
+
+                      {!motdReady && hasMockLists ? (
+                        <ComingSoonCard
+                          title={mockOfTheDay?.title || 'Mock of the day'}
+                          description={
+                            mockOfTheDay?.description ||
+                            'A fresh daily mock is not up yet — full and topic mocks below still work.'
+                          }
+                        />
+                      ) : null}
+                    </div>
+                  </StudentHomeSection>
+
+                  <StudentHomeSection
+                    eyebrow="Practice"
+                    title="Topics you've practiced"
+                    description={
+                      examName
+                        ? `Topics you've answered for ${examName}.`
+                        : "Topics you've answered."
+                    }
+                    href={practiceHref}
+                    linkLabel="View all topics"
+                  >
+                    <DashboardSubjectPractice
+                      practice={practiceAreas}
+                      primaryExam={
+                        focusedExam || (examSlug ? { slug: examSlug, name: examName } : primaryExam)
+                      }
+                      loading={false}
+                      embedded
+                    />
+                  </StudentHomeSection>
+
+                  <StudentHomeSection
+                    eyebrow="Account"
+                    title="Credits and exam date"
+                    description="Your plan, credits left, and the countdown for this exam."
+                  >
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                      <PlanStatusCard
+                        unlimited={unlimited}
+                        subscription={subscription}
+                        credits={credits}
+                        walletReady={walletReady || Boolean(dashboard?.wallet)}
+                      />
+                      <CountdownCard countdown={countdown} examName={examName} />
+                    </div>
+                  </StudentHomeSection>
+
+                  {updates.length > 0 ? (
+                    <StudentHomeSection
+                      eyebrow="Updates"
+                      title="Exam updates"
+                      description="Articles written for this exam."
+                      href={articlesHref}
+                      linkLabel="View all articles"
+                    >
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                        {updates.slice(0, 3).map((item) => (
+                          <UpdateCard key={item.id || item.slug} item={item} />
+                        ))}
+                      </div>
+                    </StudentHomeSection>
+                  ) : null}
+
+                  {SHOW_OG_TRACKERS ? (
+                    <StudentHomeSection
+                      eyebrow="OG Trackers"
+                      title="Exam track and User track"
+                      description="Shared chapter paths for everyone, plus private playlist trackers when you build from a playlist."
+                      href="/og-trackers"
+                      linkLabel="Open OG Trackers"
+                    >
+                      <DashboardMyRoadmaps />
+                    </StudentHomeSection>
+                  ) : null}
+                </motion.div>
               ) : null}
-
-              {SHOW_OG_TRACKERS && (dashboard?.myRoadmaps?.length ?? 0) > 0 ? (
-                <StudentHomeSection
-                  eyebrow="Study plans"
-                  title="Roadmaps"
-                  description={`Plans for ${examName || 'this exam'}.`}
-                  href="/og-trackers"
-                  linkLabel="Browse plans"
-                >
-                  <div className="rounded-2xl border border-neutral-200/90 bg-white p-5">
-                    <DashboardMyRoadmaps roadmaps={dashboard?.myRoadmaps} />
-                  </div>
-                </StudentHomeSection>
-              ) : null}
-            </div>
+            </>
           ) : null}
-
-          {!limitedMode && initialLoading ? (
-            <div className={`max-w-7xl mx-auto ${APP_GUTTER} space-y-8 pb-16 animate-pulse`}>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="h-36 rounded-2xl border border-neutral-200 bg-white" />
-                <div className="h-36 rounded-2xl border border-neutral-200 bg-white" />
-              </div>
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="space-y-3">
-                  <div className="h-3 w-20 rounded" style={{ backgroundColor: '#E8EDF8' }} />
-                  <div className="h-7 w-48 bg-neutral-200 rounded" />
-                  <div className="h-32 rounded-2xl border border-neutral-200 bg-white" />
-                </div>
-              ))}
-            </div>
-          ) : null}
-        </>
-      ) : null}
+        </div>
+      </div>
     </div>
   );
 }

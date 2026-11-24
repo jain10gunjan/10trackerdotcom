@@ -1,5 +1,7 @@
 /** Admin examtracker filter + query helpers (distinct values, case variants). */
 
+import { applyPublishLifecycleFilter } from "./examtrackerStatus.js";
+
 const ALLOWED_FIELDS = new Set(["category", "subject", "chapter", "topic"]);
 
 export const EXAMTRACKER_LIST_COLUMNS = [
@@ -20,7 +22,21 @@ export const EXAMTRACKER_LIST_COLUMNS = [
   "solutiontext",
   "directionHTML",
   "order_index",
+  "questionImage",
+  // PostgREST-safe publish mirror (see examtrackerStatus.js). Avoid selecting
+  // `status` until the schema cache exposes that column.
+  "verification_status",
 ].join(",");
+
+export function applyStatusFilter(query, status) {
+  return applyPublishLifecycleFilter(query, status);
+}
+
+export function applyDifficultyFilter(query, difficulty) {
+  const d = String(difficulty ?? "").trim().toLowerCase();
+  if (!d) return query;
+  return query.eq("difficulty", d);
+}
 
 export function dedupeSorted(values) {
   const seen = new Map();

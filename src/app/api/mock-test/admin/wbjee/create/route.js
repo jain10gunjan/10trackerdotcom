@@ -70,7 +70,7 @@ export async function POST(request) {
       }
       const supabase = getSupabaseAdmin();
       const { data: rows, error } = await supabase
-        .from('examtracker')
+        .from('examtracker').or('verification_status.is.null,verification_status.not.in.(unpublished_draft,publish_rejected)')
         .select('_id, subject, chapter, topic, difficulty, options_A, options_B, options_C, options_D')
         .in('_id', questionIds.map(String));
       if (error) {

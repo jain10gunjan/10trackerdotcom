@@ -1,11 +1,11 @@
 'use client';
 
 const LEVEL_CLASS = [
-  'bg-neutral-100',
-  'bg-emerald-200',
-  'bg-emerald-400',
-  'bg-emerald-500',
-  'bg-emerald-700',
+  'bg-[#E8EDF8]',
+  'bg-[#C5D0EE]',
+  'bg-[#8AA0D6]',
+  'bg-[#4B6BC7]',
+  'bg-[#3F5EB9]',
 ];
 
 export default function ActivityHeatmap({ heatmap, range, onRangeChange }) {
@@ -35,10 +35,10 @@ export default function ActivityHeatmap({ heatmap, range, onRangeChange }) {
               key={opt.id}
               type="button"
               onClick={() => onRangeChange?.(opt.id)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium ${
+              className={`inline-flex min-h-11 items-center rounded-xl px-3 text-xs font-semibold ${
                 range === opt.id
-                  ? 'bg-neutral-900 text-white'
-                  : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
+                  ? 'bg-[#3F5EB9] text-white'
+                  : 'bg-[#E8EDF8] text-neutral-700 hover:text-[#0a0a0a]'
               }`}
             >
               {opt.label}
@@ -68,7 +68,7 @@ export default function ActivityHeatmap({ heatmap, range, onRangeChange }) {
         ))}
       </div>
       <p className="text-xs text-neutral-500 mt-2">
-        Green = practice and/or mock test activity. No fake data — empty days stay empty.
+Darker blue means more practice or mock activity. Empty days stay empty.
       </p>
     </div>
   );

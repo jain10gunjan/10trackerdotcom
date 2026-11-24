@@ -10,13 +10,15 @@ import {
 } from '@/features/billing/lib/legal';
 
 export const metadata = {
-  title: 'Privacy Policy - 10tracker',
+  title: 'Privacy Policy',
   description:
     'How 10Tracker.com collects, uses, and protects your data — accounts, practice progress, payments, and the YouTube Progress browser extension.',
+  alternates: { canonical: '/privacy-policy' },
   openGraph: {
-    title: 'Privacy Policy - 10tracker',
+    title: 'Privacy Policy',
     description: 'Privacy practices for 10Tracker.com operated by Manish Kumar Patni HUF.',
     type: 'website',
+    url: '/privacy-policy',
   },
 };
 

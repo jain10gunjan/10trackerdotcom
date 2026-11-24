@@ -62,6 +62,9 @@ export async function grantSignupBonus(userEmail) {
   if (!email) return { granted: false, credits: 0 };
 
   const pricing = await getPricingConfig();
+  if (!pricing.freeCreditsEnabled || !pricing.signupBonus) {
+    return { granted: false, credits: 0, disabled: true };
+  }
   const bonusAmount = pricing.signupBonus;
 
   const supabase = db();
@@ -207,6 +210,14 @@ export async function consumeCredits(userEmail, type, options = {}) {
   }
 
   const pricing = await getPricingConfig();
+  if (!pricing.freeCreditsEnabled) {
+    return {
+      allowed: false,
+      reason: 'subscription_required',
+      needsSubscription: true,
+      credits: 0,
+    };
+  }
   const cost = pricing.costs[type] ?? CREDIT_COST[type];
   if (!cost) {
     return { allowed: false, reason: 'invalid_type' };
@@ -279,23 +290,101 @@ export async function activateSubscription(userEmail, planId, paymentMeta = {}) 
     expiresAt.setDate(expiresAt.getDate() + (plan.durationDays || 0));
   }
 
+  const row = {
+    user_email: email,
+    plan_id: planId,
+    status: 'active',
+    starts_at: startsAt.toISOString(),
+    expires_at: expiresAt.toISOString(),
+    razorpay_order_id: paymentMeta.razorpayOrderId || null,
+    razorpay_payment_id: paymentMeta.razorpayPaymentId || null,
+    amount_paise: paymentMeta.amountPaise ?? plan.priceInr * 100,
+  };
+  if (paymentMeta.source) row.source = paymentMeta.source;
+  if (paymentMeta.grantedBy) row.granted_by = paymentMeta.grantedBy;
+  if (paymentMeta.note) row.note = paymentMeta.note;
+
   const { data, error } = await supabase
     .from('user_subscriptions')
-    .insert({
-      user_email: email,
-      plan_id: planId,
-      status: 'active',
-      starts_at: startsAt.toISOString(),
-      expires_at: expiresAt.toISOString(),
-      razorpay_order_id: paymentMeta.razorpayOrderId || null,
-      razorpay_payment_id: paymentMeta.razorpayPaymentId || null,
-      amount_paise: paymentMeta.amountPaise ?? plan.priceInr * 100,
-    })
+    .insert(row)
     .select()
     .single();
 
   if (error) throw error;
   return data;
+}
+
+/**
+ * Give a plan with no Razorpay charge.
+ * The live subscription is stored with amount 0.
+ * A subscription_orders row (status admin_grant, source admin) is the report log:
+ * cash reports skip it; monthly/annual grant reports use list_amount_paise.
+ */
+export async function adminGrantSubscription(
+  userEmail,
+  { planId, note, adminEmail } = {}
+) {
+  const email = normalizeEmail(userEmail);
+  const plan = await getPlanById(planId);
+  if (!email) throw new Error('Invalid user email');
+  if (!plan) throw new Error('Unknown plan');
+
+  const trimmedNote = note ? String(note).trim().slice(0, 500) : null;
+  const listAmountPaise = Math.round(Number(plan.priceInr || 0) * 100);
+
+  let subscription;
+  try {
+    subscription = await activateSubscription(email, plan.id, {
+      amountPaise: 0,
+      source: 'admin',
+      grantedBy: adminEmail || null,
+      note: trimmedNote,
+    });
+  } catch (err) {
+    const missing =
+      err?.code === '42703' ||
+      /source|granted_by|column/i.test(err?.message || '');
+    if (missing) {
+      throw new Error(
+        'Grant columns are missing. Re-run supabase/migrations/setup_credits_subscriptions.sql, then assign again.'
+      );
+    }
+    throw err;
+  }
+
+  const { error } = await db().from('subscription_orders').insert({
+    user_email: email,
+    plan_id: plan.id,
+    amount_paise: 0,
+    list_amount_paise: listAmountPaise,
+    status: 'admin_grant',
+    source: 'admin',
+    granted_by: adminEmail || null,
+    note: trimmedNote,
+    subscription_id: subscription.id,
+  });
+
+  if (error) {
+    const missing =
+      error.code === '42703' ||
+      /list_amount_paise|granted_by|subscription_id|column/i.test(error.message || '');
+    if (missing) {
+      throw new Error(
+        'Grant log columns are missing. Re-run supabase/migrations/setup_credits_subscriptions.sql, then assign again.'
+      );
+    }
+    throw error;
+  }
+
+  return {
+    email,
+    planId: plan.id,
+    planName: plan.name || plan.id,
+    expiresAt: subscription.expires_at,
+    amountPaise: 0,
+    listAmountPaise,
+    subscriptionId: subscription.id,
+  };
 }
 
 export async function getWalletSummary(userEmail, { grantBonus = false } = {}) {
@@ -329,9 +418,10 @@ export async function getWalletSummary(userEmail, { grantBonus = false } = {}) {
 
   return {
     email,
-    credits,
+    credits: pricing.freeCreditsEnabled ? credits : 0,
     signupBonusGranted: wallet.signupBonusGranted || Boolean(signupGrant?.granted),
     unlimited: Boolean(subscription),
+    freeCreditsEnabled: Boolean(pricing.freeCreditsEnabled),
     subscription: subscription
       ? {
           planId: subscription.plan_id,

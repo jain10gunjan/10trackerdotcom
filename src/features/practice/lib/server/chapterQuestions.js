@@ -12,6 +12,7 @@ import {
 import { canonicalizeQuestionRow } from '@/features/practice/lib/canonicalizeQuestionContent';
 import { rewriteGateImagesInQuestion } from '@/features/practice/lib/server/gateImageMirror';
 import { logPracticeMetric } from '@/lib/practiceMetrics';
+import { applyPublishedOnly } from '@/lib/examtrackerStatus';
 
 function getSupabase() {
   return createClient(
@@ -94,6 +95,7 @@ async function resolveMatchedChapter(supabase, scope) {
       .select('_id', { count: 'exact', head: true })
       .eq('category', categoryKey)
       .eq('chapter', candidate);
+    q = applyPublishedOnly(q);
     q = applySubjectFilter(q, subjectCandidates);
     const { count, error } = await q;
     if (error) throw error;
@@ -107,6 +109,7 @@ async function resolveMatchedChapter(supabase, scope) {
     .eq('category', categoryKey)
     .not('chapter', 'is', null)
     .limit(5000);
+  listQuery = applyPublishedOnly(listQuery);
   listQuery = applySubjectFilter(listQuery, subjectCandidates);
 
   const { data: chaptersData, error: chaptersError } = await listQuery;
@@ -125,6 +128,7 @@ async function headCount(supabase, scope, matchedChapter, difficulty) {
     .select('_id', { count: 'exact', head: true })
     .eq('category', scope.categoryKey);
 
+  q = applyPublishedOnly(q);
   q = applyChapterFilter(q, matchedChapter, scope.chapterCandidates);
   q = applySubjectFilter(q, scope.subjectCandidates);
 
@@ -216,6 +220,7 @@ async function runChapterSelect({
     .order('_id', { ascending: true })
     .range(offset, offset + limit - 1);
 
+  query = applyPublishedOnly(query);
   query = applyChapterFilter(query, matchedChapter || scope.chapterRaw, scope.chapterCandidates);
   query = applySubjectFilter(query, scope.subjectCandidates);
 
@@ -327,6 +332,7 @@ export async function fetchChapterQuestionIdsServer({
       .eq('category', scope.categoryKey)
       .order('_id', { ascending: true });
 
+    query = applyPublishedOnly(query);
     query = applyChapterFilter(query, matchedChapter || scope.chapterRaw, scope.chapterCandidates);
     query = applySubjectFilter(query, scope.subjectCandidates);
 
@@ -360,12 +366,13 @@ export async function fetchChapterQuestionBodiesServer(ids) {
   const safeIds = unique.filter((id) => /^[a-zA-Z0-9_-]{1,64}$/.test(id)).slice(0, 20);
   if (!safeIds.length) return { questions: [] };
 
-  let { data, error } = await supabase.from('examtracker').select(QUESTION_SELECT).in('_id', safeIds);
+  let { data, error } = await applyPublishedOnly(
+    supabase.from('examtracker').select(QUESTION_SELECT).in('_id', safeIds)
+  );
   if (error && isMissingChapterSlugError(error)) {
-    ({ data, error } = await supabase
-      .from('examtracker')
-      .select(QUESTION_SELECT_LEGACY)
-      .in('_id', safeIds));
+    ({ data, error } = await applyPublishedOnly(
+      supabase.from('examtracker').select(QUESTION_SELECT_LEGACY).in('_id', safeIds)
+    ));
   }
   if (error) throw error;
 

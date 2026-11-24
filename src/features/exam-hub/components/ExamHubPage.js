@@ -99,7 +99,7 @@ export default function ExamHubPage({
                       <div className="relative w-14 h-14 sm:w-[4.5rem] sm:h-[4.5rem] rounded-2xl border border-neutral-200 overflow-hidden shrink-0 bg-neutral-100">
                         <Image
                           src={exam.image}
-                          alt=""
+                          alt={exam.name || 'Exam'}
                           fill
                           className="object-cover"
                           sizes="72px"

@@ -428,6 +428,12 @@ export async function fetchWalletsByEmail(supabase, emails = []) {
   return walletsByEmail;
 }
 
+async function fetchRowsWithFallback(supabase, table, richSelect, plainSelect, emails) {
+  const rich = await fetchInEmailChunks(supabase, table, richSelect, emails);
+  if (rich.length || !emails.length) return rich;
+  return fetchInEmailChunks(supabase, table, plainSelect, emails);
+}
+
 async function fetchInEmailChunks(supabase, table, select, emails) {
   const rows = [];
   const unique = [...new Set(emails.map((e) => normalizeEmail(e)).filter(Boolean))];
@@ -531,15 +537,17 @@ export async function fetchBillingByEmail(supabase, emails = []) {
     roadmapOrders,
     roadmapPurchases,
   ] = await Promise.all([
-    fetchInEmailChunks(
+    fetchRowsWithFallback(
       supabase,
       'user_subscriptions',
+      'id, user_email, plan_id, status, starts_at, expires_at, amount_paise, source, granted_by, note, razorpay_order_id, razorpay_payment_id, created_at',
       'id, user_email, plan_id, status, starts_at, expires_at, amount_paise, razorpay_order_id, razorpay_payment_id, created_at',
       emails
     ),
-    fetchInEmailChunks(
+    fetchRowsWithFallback(
       supabase,
       'subscription_orders',
+      'id, user_email, plan_id, status, amount_paise, list_amount_paise, source, granted_by, note, razorpay_order_id, razorpay_payment_id, created_at, updated_at',
       'id, user_email, plan_id, status, amount_paise, razorpay_order_id, razorpay_payment_id, created_at, updated_at',
       emails
     ),
@@ -574,6 +582,9 @@ export async function fetchBillingByEmail(supabase, emails = []) {
       startsAt: row.starts_at,
       expiresAt: row.expires_at,
       amountPaise: row.amount_paise ?? null,
+      source: row.source || 'checkout',
+      grantedBy: row.granted_by || null,
+      note: row.note || null,
       razorpayOrderId: row.razorpay_order_id || null,
       razorpayPaymentId: row.razorpay_payment_id || null,
       createdAt: row.created_at,
@@ -583,10 +594,14 @@ export async function fetchBillingByEmail(supabase, emails = []) {
   for (const row of subscriptionOrders) {
     pushIndexed(ordersByEmail, row.user_email, {
       source: 'subscription',
+      origin: row.source || (String(row.status || '').toLowerCase() === 'admin_grant' ? 'admin' : 'checkout'),
       id: row.id,
       planId: row.plan_id,
       status: row.status,
       amountPaise: row.amount_paise ?? 0,
+      listAmountPaise: row.list_amount_paise ?? null,
+      grantedBy: row.granted_by || null,
+      note: row.note || null,
       razorpayOrderId: row.razorpay_order_id || null,
       razorpayPaymentId: row.razorpay_payment_id || null,
       at: row.updated_at || row.created_at,
@@ -671,22 +686,26 @@ export function summarizeBilling(userEmail, { subscriptionsByEmail = {}, ordersB
   const activeSubscription =
     subscriptions.find((s) => isActiveSubscription(s, now)) || null;
 
-  const hasPurchased =
-    Boolean(activeSubscription) ||
-    subscriptions.some((s) => isCompletedStatus(s.status) || isActiveSubscription(s, now)) ||
-    orders.some((o) => isCompletedStatus(o.status));
+  const isAdminOrder = (order) =>
+    order.origin === 'admin' || String(order.status || '').toLowerCase() === 'admin_grant';
+  const isAdminSub = (sub) => sub.source === 'admin';
 
-  const hasTried =
-    !hasPurchased &&
-    orders.some((o) => isPendingOrFailedStatus(o.status));
+  const paidOrders = orders.filter((order) => isCompletedStatus(order.status) && !isAdminOrder(order));
+  const adminOrders = orders.filter(isAdminOrder);
+  const paidSubs = subscriptions.filter(
+    (sub) => !isAdminSub(sub) && ((Number(sub.amountPaise) || 0) > 0 || sub.razorpayPaymentId)
+  );
+  const hasPaid = paidOrders.length > 0 || paidSubs.length > 0;
+  const hasAssigned = adminOrders.length > 0 || subscriptions.some(isAdminSub);
 
   let purchaseStatus = 'none';
-  if (hasPurchased) purchaseStatus = 'purchased';
-  else if (hasTried) purchaseStatus = 'tried';
+  if (hasPaid) purchaseStatus = 'purchased';
+  else if (hasAssigned) purchaseStatus = 'assigned';
+  else if (activeSubscription) purchaseStatus = 'purchased';
+  else if (orders.some((order) => isPendingOrFailedStatus(order.status))) purchaseStatus = 'tried';
 
-  const completedOrders = orders.filter((o) => isCompletedStatus(o.status));
-  const revenuePaise = completedOrders.reduce(
-    (sum, o) => sum + (Number(o.amountPaise) || 0),
+  const revenuePaise = paidOrders.reduce(
+    (sum, order) => sum + (Number(order.amountPaise) || 0),
     0
   );
 
@@ -697,7 +716,8 @@ export function summarizeBilling(userEmail, { subscriptionsByEmail = {}, ordersB
     orders,
     totals: {
       orderCount: orders.length,
-      completedCount: completedOrders.length,
+      completedCount: paidOrders.length,
+      grantCount: adminOrders.length,
       pendingCount: orders.filter((o) => isPendingOrFailedStatus(o.status)).length,
       revenuePaise,
     },
@@ -707,6 +727,7 @@ export function summarizeBilling(userEmail, { subscriptionsByEmail = {}, ordersB
 /** Aggregate billing stats across users for dashboard cards. */
 export function summarizeBillingAcrossUsers(users = []) {
   let purchased = 0;
+  let assigned = 0;
   let tried = 0;
   let none = 0;
   let activeSubs = 0;
@@ -715,6 +736,7 @@ export function summarizeBillingAcrossUsers(users = []) {
   for (const u of users) {
     const status = u.billing?.purchaseStatus || 'none';
     if (status === 'purchased') purchased += 1;
+    else if (status === 'assigned') assigned += 1;
     else if (status === 'tried') tried += 1;
     else none += 1;
 
@@ -722,6 +744,83 @@ export function summarizeBillingAcrossUsers(users = []) {
     revenuePaise += Number(u.billing?.totals?.revenuePaise) || 0;
   }
 
-  return { purchased, tried, none, activeSubs, revenuePaise };
+  return { purchased, assigned, tried, none, activeSubs, revenuePaise };
+}
+
+function emptyReportBucket() {
+  return { paidCount: 0, paidPaise: 0, grantCount: 0, grantListPaise: 0 };
+}
+
+function kolkataPeriodStarts(now = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric',
+    month: '2-digit',
+  }).formatToParts(now);
+  const year = parts.find((part) => part.type === 'year')?.value || '0000';
+  const month = parts.find((part) => part.type === 'month')?.value || '01';
+  return {
+    year,
+    month,
+    monthStart: new Date(`${year}-${month}-01T00:00:00+05:30`).toISOString(),
+    yearStart: new Date(`${year}-01-01T00:00:00+05:30`).toISOString(),
+  };
+}
+
+/**
+ * Cash vs admin-grant totals for the current Asia/Kolkata month and year.
+ * Grants are excluded from paid paise. grantListPaise is the plan price logged at assign time.
+ */
+export async function fetchSubscriptionReport(supabase) {
+  const bounds = kolkataPeriodStarts();
+  const month = emptyReportBucket();
+  const year = emptyReportBucket();
+  const base = {
+    timezone: 'Asia/Kolkata',
+    monthLabel: `${bounds.year}-${bounds.month}`,
+    yearLabel: bounds.year,
+    month,
+    year,
+    grantsAvailable: true,
+  };
+
+  let grantsAvailable = true;
+  let result = await supabase
+    .from('subscription_orders')
+    .select('status, source, amount_paise, list_amount_paise, created_at')
+    .gte('created_at', bounds.yearStart);
+
+  if (result.error && /source|list_amount_paise|column|42703/i.test(result.error.message || '')) {
+    grantsAvailable = false;
+    result = await supabase
+      .from('subscription_orders')
+      .select('status, amount_paise, created_at')
+      .gte('created_at', bounds.yearStart);
+  }
+
+  if (result.error) {
+    console.error('fetchSubscriptionReport', result.error.message || result.error);
+    return { ...base, grantsAvailable: false };
+  }
+
+  for (const row of result.data || []) {
+    const at = row.created_at || '';
+    const isGrant = row.source === 'admin' || String(row.status || '').toLowerCase() === 'admin_grant';
+    const isPaid = !isGrant && isCompletedStatus(row.status);
+    const buckets = [];
+    if (at >= bounds.yearStart) buckets.push(year);
+    if (at >= bounds.monthStart) buckets.push(month);
+    for (const bucket of buckets) {
+      if (isPaid) {
+        bucket.paidCount += 1;
+        bucket.paidPaise += Number(row.amount_paise) || 0;
+      } else if (isGrant) {
+        bucket.grantCount += 1;
+        bucket.grantListPaise += Number(row.list_amount_paise) || 0;
+      }
+    }
+  }
+
+  return { ...base, grantsAvailable };
 }
 

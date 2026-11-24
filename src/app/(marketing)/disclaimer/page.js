@@ -9,13 +9,15 @@ import {
 } from '@/features/billing/lib/legal';
 
 export const metadata = {
-  title: 'Disclaimer - 10tracker',
+  title: 'Disclaimer',
   description:
     'Disclaimer for 10Tracker.com — educational content, mock tests, credits, and limitation of liability.',
+  alternates: { canonical: '/disclaimer' },
   openGraph: {
-    title: 'Disclaimer - 10tracker',
+    title: 'Disclaimer',
     description: 'Important information about content accuracy and liability on 10Tracker.com.',
     type: 'website',
+    url: '/disclaimer',
   },
 };
 

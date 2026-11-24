@@ -10,8 +10,6 @@ import {
 } from 'lucide-react';
 import OgChapterCard from '@/features/og-trackers/components/hub/OgChapterCard';
 import { HubIcon } from '@/features/og-trackers/components/hub/iconMap';
-import ExtensionStatus from '@/features/extension-auth/components/ExtensionStatus';
-import { useAuth } from '@/context/AuthContext';
 import {
   useGsapReady,
   useOgHeroTimeline,
@@ -23,7 +21,6 @@ import { APP_GUTTER, APP_NAV_CONTENT_OFFSET } from '@/lib/appChrome';
 export default function OgExamHubPage() {
   const params = useParams();
   const examSlug = params?.slug;
-  const { user } = useAuth();
   const { animate } = useGsapReady();
 
   const [exam, setExam] = useState(null);
@@ -157,7 +154,6 @@ export default function OgExamHubPage() {
 
       {!loading && exam ? (
         <section className={`max-w-7xl mx-auto ${APP_GUTTER} pb-16 sm:pb-20`}>
-          {user ? <ExtensionStatus variant="both" enabled className="mb-5" /> : null}
           <div className="mb-5 flex flex-wrap gap-2">
             {[
               { id: 'all', label: 'All chapters' },

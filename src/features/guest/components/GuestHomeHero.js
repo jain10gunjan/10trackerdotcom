@@ -10,11 +10,9 @@ import {
 } from 'framer-motion';
 import {
   ArrowRight,
-  BadgeIndianRupee,
   BookOpen,
   BookOpenCheck,
   Check,
-  Chrome,
   ClipboardList,
   Flame,
   LineChart,
@@ -24,9 +22,11 @@ import {
   Timer,
   Trophy,
 } from 'lucide-react';
-import { useAuth } from '@/context/AuthContext';
-import GoogleAuthButton from '@/features/auth/components/GoogleAuthButton';
-import { SHOW_OG_TRACKERS } from '@/lib/siteNav';
+import {
+  GUEST_MOCKS_HREF,
+  GUEST_PROGRESS_HREF,
+  SHOW_OG_TRACKERS,
+} from '@/lib/siteNav';
 import { APP_GUTTER, APP_NAV_CONTENT_OFFSET } from '@/lib/appChrome';
 
 /** Logo-aligned brand: ink + .COM blue on light surfaces */
@@ -41,9 +41,10 @@ const easeOut = [0.22, 1, 0.36, 1];
 const ROTATING_HOOKS = [
   'topic-wise MCQs',
   'timed mock tests',
-  'YouTube path sync',
+  ...(SHOW_OG_TRACKERS ? ['day-by-day OG paths'] : []),
   'streaks that stick',
 ];
+const HOOK_SPACER = ROTATING_HOOKS.reduce((a, b) => (b.length > a.length ? b : a), '');
 
 const FEATURE_SCENES = [
   {
@@ -68,7 +69,7 @@ const FEATURE_SCENES = [
     id: 'mocks',
     label: 'Mocks',
     icon: ClipboardList,
-    href: '/exams',
+    href: GUEST_MOCKS_HREF,
     eyebrow: 'Simulate',
     title: 'Timed mock tests',
     hint: 'Clock · score · rank',
@@ -83,30 +84,17 @@ const FEATURE_SCENES = [
   ...(SHOW_OG_TRACKERS
     ? [
         {
-          id: 'youtube',
-          label: 'YouTube',
-          icon: Chrome,
-          href: '/extension/connect',
-          eyebrow: 'Chrome extension',
-          title: 'YouTube progress sync',
-          hint: 'Watch · sync · complete',
-          kind: 'youtube',
-          video: 'Graphs — BFS deep dive',
-          pct: 72,
-        },
-        {
           id: 'paths',
-          label: 'Paths',
+          label: 'OG Trackers',
           icon: Route,
           href: '/og-trackers',
           eyebrow: 'OG Trackers',
           title: 'Day-by-day paths',
-          hint: 'Video · code · next day',
+          hint: 'Watch · code · next day',
           kind: 'path',
-          pathTitle: 'Demo DSA path',
+          pathTitle: 'GATE CSE · Discrete Math',
           day: 12,
           totalDays: 45,
-          freeDays: 3,
         },
       ]
     : []),
@@ -114,7 +102,7 @@ const FEATURE_SCENES = [
     id: 'streaks',
     label: 'Streaks',
     icon: Flame,
-    href: '/',
+    href: '/exams',
     eyebrow: 'Habit',
     title: 'Streaks & heatmaps',
     hint: 'Show up · keep the flame',
@@ -126,26 +114,14 @@ const FEATURE_SCENES = [
     id: 'ranks',
     label: 'Ranks',
     icon: Trophy,
-    href: '/analysis',
+    href: GUEST_PROGRESS_HREF,
     eyebrow: 'Compete',
-    title: 'Ranks & analysis',
+    title: 'Mock ranks & analysis',
     hint: 'Attempt · climb · improve',
     kind: 'rank',
     percentile: 92,
     delta: '+14',
   },
-];
-
-const QUICK_LINKS = [
-  { href: '/exams', label: 'Exams', icon: BookOpenCheck },
-  ...(SHOW_OG_TRACKERS
-    ? [
-        { href: '/og-trackers', label: 'OG Trackers', icon: Route },
-        { href: '/extension/connect', label: 'YouTube sync', icon: Chrome },
-      ]
-    : []),
-  { href: '/exams', label: 'Mocks', icon: ClipboardList },
-  { href: '/pricing', label: 'Pricing', icon: BadgeIndianRupee },
 ];
 
 function useMounted() {
@@ -342,54 +318,13 @@ function MockPanel({ scene, animate }) {
   );
 }
 
-function YoutubePanel({ scene, animate }) {
-  return (
-    <div className="flex flex-1 flex-col">
-      <div className="rounded-xl border border-neutral-200 bg-neutral-950 text-white p-4 overflow-hidden relative">
-        <div
-          className="absolute inset-0 opacity-60 pointer-events-none"
-          style={{
-            background:
-              'radial-gradient(ellipse 70% 80% at 80% 20%, #3F5EB966 0%, transparent 55%)',
-          }}
-          aria-hidden
-        />
-        <div className="relative flex items-center gap-2 text-[11px] font-medium text-neutral-400">
-          <Play className="h-3.5 w-3.5" style={{ color: BRAND.blueBright }} />
-          Watching on YouTube
-        </div>
-        <p className="relative mt-2 text-sm font-semibold truncate">{scene.video}</p>
-        <div className="relative mt-4 h-2.5 rounded-full bg-white/10 overflow-hidden">
-          <motion.div
-            className="h-full rounded-full"
-            style={{ backgroundColor: BRAND.blueBright }}
-            initial={animate ? { width: '12%' } : false}
-            animate={{ width: `${scene.pct}%` }}
-            transition={{ duration: 1.1, ease: easeOut }}
-          />
-        </div>
-        <div className="relative mt-2 flex items-center justify-between text-xs">
-          <span className="tabular-nums font-semibold">{scene.pct}% synced</span>
-          <span className="text-neutral-400">→ OG Tracker</span>
-        </div>
-      </div>
-      <div className="mt-auto pt-4 flex items-center gap-2 rounded-xl border border-[#3F5EB9]/20 bg-[#E8EDF8]/60 px-3 py-2.5">
-        <Chrome className="h-4 w-4 shrink-0" style={{ color: BRAND.blue }} />
-        <p className="text-xs text-neutral-700 leading-snug">
-          Extension badge updates live. Hit 90% and the lesson marks complete.
-        </p>
-      </div>
-    </div>
-  );
-}
-
 function PathPanel({ scene, animate }) {
   const days = Math.min(scene.totalDays, 10);
   return (
     <div className="flex flex-1 flex-col">
       <p className="text-sm font-semibold text-neutral-900">{scene.pathTitle}</p>
       <p className="mt-1 text-xs text-neutral-500">
-        Day {scene.day} of {scene.totalDays} · {scene.freeDays} free preview
+        Day {scene.day} of {scene.totalDays} · free to start
       </p>
       <div className="mt-5 flex items-end gap-1.5 h-16">
         {Array.from({ length: days }).map((_, i) => {
@@ -411,7 +346,8 @@ function PathPanel({ scene, animate }) {
       </div>
       <div className="mt-auto pt-4 flex flex-wrap gap-2 text-xs">
         <span className="rounded-full border border-neutral-200 bg-white px-2.5 py-1 font-medium text-neutral-700">
-          YouTube lessons
+          <Play className="mr-1 inline h-3 w-3" style={{ color: BRAND.blue }} />
+          Watch in-app
         </span>
         <span className="rounded-full border border-neutral-200 bg-white px-2.5 py-1 font-medium text-neutral-700">
           Coding practice
@@ -424,7 +360,7 @@ function PathPanel({ scene, animate }) {
             color: '#1e2f6b',
           }}
         >
-          Progress syncs
+          Auto-tracked
         </span>
       </div>
     </div>
@@ -536,8 +472,6 @@ function SceneBody({ scene, animate }) {
   switch (scene.kind) {
     case 'mock':
       return <MockPanel scene={scene} animate={animate} />;
-    case 'youtube':
-      return <YoutubePanel scene={scene} animate={animate} />;
     case 'path':
       return <PathPanel scene={scene} animate={animate} />;
     case 'streak':
@@ -567,59 +501,6 @@ function FeatureShowcaseStage({ animate }) {
 
   return (
     <div ref={rootRef} className="relative">
-      {/* Floating feature orbit — GPU transforms only */}
-      <div className="pointer-events-none absolute -inset-2 sm:-inset-3 z-20 hidden sm:block" aria-hidden>
-        {FEATURE_SCENES.map((feat, i) => {
-          const active = i === index;
-          const spots = [
-            { top: '6%', left: '-2%' },
-            { top: '8%', right: '-1%' },
-            { top: '48%', right: '-4%' },
-            { bottom: '10%', right: '2%' },
-            { bottom: '8%', left: '-2%' },
-            { top: '52%', left: '-5%' },
-          ];
-          const spot = spots[i % spots.length];
-          const FeatIcon = feat.icon;
-          return (
-            <motion.div
-              key={feat.id}
-              className="absolute"
-              style={spot}
-              animate={
-                run
-                  ? {
-                      y: active ? [0, -4, 0] : [0, 3, 0],
-                      opacity: active ? 1 : 0.72,
-                      scale: active ? 1.05 : 1,
-                    }
-                  : { opacity: 0.85, scale: 1, y: 0 }
-              }
-              transition={{
-                duration: active ? 2.4 : 3.6,
-                repeat: run ? Infinity : 0,
-                ease: 'easeInOut',
-                delay: i * 0.12,
-              }}
-            >
-              <span
-                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold shadow-sm backdrop-blur-sm ${
-                  active
-                    ? 'border-[#3F5EB9]/40 bg-white text-[#1e2f6b]'
-                    : 'border-neutral-200/80 bg-white/90 text-neutral-600'
-                }`}
-              >
-                <FeatIcon
-                  className="h-3 w-3"
-                  style={{ color: active ? BRAND.blue : '#737373' }}
-                />
-                {feat.label}
-              </span>
-            </motion.div>
-          );
-        })}
-      </div>
-
       <div className="relative flex flex-col min-h-[340px] sm:min-h-[400px] lg:min-h-[460px] rounded-2xl sm:rounded-[1.75rem] border border-neutral-200/90 bg-white overflow-hidden shadow-[0_24px_60px_-28px_rgba(15,23,42,0.28)] [contain:layout_paint] [transform:translateZ(0)]">
         <div
           className="absolute inset-0 opacity-[0.4] pointer-events-none"
@@ -757,7 +638,7 @@ function RotatingHook({ animate }) {
   return (
     <span className="relative inline-grid max-w-full overflow-hidden align-bottom text-left leading-[1.25]">
       <span className="invisible col-start-1 row-start-1 whitespace-nowrap" aria-hidden>
-        YouTube path sync
+        {HOOK_SPACER}
       </span>
       <AnimatePresence mode="wait" initial={false}>
         <motion.span
@@ -776,31 +657,11 @@ function RotatingHook({ animate }) {
   );
 }
 
-export default function GuestHomeHero({ stats = {} }) {
+/** Hero: brand + one value line + two CTAs. Stats live in GuestHomePulseStats; sign-in lives in the close band. */
+export default function GuestHomeHero() {
   const mounted = useMounted();
   const prefersReduced = useReducedMotion();
   const animate = mounted && !prefersReduced;
-  const { signInWithGoogle } = useAuth();
-  const [googleLoading, setGoogleLoading] = useState(false);
-
-  const examCount = stats.examCount ?? 0;
-  const questionCount = stats.questionCount ?? 0;
-  const roadmapCount = stats.roadmapCount ?? 0;
-
-  const handleGoogleSignIn = async () => {
-    setGoogleLoading(true);
-    try {
-      await signInWithGoogle({ redirectUrl: '/' });
-    } catch (err) {
-      console.error('Google sign-in failed:', err);
-      setGoogleLoading(false);
-    }
-  };
-
-  const questionLabel =
-    questionCount >= 1000
-      ? `${Math.round(questionCount / 1000)}k+`
-      : questionCount.toLocaleString();
 
   const enter = (delay = 0) =>
     animate
@@ -853,7 +714,7 @@ export default function GuestHomeHero({ stats = {} }) {
               {...enter(0)}
               className="text-[11px] sm:text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500"
             >
-              Exam practice · paths · YouTube sync
+              {SHOW_OG_TRACKERS ? 'Exam practice · OG Trackers' : 'Exam practice · mock tests'}
             </motion.p>
 
             <motion.p
@@ -881,8 +742,9 @@ export default function GuestHomeHero({ stats = {} }) {
               {...enter(0.15)}
               className="mt-3 text-sm sm:text-[15px] text-neutral-600 leading-relaxed max-w-md"
             >
-              MCQs, timed mocks, OG Tracker paths, and Chrome YouTube sync — one place that
-              keeps your prep moving.
+              {SHOW_OG_TRACKERS
+                ? 'Topic-wise MCQs, timed mocks, and day-by-day OG Tracker paths — free to start.'
+                : 'Topic-wise MCQs and timed mocks for competitive exams — free to start.'}
             </motion.p>
 
             <motion.div
@@ -909,80 +771,10 @@ export default function GuestHomeHero({ stats = {} }) {
                     className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl border border-neutral-300 bg-white px-5 py-3 text-sm font-semibold text-neutral-800 hover:border-neutral-400 hover:bg-neutral-50 transition-colors shadow-sm"
                   >
                     <Map className="h-4 w-4" style={{ color: BRAND.blue }} />
-                    Explore paths
+                    OG Trackers
                   </Link>
                 ) : null}
               </div>
-
-              <GoogleAuthButton
-                size="hero"
-                label="Sign in with Google"
-                loadingLabel="Signing in…"
-                loading={googleLoading}
-                onClick={handleGoogleSignIn}
-                className="w-full justify-center md:w-auto"
-              />
-              <p className="text-center md:text-left text-xs text-neutral-500">
-                Save streaks, YouTube progress, and rankings in one tap
-              </p>
-            </motion.div>
-
-            <motion.div
-              {...enter(0.28)}
-              className="mt-5 flex flex-wrap items-center justify-center md:justify-start gap-2"
-            >
-              {QUICK_LINKS.map((item, i) => {
-                const LinkIcon = item.icon;
-                return (
-                  <motion.div
-                    key={`${item.href}-${item.label}`}
-                    initial={animate ? { opacity: 0, y: 8 } : false}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.35, delay: 0.28 + i * 0.05, ease: easeOut }}
-                    whileHover={animate ? { y: -2, scale: 1.03 } : undefined}
-                  >
-                    <Link
-                      href={item.href}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-700 hover:border-[#3F5EB9]/35 hover:bg-[#E8EDF8]/60 hover:text-neutral-900 transition-colors shadow-sm"
-                    >
-                      <LinkIcon className="h-3.5 w-3.5" strokeWidth={2} style={{ color: BRAND.blue }} />
-                      {item.label}
-                    </Link>
-                  </motion.div>
-                );
-              })}
-            </motion.div>
-
-            <motion.div
-              {...enter(0.32)}
-              className="mt-5 sm:mt-6 flex flex-wrap items-center justify-center md:justify-start gap-x-4 gap-y-1 text-sm text-neutral-500"
-            >
-              {examCount > 0 ? (
-                <span>
-                  <span className="font-semibold tabular-nums text-neutral-900">
-                    {examCount.toLocaleString()}
-                  </span>{' '}
-                  {examCount === 1 ? 'exam' : 'exams'}
-                </span>
-              ) : null}
-              {questionCount > 0 ? (
-                <span>
-                  <span className="font-semibold tabular-nums text-neutral-900">
-                    {questionLabel}
-                  </span>{' '}
-                  questions
-                </span>
-              ) : null}
-              {SHOW_OG_TRACKERS && roadmapCount > 0 ? (
-                <span>
-                  <span className="font-semibold tabular-nums text-neutral-900">
-                    {roadmapCount.toLocaleString()}
-                  </span>{' '}
-                  {roadmapCount === 1 ? 'path' : 'paths'}
-                </span>
-              ) : (
-                <span>Free to start</span>
-              )}
             </motion.div>
           </div>
 

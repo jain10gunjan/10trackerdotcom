@@ -3,9 +3,7 @@
 import { useRef } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { BookOpen, Map, Target } from 'lucide-react';
 import GoogleAuthButton from '@/features/auth/components/GoogleAuthButton';
-import { SHOW_OG_TRACKERS } from '@/lib/siteNav';
 import { APP_GUTTER } from '@/lib/appChrome';
 import {
   GUEST_BRAND,
@@ -14,6 +12,7 @@ import {
   revealProps,
 } from '@/features/guest/components/guestMotion';
 
+/** The only Google sign-in on the guest home — a soft close after the user has seen the product. */
 export default function GuestHomeCloseBand({
   onGoogleSignIn,
   googleLoading = false,
@@ -27,81 +26,30 @@ export default function GuestHomeCloseBand({
       <div className={`max-w-7xl mx-auto ${APP_GUTTER}`}>
         <motion.div
           {...revealProps(show, animate)}
-          className="relative overflow-hidden rounded-3xl border border-neutral-900/10 text-white p-8 sm:p-10 lg:p-12"
-          style={{
-            background:
-              'linear-gradient(135deg, #0a0a0a 0%, #121826 45%, #1a2440 100%)',
-          }}
+          className="relative overflow-hidden rounded-3xl border border-neutral-200/90 bg-white p-8 sm:p-10 shadow-[0_24px_60px_-32px_rgba(63,94,185,0.35)]"
         >
           <div
-            className="absolute inset-0 opacity-[0.12] pointer-events-none"
-            style={{
-              backgroundImage:
-                'linear-gradient(to right, #fff 1px, transparent 1px), linear-gradient(to bottom, #fff 1px, transparent 1px)',
-              backgroundSize: '32px 32px',
-            }}
+            className="absolute -top-24 -right-16 h-64 w-64 rounded-full blur-3xl pointer-events-none opacity-70"
+            style={{ backgroundColor: GUEST_BRAND.soft }}
             aria-hidden
           />
-
-          {animate ? (
-            <>
-              <motion.div
-                className="absolute -top-20 -right-16 h-72 w-72 rounded-full blur-3xl pointer-events-none"
-                style={{ backgroundColor: `${GUEST_BRAND.blue}55` }}
-                animate={{ x: [0, 18, 0], y: [0, 12, 0], opacity: [0.35, 0.55, 0.35] }}
-                transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
-                aria-hidden
-              />
-              <motion.div
-                className="absolute -bottom-24 -left-10 h-56 w-56 rounded-full blur-3xl pointer-events-none bg-sky-400/20"
-                animate={{ x: [0, -12, 0], y: [0, 16, 0], opacity: [0.2, 0.4, 0.2] }}
-                transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut', delay: 0.4 }}
-                aria-hidden
-              />
-            </>
-          ) : (
-            <div
-              className="absolute top-0 right-0 h-72 w-72 rounded-full blur-3xl pointer-events-none opacity-40"
-              style={{ backgroundColor: `${GUEST_BRAND.blue}40` }}
-              aria-hidden
-            />
-          )}
-
-          <div className="relative grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
-            <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-medium text-neutral-200">
-                <Target className="h-3.5 w-3.5" style={{ color: '#8BA3E8' }} />
-                Start today
-              </div>
-              <h2 className="mt-4 text-2xl sm:text-3xl font-bold tracking-tight">
-                {SHOW_OG_TRACKERS
-                  ? 'Pick an exam or roadmap and begin your prep'
-                  : 'Pick an exam and begin your prep'}
+          <div className="relative flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+            <div className="max-w-xl">
+              <p
+                className="text-xs font-semibold uppercase tracking-[0.16em]"
+                style={{ color: GUEST_BRAND.blue }}
+              >
+                When you’re ready
+              </p>
+              <h2 className="mt-1.5 text-2xl sm:text-3xl font-bold tracking-tight text-neutral-950">
+                Save your progress
               </h2>
-              <p className="mt-3 text-neutral-300 text-sm sm:text-base leading-relaxed max-w-lg">
-                {SHOW_OG_TRACKERS
-                  ? 'Free practice, preview tracker days, sync YouTube from Chrome, then sign in with Google for streaks, heatmaps, and rankings.'
-                  : 'Practice for free today. Study plans are coming soon — sign in with Google to save progress, streaks, and rankings.'}
+              <p className="mt-2 text-sm sm:text-base text-neutral-600 leading-relaxed">
+                Sign in with Google to keep streaks, mock scores, and rankings across devices.
               </p>
             </div>
 
-            <div className="flex flex-col sm:flex-row lg:flex-col xl:flex-row gap-3 lg:justify-end">
-              <Link
-                href="/exams"
-                className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-white text-neutral-900 font-semibold text-sm hover:bg-neutral-100 transition-colors"
-              >
-                <BookOpen className="h-4 w-4" />
-                Browse exams
-              </Link>
-              {SHOW_OG_TRACKERS ? (
-                <Link
-                  href="/og-trackers"
-                  className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl border border-white/25 text-white font-semibold text-sm hover:bg-white/10 transition-colors"
-                >
-                  <Map className="h-4 w-4" />
-                  Explore plans
-                </Link>
-              ) : null}
+            <div className="flex flex-col items-stretch gap-3 md:items-end">
               <GoogleAuthButton
                 size="hero"
                 variant="primary"
@@ -109,8 +57,14 @@ export default function GuestHomeCloseBand({
                 loadingLabel="Signing in…"
                 loading={googleLoading}
                 onClick={onGoogleSignIn}
-                className="w-full sm:w-auto justify-center"
+                className="w-full justify-center md:w-auto"
               />
+              <Link
+                href="/exams"
+                className="text-center md:text-right text-sm font-medium text-neutral-500 hover:text-[#3F5EB9] transition-colors"
+              >
+                Or keep browsing exams
+              </Link>
             </div>
           </div>
         </motion.div>

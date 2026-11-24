@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="320" viewBox="0 0 720 320">
+  <rect width="720" height="320" fill="#f8fafc"/>
+  <text x="24" y="28" font-family="Segoe UI, Arial, sans-serif" font-size="14" fill="#0f172a" font-weight="600">Enterprise network (IPv4)</text>
+
+  <rect x="40" y="60" width="150" height="70" rx="10" fill="#fff" stroke="#334155" stroke-width="2"/>
+  <text x="115" y="90" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#0f172a" font-weight="600">Host A</text>
+  <text x="115" y="112" text-anchor="middle" font-family="Consolas, monospace" font-size="12" fill="#334155">10.1.1.5/24</text>
+
+  <rect x="280" y="50" width="160" height="90" rx="10" fill="#e2e8f0" stroke="#0f172a" stroke-width="2"/>
+  <text x="360" y="85" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#0f172a" font-weight="600">Router R1</text>
+  <text x="360" y="108" text-anchor="middle" font-family="Consolas, monospace" font-size="11" fill="#334155">eth0: 10.1.1.1/24</text>
+  <text x="360" y="126" text-anchor="middle" font-family="Consolas, monospace" font-size="11" fill="#334155">eth1: 10.1.2.1/24</text>
+
+  <rect x="530" y="60" width="150" height="70" rx="10" fill="#fff" stroke="#334155" stroke-width="2"/>
+  <text x="605" y="90" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#0f172a" font-weight="600">Host B</text>
+  <text x="605" y="112" text-anchor="middle" font-family="Consolas, monospace" font-size="12" fill="#334155">10.1.2.9/24</text>
+
+  <line x1="190" y1="95" x2="280" y2="95" stroke="#0f172a" stroke-width="2"/>
+  <line x1="440" y1="95" x2="530" y2="95" stroke="#0f172a" stroke-width="2"/>
+
+  <rect x="120" y="190" width="480" height="100" rx="10" fill="#fff" stroke="#64748b" stroke-width="1.5"/>
+  <text x="140" y="218" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#0f172a" font-weight="600">R1 forwarding table (subset)</text>
+  <text x="140" y="244" font-family="Consolas, monospace" font-size="12" fill="#334155">10.1.1.0/24  → eth0</text>
+  <text x="140" y="266" font-family="Consolas, monospace" font-size="12" fill="#334155">10.1.2.0/24  → eth1</text>
+  <text x="360" y="244" font-family="Consolas, monospace" font-size="12" fill="#334155">10.1.0.0/16  → eth1</text>
+  <text x="360" y="266" font-family="Consolas, monospace" font-size="12" fill="#334155">0.0.0.0/0    → eth1</text>
+</svg>

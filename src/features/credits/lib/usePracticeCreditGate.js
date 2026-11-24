@@ -18,14 +18,24 @@ import { CREDIT_COST } from '@/features/credits/lib/constants';
  * Local-first credit gate: no API per question; batched sync in background.
  */
 export function usePracticeCreditGate() {
-  const { unlimited, credits, costs, setCreditsBalance, setShowPaywall, loading } = useCredits();
+  const {
+    unlimited,
+    credits,
+    costs,
+    freeCreditsEnabled,
+    setCreditsBalance,
+    setShowPaywall,
+    loading,
+  } = useCredits();
   const practiceCost = costs?.practice_question ?? CREDIT_COST.practice_question;
+  const creditsOn = freeCreditsEnabled !== false;
 
   const canAttemptPractice = useMemo(() => {
     if (loading) return true;
     if (unlimited) return true;
+    if (!creditsOn) return false;
     return credits >= practiceCost;
-  }, [loading, unlimited, credits, practiceCost]);
+  }, [loading, unlimited, creditsOn, credits, practiceCost]);
 
   const chargeForQuestion = useCallback(
     ({ user, questionId, completedIds, area, topic }) => {
@@ -54,6 +64,11 @@ export function usePracticeCreditGate() {
 
       if (unlimited) {
         return { ok: true, unlimited: true };
+      }
+
+      if (!creditsOn) {
+        setShowPaywall(true);
+        return { ok: false, reason: 'subscription_required' };
       }
 
       if (!canAttemptPractice) {
@@ -87,7 +102,7 @@ export function usePracticeCreditGate() {
 
       return { ok: true, balance: local.balance };
     },
-    [unlimited, canAttemptPractice, setCreditsBalance, setShowPaywall]
+    [unlimited, creditsOn, canAttemptPractice, setCreditsBalance, setShowPaywall]
   );
 
   return { chargeForQuestion, unlimited, canAttemptPractice };

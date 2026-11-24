@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import { getSupabaseServer, isValidServiceRoleKey } from '@/lib/supabaseServer';
 import { normalizeEmail } from '@/lib/normalizeEmail';
+import { OG_PREMIUM_REQUIRED } from '@/lib/siteNav';
 import {
   OG_TRACKERS_SETUP_HINT,
   RESOURCE_TYPES,
@@ -191,10 +192,12 @@ export async function setUserPremium(email, isPremium = true) {
 }
 
 function pathIsLocked(path, isPremium) {
+  if (!OG_PREMIUM_REQUIRED) return false;
   return Boolean(path?.is_premium) && !isPremium;
 }
 
 function resourceIsLocked(path, resource, isPremium) {
+  if (!OG_PREMIUM_REQUIRED) return false;
   if (isPremium) return false;
   if (resource?.is_premium === true) return true;
   if (resource?.is_premium === false) return false;
@@ -274,14 +277,21 @@ export async function listActivePaths(email = null) {
   const supabase = db();
   const { isPremium } = await getUserPremiumState(email);
 
-  const { data: paths, error } = await supabase
+  const catalogColumns =
+    'id, slug, title, description, category, tags, icon, sort_order, is_premium, is_active';
+  let { data: paths, error } = await supabase
     .from('og_paths')
-    .select(
-      'id, slug, title, description, category, tags, icon, sort_order, is_premium, is_active'
-    )
+    .select(catalogColumns)
     .eq('is_active', true)
+    .is('owner_email', null)
     .order('sort_order', { ascending: true })
     .order('title', { ascending: true });
+
+  if (error && /owner_email/i.test(error.message || '')) {
+    // Fail closed: never list private AI paths as the public catalog.
+    console.error('listActivePaths: owner_email filter unavailable', error.message);
+    return { paths: [], setupRequired: true, isPremium, error };
+  }
 
   if (error) {
     if (isSetupError(error)) {
@@ -351,6 +361,129 @@ export async function listActivePaths(email = null) {
   };
 }
 
+/**
+ * Active paths this email owns, newest first.
+ * A missing source column is retried without it. If owner_email cannot be
+ * filtered, return nothing — never catalog rows or another user's paths.
+ * The owner built these, so the old is_premium flag does not lock them.
+ */
+export async function listOwnedPaths(email) {
+  const userEmail = normalizeEmail(email);
+  if (!userEmail) {
+    return { paths: [], setupRequired: false };
+  }
+
+  const supabase = db();
+  const baseColumns =
+    'id, slug, title, description, category, tags, icon, is_premium, created_at';
+
+  const runQuery = (columns) =>
+    supabase
+      .from('og_paths')
+      .select(columns)
+      .eq('is_active', true)
+      .eq('owner_email', userEmail)
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+  let { data: paths, error } = await runQuery(`${baseColumns}, source`);
+
+  if (error && /owner_email|source/i.test(error.message || '')) {
+    if (/owner_email/i.test(error.message || '')) {
+      return { paths: [], setupRequired: false };
+    }
+    ({ data: paths, error } = await runQuery(baseColumns));
+    if (error && /owner_email/i.test(error.message || '')) {
+      return { paths: [], setupRequired: false };
+    }
+  }
+
+  if (error) {
+    if (isSetupError(error)) return { paths: [], setupRequired: true };
+    throw error;
+  }
+
+  const ownedPaths = (paths || []).filter((p) => {
+    if (!Object.prototype.hasOwnProperty.call(p, 'owner_email')) return true;
+    return normalizeEmail(p.owner_email) === userEmail;
+  });
+
+  const counts = new Map();
+  if (ownedPaths.length) {
+    const pathIds = ownedPaths.map((p) => p.id);
+    const { data: resources } = await supabase
+      .from('og_resources')
+      .select('id, path_id, type')
+      .in('path_id', pathIds);
+
+    const resourceIdsByPath = new Map();
+    for (const resource of resources || []) {
+      const current = counts.get(resource.path_id) || {
+        totalResources: 0,
+        videoCount: 0,
+        practiceCount: 0,
+        mockCount: 0,
+        completedResources: 0,
+      };
+      current.totalResources += 1;
+      if (resource.type === 'VIDEO') current.videoCount += 1;
+      else if (resource.type === 'PRACTICE_CHAPTER') current.practiceCount += 1;
+      else if (resource.type === 'MOCK_TEST') current.mockCount += 1;
+      counts.set(resource.path_id, current);
+
+      const ids = resourceIdsByPath.get(resource.path_id) || [];
+      ids.push(resource.id);
+      resourceIdsByPath.set(resource.path_id, ids);
+    }
+
+    if (userEmail) {
+      const allResourceIds = (resources || []).map((r) => r.id);
+      if (allResourceIds.length) {
+        const { data: progress } = await supabase
+          .from('og_progress')
+          .select('resource_id')
+          .eq('user_email', userEmail)
+          .eq('status', 'COMPLETED')
+          .in('resource_id', allResourceIds);
+
+        const completedSet = new Set((progress || []).map((row) => row.resource_id));
+        for (const [pathId, ids] of resourceIdsByPath) {
+          const current = counts.get(pathId);
+          if (!current) continue;
+          current.completedResources = ids.filter((id) => completedSet.has(id)).length;
+        }
+      }
+    }
+  }
+
+  return {
+    paths: ownedPaths.map((p) => {
+      const stats = counts.get(p.id) || {};
+      const total = stats.totalResources || 0;
+      const completed = stats.completedResources || 0;
+      return {
+        id: p.id,
+        slug: p.slug,
+        title: p.title,
+        description: p.description,
+        category: p.category || 'General',
+        tags: Array.isArray(p.tags) ? p.tags : [],
+        icon: p.icon || 'Sparkles',
+        isPremium: false,
+        locked: false,
+        totalResources: total,
+        completedResources: completed,
+        percent: total > 0 ? Math.round((completed / total) * 100) : 0,
+        videoCount: stats.videoCount || 0,
+        practiceCount: stats.practiceCount || 0,
+        mockCount: stats.mockCount || 0,
+        createdAt: p.created_at,
+      };
+    }),
+    setupRequired: false,
+  };
+}
+
 function withSoftTimeout(promise, ms, fallback) {
   let timer;
   return Promise.race([
@@ -386,6 +519,11 @@ export async function getPathBySlug(
     throw error;
   }
   if (!path) return { path: null, resources: [], progressByResource: {}, isPremium };
+
+  const ownerEmail = normalizeEmail(path.owner_email);
+  if (ownerEmail && ownerEmail !== normalizeEmail(email)) {
+    return { path: null, resources: [], progressByResource: {}, isPremium };
+  }
 
   const { data: resources, error: resErr } = await supabase
     .from('og_resources')
@@ -722,12 +860,43 @@ export async function markResourceCompleted(email, resourceId) {
 
 // ── Admin CRUD ─────────────────────────────────────────────────────────────
 
+async function assertCatalogResource(resourceId) {
+  const { data, error } = await db()
+    .from('og_resources')
+    .select('path_id')
+    .eq('id', resourceId)
+    .maybeSingle();
+  if (error) throw error;
+  if (data?.path_id) await assertCatalogPath(data.path_id);
+}
+
+async function assertCatalogPath(pathId) {
+  const { data, error } = await db()
+    .from('og_paths')
+    .select('id, owner_email')
+    .eq('id', pathId)
+    .maybeSingle();
+  if (error && /owner_email/i.test(error.message || '')) {
+    throw new Error('Cannot verify tracker ownership. Re-run setup_og_ai_playlist.sql.');
+  }
+  if (error) throw error;
+  if (data?.owner_email) {
+    throw new Error('This tracker belongs to a user. Edit it from their account, not the catalog.');
+  }
+}
+
 export async function adminListPaths() {
   const supabase = db();
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from('og_paths')
     .select('*')
+    .is('owner_email', null)
     .order('sort_order', { ascending: true });
+
+  if (error && /owner_email/i.test(error.message || '')) {
+    console.error('adminListPaths: owner_email filter unavailable', error.message);
+    return { paths: [], setupRequired: true };
+  }
 
   if (error) {
     if (isSetupError(error)) return { paths: [], setupRequired: true };
@@ -783,6 +952,7 @@ export async function adminCreatePath(input) {
 }
 
 export async function adminUpdatePath(pathId, input) {
+  await assertCatalogPath(pathId);
   const supabase = db();
   const patch = { updated_at: new Date().toISOString() };
   if (input.title != null) patch.title = String(input.title).trim();
@@ -875,6 +1045,7 @@ export async function adminUpdatePath(pathId, input) {
 }
 
 export async function adminDeletePath(pathId) {
+  await assertCatalogPath(pathId);
   const supabase = db();
   const { error } = await supabase.from('og_paths').delete().eq('id', pathId);
   if (error) throw error;
@@ -894,6 +1065,7 @@ export async function adminListResources(pathId) {
 }
 
 export async function adminCreateResource(pathId, input) {
+  await assertCatalogPath(pathId);
   const type = String(input.type || '').toUpperCase();
   if (!RESOURCE_TYPES.includes(type)) throw new Error('Invalid resource type');
 
@@ -978,6 +1150,7 @@ export async function adminCreateResource(pathId, input) {
 }
 
 export async function adminUpdateResource(resourceId, input) {
+  await assertCatalogResource(resourceId);
   const supabase = db();
   const patch = { updated_at: new Date().toISOString() };
   if (input.type != null) {
@@ -1099,6 +1272,7 @@ export async function adminUpdateResource(resourceId, input) {
 }
 
 export async function adminDeleteResource(resourceId) {
+  await assertCatalogResource(resourceId);
   const supabase = db();
   const { error } = await supabase.from('og_resources').delete().eq('id', resourceId);
   if (error) throw error;
@@ -1224,13 +1398,33 @@ export async function getResourceByYoutubeVideoId(youtubeVideoId, email = null) 
   const { data: rows, error } = await supabase
     .from('og_resources')
     .select(
-      '*, og_paths!inner(id, slug, title, is_premium, is_active, weekly_goal)'
+      '*, og_paths!inner(id, slug, title, is_premium, is_active, weekly_goal, owner_email)'
     )
     .eq('youtube_video_id', videoId)
     .eq('type', 'VIDEO')
     .limit(10);
 
   if (error) {
+    if (/owner_email/i.test(error.message || '')) {
+      const withoutOwner = await supabase
+        .from('og_resources')
+        .select('*, og_paths!inner(id, slug, title, is_premium, is_active, weekly_goal)')
+        .eq('youtube_video_id', videoId)
+        .eq('type', 'VIDEO')
+        .limit(10);
+      if (withoutOwner.error && /weekly_goal/i.test(withoutOwner.error.message || '')) {
+        const basic = await supabase
+          .from('og_resources')
+          .select('*, og_paths!inner(id, slug, title, is_premium, is_active)')
+          .eq('youtube_video_id', videoId)
+          .eq('type', 'VIDEO')
+          .limit(10);
+        if (basic.error) throw basic.error;
+        return finalizeYoutubeLookup(basic.data, videoId, email);
+      }
+      if (withoutOwner.error) throw withoutOwner.error;
+      return finalizeYoutubeLookup(withoutOwner.data, videoId, email);
+    }
     // weekly_goal column may be missing
     if (/weekly_goal/i.test(error.message || '')) {
       const fallback = await supabase
@@ -1249,8 +1443,13 @@ export async function getResourceByYoutubeVideoId(youtubeVideoId, email = null) 
 }
 
 async function finalizeYoutubeLookup(rows, videoId, email) {
+  const active = (rows || []).filter((row) => row.og_paths?.is_active === true);
+  const viewer = normalizeEmail(email);
   const resource =
-    (rows || []).find((row) => row.og_paths?.is_active === true) || null;
+    (viewer &&
+      active.find((row) => normalizeEmail(row.og_paths?.owner_email) === viewer)) ||
+    active.find((row) => !row.og_paths?.owner_email) ||
+    null;
   if (!resource) return null;
 
   const path = resource.og_paths;

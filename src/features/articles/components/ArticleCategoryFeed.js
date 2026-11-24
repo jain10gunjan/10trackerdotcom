@@ -139,7 +139,7 @@ export function ArticleFeedCard({ article, accentColor = '#2563eb', compact = fa
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={thumb}
-              alt=""
+              alt={article.title || 'Article'}
               className="h-full w-full object-cover"
               loading="lazy"
               decoding="async"

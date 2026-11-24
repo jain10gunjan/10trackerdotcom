@@ -1,5 +1,6 @@
 import { getSupabaseServer, isValidServiceRoleKey } from '@/lib/supabaseServer';
 import {
+  FREE_CREDITS_ENABLED,
   SIGNUP_BONUS_CREDITS,
   CREDIT_COST,
   SUBSCRIPTION_PLANS,
@@ -16,7 +17,8 @@ function db() {
 
 function defaultConfig() {
   return {
-    signupBonus: SIGNUP_BONUS_CREDITS,
+    freeCreditsEnabled: FREE_CREDITS_ENABLED,
+    signupBonus: FREE_CREDITS_ENABLED ? SIGNUP_BONUS_CREDITS : 0,
     costs: { ...CREDIT_COST },
     plans: { ...SUBSCRIPTION_PLANS },
     planList: Object.values(SUBSCRIPTION_PLANS),
@@ -61,8 +63,14 @@ function buildFromDb(settingsRow, planRows) {
     plans[plan.id] = rest;
   }
 
+  const freeCreditsEnabled =
+    typeof settingsRow?.free_credits_enabled === 'boolean'
+      ? settingsRow.free_credits_enabled
+      : FREE_CREDITS_ENABLED;
+  const rawBonus = settingsRow?.signup_bonus_credits ?? SIGNUP_BONUS_CREDITS;
   return {
-    signupBonus: settingsRow?.signup_bonus_credits ?? SIGNUP_BONUS_CREDITS,
+    freeCreditsEnabled,
+    signupBonus: freeCreditsEnabled ? Number(rawBonus) || 0 : 0,
     costs,
     plans,
     planList,

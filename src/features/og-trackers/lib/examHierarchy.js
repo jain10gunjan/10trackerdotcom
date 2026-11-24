@@ -1,5 +1,7 @@
 import { getSupabaseServer, isValidServiceRoleKey } from '@/lib/supabaseServer';
 import { normalizeEmail } from '@/lib/normalizeEmail';
+import { OG_PREMIUM_REQUIRED } from '@/lib/siteNav';
+import { DEFAULT_OG_EXAMS } from '@/features/og-trackers/lib/constants';
 import {
   getUserPremiumState,
   isSetupError,
@@ -76,11 +78,19 @@ async function loadChapterPathStats(chapterIds, email) {
   if (!chapterIds.length) return { byChapter: {}, totals: {} };
 
   const supabase = db();
-  const { data: paths, error } = await supabase
+  const chapterColumns =
+    'id, slug, title, description, category, tags, icon, sort_order, is_premium, is_active, chapter_id';
+  let { data: paths, error } = await supabase
     .from('og_paths')
-    .select('id, slug, title, description, category, tags, icon, sort_order, is_premium, is_active, chapter_id')
+    .select(chapterColumns)
     .eq('is_active', true)
+    .is('owner_email', null)
     .in('chapter_id', chapterIds);
+
+  if (error && /owner_email/i.test(error.message || '')) {
+    console.error('loadChapterPathStats: owner_email filter unavailable', error.message);
+    return { byChapter: {}, totals: {} };
+  }
 
   if (error) throw error;
 
@@ -136,7 +146,7 @@ async function loadChapterPathStats(chapterIds, email) {
       tags: Array.isArray(p.tags) ? p.tags : [],
       icon: p.icon || 'Map',
       isPremium: Boolean(p.is_premium),
-      locked: Boolean(p.is_premium) && !isPremium,
+      locked: OG_PREMIUM_REQUIRED && Boolean(p.is_premium) && !isPremium,
       totalResources: total,
       completedResources: completed,
       percent: total > 0 ? Math.round((completed / total) * 100) : 0,
@@ -215,19 +225,74 @@ export async function listExamHub(email = null) {
     });
   });
 
+  // Always surface GATE CSE / DSA / Placement even if only one row exists in og_exams.
+  const bySlug = new Map(hubExams.map((e) => [e.slug, e]));
+  for (const def of DEFAULT_OG_EXAMS) {
+    if (bySlug.has(def.slug)) continue;
+    bySlug.set(def.slug, {
+      id: def.slug,
+      slug: def.slug,
+      title: def.title,
+      description: def.description,
+      icon: def.icon,
+      sortOrder: def.sortOrder,
+      isFeatured: def.isFeatured,
+      chapterCount: 0,
+      liveChapterCount: 0,
+      totalSteps: 0,
+      completedSteps: 0,
+      percent: 0,
+      legacy: true,
+    });
+  }
+
+  const merged = [...bySlug.values()].sort(
+    (a, b) => (a.sortOrder || 0) - (b.sortOrder || 0)
+  );
+
   return {
-    exams: hubExams,
+    exams: merged,
     hierarchyReady: true,
     setupRequired: false,
     isPremium,
   };
 }
 
+function matchDefaultExam(path) {
+  const category = normalizeSlug(path?.category || '');
+  const slug = normalizeSlug(path?.slug || '');
+  for (const exam of DEFAULT_OG_EXAMS) {
+    const aliases = (exam.aliases || []).map((a) => normalizeSlug(a));
+    if (aliases.includes(category) || aliases.includes(slug) || slug.startsWith(`${exam.slug}-`)) {
+      return exam.slug;
+    }
+  }
+  return null;
+}
+
+/**
+ * When og_exams is missing, still show GATE CSE / DSA / Placement shells and
+ * attach any non-demo catalog paths that match those exams.
+ */
 async function listExamHubFallback(email) {
   const catalog = await listPublicPaths(email);
   if (catalog.setupRequired) {
     return {
-      exams: [],
+      exams: DEFAULT_OG_EXAMS.map((exam) => ({
+        id: exam.slug,
+        slug: exam.slug,
+        title: exam.title,
+        description: exam.description,
+        icon: exam.icon,
+        sortOrder: exam.sortOrder,
+        isFeatured: exam.isFeatured,
+        chapterCount: 0,
+        liveChapterCount: 0,
+        totalSteps: 0,
+        completedSteps: 0,
+        percent: 0,
+        legacy: true,
+      })),
       hierarchyReady: false,
       setupRequired: true,
       isPremium: catalog.isPremium,
@@ -235,32 +300,27 @@ async function listExamHubFallback(email) {
     };
   }
 
-  const byCategory = new Map();
-  for (const p of catalog.paths || []) {
-    const key = p.category || 'General';
-    if (!byCategory.has(key)) {
-      byCategory.set(key, {
-        title: key,
-        slug: normalizeSlug(key) || 'general',
-        paths: [],
-      });
-    }
-    byCategory.get(key).paths.push(p);
+  const buckets = new Map(DEFAULT_OG_EXAMS.map((exam) => [exam.slug, []]));
+  for (const path of catalog.paths || []) {
+    const key = matchDefaultExam(path);
+    if (!key || !buckets.has(key)) continue;
+    buckets.get(key).push(path);
   }
 
-  const exams = Array.from(byCategory.values()).map((group, i) => {
-    const totalSteps = group.paths.reduce((s, p) => s + (p.totalResources || 0), 0);
-    const completedSteps = group.paths.reduce((s, p) => s + (p.completedResources || 0), 0);
+  const exams = DEFAULT_OG_EXAMS.map((exam) => {
+    const group = buckets.get(exam.slug) || [];
+    const totalSteps = group.reduce((s, p) => s + (p.totalResources || 0), 0);
+    const completedSteps = group.reduce((s, p) => s + (p.completedResources || 0), 0);
     return {
-      id: group.slug,
-      slug: group.slug,
-      title: group.title,
-      description: `${group.paths.length} tracker${group.paths.length === 1 ? '' : 's'}`,
-      icon: 'Map',
-      sortOrder: i,
-      isFeatured: i === 0,
-      chapterCount: group.paths.length,
-      liveChapterCount: group.paths.length,
+      id: exam.slug,
+      slug: exam.slug,
+      title: exam.title,
+      description: exam.description,
+      icon: exam.icon,
+      sortOrder: exam.sortOrder,
+      isFeatured: exam.isFeatured,
+      chapterCount: group.length,
+      liveChapterCount: group.length,
       totalSteps,
       completedSteps,
       percent: totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0,
@@ -344,19 +404,39 @@ export async function getExamBySlug(examSlug, email = null) {
 
 async function getExamBySlugFallback(slug, email) {
   const catalog = await listPublicPaths(email);
+  const shell = DEFAULT_OG_EXAMS.find((exam) => exam.slug === slug) || null;
   if (catalog.setupRequired) {
-    return { exam: null, chapters: [], hierarchyReady: false, setupRequired: true, isPremium: catalog.isPremium };
+    return {
+      exam: shell
+        ? {
+            id: shell.slug,
+            slug: shell.slug,
+            title: shell.title,
+            description: shell.description,
+            icon: shell.icon,
+            sortOrder: shell.sortOrder,
+            isFeatured: shell.isFeatured,
+            chapterCount: 0,
+            liveChapterCount: 0,
+            totalSteps: 0,
+            completedSteps: 0,
+            percent: 0,
+            legacy: true,
+          }
+        : null,
+      chapters: [],
+      hierarchyReady: false,
+      setupRequired: true,
+      isPremium: catalog.isPremium,
+    };
   }
 
-  const paths = (catalog.paths || []).filter(
-    (p) => normalizeSlug(p.category) === slug || normalizeSlug(p.category) === slug
-  );
+  const paths = (catalog.paths || []).filter((p) => matchDefaultExam(p) === slug);
 
-  if (!paths.length) {
+  if (!paths.length && !shell) {
     return { exam: null, chapters: [], hierarchyReady: false, setupRequired: false, isPremium: catalog.isPremium };
   }
 
-  const title = paths[0].category || slug;
   const totalSteps = paths.reduce((s, p) => s + (p.totalResources || 0), 0);
   const completedSteps = paths.reduce((s, p) => s + (p.completedResources || 0), 0);
 
@@ -364,11 +444,11 @@ async function getExamBySlugFallback(slug, email) {
     exam: {
       id: slug,
       slug,
-      title,
-      description: 'Trackers in this category',
-      icon: 'Map',
-      sortOrder: 0,
-      isFeatured: false,
+      title: shell?.title || paths[0]?.category || slug,
+      description: shell?.description || 'Trackers in this exam',
+      icon: shell?.icon || 'Map',
+      sortOrder: shell?.sortOrder || 0,
+      isFeatured: Boolean(shell?.isFeatured),
       chapterCount: paths.length,
       liveChapterCount: paths.length,
       totalSteps,

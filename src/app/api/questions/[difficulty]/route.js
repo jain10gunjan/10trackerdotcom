@@ -40,7 +40,7 @@ export async function GET(request, { params }) {
 
     // Fetch questions with pagination
     const { data: questions, error, count } = await supabase
-      .from('examtracker')
+      .from('examtracker').or('verification_status.is.null,verification_status.not.in.(unpublished_draft,publish_rejected)')
       .select('_id, question, options_A, options_B, options_C, options_D, correct_option, solution, difficulty, subject, year, category, created_at', { count: 'exact' })
       .eq('topic', pagetopic)
       .eq('category', category.toUpperCase())

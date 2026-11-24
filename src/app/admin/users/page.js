@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { AlertCircle } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import MetaDataJobs from "@/components/ui/Seo";
+import AdminAssignSubscriptionModal from "@/features/admin/components/users/AdminAssignSubscriptionModal";
 import AdminCreditAdjustModal from "@/features/admin/components/users/AdminCreditAdjustModal";
 import AdminUsersDashboard from "@/features/admin/components/users/AdminUsersDashboard";
 
@@ -18,6 +19,7 @@ export default function AdminUsersPage() {
   const [error, setError] = useState(null);
   const [clerkWarning, setClerkWarning] = useState(null);
   const [creditUser, setCreditUser] = useState(null);
+  const [assignUser, setAssignUser] = useState(null);
 
   const refreshUsers = useCallback(async () => {
     setFetching(true);
@@ -79,7 +81,14 @@ export default function AdminUsersPage() {
         error={error}
         clerkWarning={clerkWarning}
         onAdjustCredits={setCreditUser}
+        onAssignSubscription={setAssignUser}
         onRefresh={refreshUsers}
+      />
+      <AdminAssignSubscriptionModal
+        user={assignUser}
+        open={Boolean(assignUser)}
+        onClose={() => setAssignUser(null)}
+        onSaved={() => refreshUsers()}
       />
       <AdminCreditAdjustModal
         user={creditUser}

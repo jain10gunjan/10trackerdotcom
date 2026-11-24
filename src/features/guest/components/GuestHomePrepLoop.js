@@ -1,16 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
 import { motion } from 'framer-motion';
-import {
-  BookOpen,
-  Chrome,
-  ClipboardList,
-  Map,
-  TrendingUp,
-  ArrowRight,
-} from 'lucide-react';
+import { BookOpen, ClipboardList, Route, TrendingUp } from 'lucide-react';
 import { SHOW_OG_TRACKERS } from '@/lib/siteNav';
 import { APP_GUTTER } from '@/lib/appChrome';
 import {
@@ -21,57 +13,36 @@ import {
   revealProps,
 } from '@/features/guest/components/guestMotion';
 
+/** Explanatory only — CTAs live in the hero, exam list, OG section, and close band. */
 const STEPS = [
   {
-    id: 'mcqs',
+    id: 'practice',
     icon: BookOpen,
-    title: 'Topic-wise MCQs',
-    description: 'Chapter-level practice with solutions across active exams.',
-    href: '/exams',
-    cta: 'Browse exams',
+    title: 'Practice by topic',
+    description: 'Chapter-level MCQs with solutions across active exams.',
   },
   {
     id: 'mocks',
     icon: ClipboardList,
-    title: 'Mock tests',
-    description: 'Timed full-length tests with rankings and detailed review.',
-    href: '/exams',
-    cta: 'Find mocks',
+    title: 'Take timed mocks',
+    description: 'Full-length tests with a clock, scores, rankings, and review.',
   },
-  {
-    id: 'plans',
-    icon: Map,
-    title: SHOW_OG_TRACKERS ? 'OG Tracker paths' : 'Day-by-day plans',
-    description: SHOW_OG_TRACKERS
-      ? 'YouTube + coding paths with free preview days you can track.'
-      : 'Coming soon — structured daily plans for focused prep.',
-    href: SHOW_OG_TRACKERS ? '/og-trackers' : '/exams',
-    cta: SHOW_OG_TRACKERS ? 'Explore paths' : 'Browse exams',
-  },
-  ...(SHOW_OG_TRACKERS
-    ? [
-        {
-          id: 'extension',
-          icon: Chrome,
-          title: 'YouTube sync',
-          description: 'Chrome extension syncs watch % into your path automatically.',
-          href: '/extension/connect',
-          cta: 'Connect extension',
-        },
-      ]
-    : [
-        {
-          id: 'progress',
-          icon: TrendingUp,
-          title: 'Progress tracking',
-          description: 'Sign in for streaks, heatmaps, and activity history.',
-          action: 'google',
-          cta: 'Sign in with Google',
-        },
-      ]),
+  SHOW_OG_TRACKERS
+    ? {
+        id: 'paths',
+        icon: Route,
+        title: 'Follow an OG path',
+        description: 'Day-by-day lessons and coding practice, tracked as you watch.',
+      }
+    : {
+        id: 'progress',
+        icon: TrendingUp,
+        title: 'Track your progress',
+        description: 'Sign in to keep streaks, heatmaps, and attempt history.',
+      },
 ];
 
-export default function GuestHomePrepLoop({ onGoogleSignIn, googleLoading = false }) {
+export default function GuestHomePrepLoop() {
   const ref = useRef(null);
   const { animate } = useGuestMotion();
   const show = useReveal(ref, { animate, amount: 0.25 });
@@ -105,12 +76,12 @@ export default function GuestHomePrepLoop({ onGoogleSignIn, googleLoading = fals
             How it works
           </p>
           <h2 className="mt-1.5 text-2xl sm:text-3xl font-bold tracking-tight text-neutral-950">
-            Your prep loop on 10tracker
+            Three steps, one loop
           </h2>
           <p className="mt-2 text-sm sm:text-base text-neutral-600">
             {SHOW_OG_TRACKERS
-              ? 'Practice, mock, follow a path, sync YouTube — the loop that keeps you coming back.'
-              : 'Four moves that keep exam prep moving — practice, simulate, plan, and track.'}
+              ? 'Practice, simulate the real test, then follow a path that keeps you consistent.'
+              : 'Practice, simulate the real test, then track what improves.'}
           </p>
         </motion.div>
 
@@ -121,19 +92,26 @@ export default function GuestHomePrepLoop({ onGoogleSignIn, googleLoading = fals
             className="absolute top-0 left-0 h-[2px] rounded-full"
             style={{ backgroundColor: GUEST_BRAND.blue }}
             initial={false}
-            animate={{
-              width: `${((active + 1) / STEPS.length) * 100}%`,
-            }}
+            animate={{ width: `${((active + 1) / STEPS.length) * 100}%` }}
             transition={{ duration: 0.45, ease: easeOut }}
           />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
           {STEPS.map((step, i) => {
             const Icon = step.icon;
             const isActive = active === i;
-            const content = (
-              <>
+            return (
+              <motion.div
+                key={step.id}
+                {...revealProps(show, animate, 0.06 * i)}
+                onMouseEnter={() => setActive(i)}
+                className={`relative flex h-full flex-col rounded-2xl border p-5 transition-all duration-300 ${
+                  isActive
+                    ? 'border-[#3F5EB9]/40 bg-white shadow-[0_20px_40px_-24px_rgba(63,94,185,0.45)]'
+                    : 'border-neutral-200/90 bg-white/80'
+                }`}
+              >
                 <div className="flex items-center gap-3">
                   <span
                     className={`inline-flex h-10 w-10 items-center justify-center rounded-xl transition-colors ${
@@ -148,47 +126,7 @@ export default function GuestHomePrepLoop({ onGoogleSignIn, googleLoading = fals
                   </span>
                 </div>
                 <h3 className="mt-4 text-sm font-bold text-neutral-950">{step.title}</h3>
-                <p className="mt-1.5 text-sm text-neutral-600 leading-relaxed flex-1">
-                  {step.description}
-                </p>
-                <span
-                  className={`mt-4 inline-flex items-center gap-1.5 text-xs font-semibold transition-colors ${
-                    isActive ? 'text-[#3F5EB9]' : 'text-neutral-700'
-                  }`}
-                >
-                  {step.cta}
-                  <ArrowRight className="h-3.5 w-3.5" />
-                </span>
-              </>
-            );
-
-            const shellClass = `relative flex h-full flex-col rounded-2xl border p-5 text-left transition-all duration-300 ${
-              isActive
-                ? 'border-[#3F5EB9]/40 bg-white shadow-[0_20px_40px_-24px_rgba(63,94,185,0.45)] scale-[1.02]'
-                : 'border-neutral-200/90 bg-white/80 hover:border-[#3F5EB9]/25 hover:bg-white'
-            }`;
-
-            return (
-              <motion.div
-                key={step.id}
-                {...revealProps(show, animate, 0.06 * i)}
-                onMouseEnter={() => setActive(i)}
-                onFocus={() => setActive(i)}
-              >
-                {step.action === 'google' ? (
-                  <button
-                    type="button"
-                    onClick={onGoogleSignIn}
-                    disabled={googleLoading}
-                    className={`${shellClass} w-full disabled:opacity-60`}
-                  >
-                    {content}
-                  </button>
-                ) : (
-                  <Link href={step.href} className={shellClass}>
-                    {content}
-                  </Link>
-                )}
+                <p className="mt-1.5 text-sm text-neutral-600 leading-relaxed">{step.description}</p>
               </motion.div>
             );
           })}

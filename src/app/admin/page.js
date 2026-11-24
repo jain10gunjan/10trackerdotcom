@@ -16,6 +16,7 @@ import {
   AlertCircle,
   ArrowRight,
   Sparkles,
+  ClipboardCheck,
 } from "lucide-react";
 
 const CARDS = [
@@ -39,6 +40,13 @@ const CARDS = [
     desc: "Upload PDFs, review streamed MCQs, edit, and export JSON for import.",
     icon: FileText,
     accent: "from-indigo-600 to-violet-600",
+  },
+  {
+    href: "/admin/question-review",
+    title: "Question review",
+    desc: "Review draft questions, then publish one-by-one or in bulk to make them live.",
+    icon: ClipboardCheck,
+    accent: "from-emerald-600 to-teal-600",
   },
   {
     href: "/admin/vendors",

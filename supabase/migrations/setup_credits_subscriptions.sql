@@ -64,6 +64,23 @@ ALTER TABLE public.subscription_orders ADD COLUMN IF NOT EXISTS terms_version TE
 ALTER TABLE public.subscription_orders ADD COLUMN IF NOT EXISTS business_name TEXT;
 ALTER TABLE public.subscription_orders ADD COLUMN IF NOT EXISTS gstin TEXT;
 
+-- Admin grants: amount_paise stays 0 so cash reports ignore them.
+-- list_amount_paise is the plan price at grant time, for monthly/annual grant reports.
+ALTER TABLE public.user_subscriptions ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'checkout';
+ALTER TABLE public.user_subscriptions ADD COLUMN IF NOT EXISTS granted_by TEXT;
+ALTER TABLE public.user_subscriptions ADD COLUMN IF NOT EXISTS note TEXT;
+
+ALTER TABLE public.subscription_orders ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'checkout';
+ALTER TABLE public.subscription_orders ADD COLUMN IF NOT EXISTS granted_by TEXT;
+ALTER TABLE public.subscription_orders ADD COLUMN IF NOT EXISTS note TEXT;
+ALTER TABLE public.subscription_orders ADD COLUMN IF NOT EXISTS list_amount_paise INTEGER;
+ALTER TABLE public.subscription_orders ADD COLUMN IF NOT EXISTS subscription_id UUID;
+
+CREATE INDEX IF NOT EXISTS subscription_orders_created_idx
+  ON public.subscription_orders (created_at);
+CREATE INDEX IF NOT EXISTS subscription_orders_source_idx
+  ON public.subscription_orders (source, created_at);
+
 ALTER TABLE public.user_wallet ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.credit_ledger ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_subscriptions ENABLE ROW LEVEL SECURITY;

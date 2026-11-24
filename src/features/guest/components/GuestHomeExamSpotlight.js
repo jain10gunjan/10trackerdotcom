@@ -188,13 +188,13 @@ export default function GuestHomeExamSpotlight({ exams = [] }) {
               className="text-xs font-semibold uppercase tracking-[0.16em]"
               style={{ color: GUEST_BRAND.blue }}
             >
-              Practice
+              Browse exams
             </p>
             <h2 className="mt-1.5 text-2xl sm:text-3xl font-bold tracking-tight text-neutral-950">
-              Popular exams to start with
+              Pick your exam
             </h2>
             <p className="mt-2 text-sm sm:text-base text-neutral-600 max-w-xl leading-relaxed">
-              Jump into topic-wise MCQs or timed mocks — featured by activity across the platform.
+              Topic-wise MCQs or timed mocks, featured by activity across the platform.
             </p>
           </motion.div>
           <motion.div {...revealProps(show, animate, 0.08)}>

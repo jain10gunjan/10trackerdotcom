@@ -23,6 +23,7 @@ AS $$
     p_category IS NOT NULL
     AND TRIM(p_category) <> ''
     AND UPPER(TRIM(e.category)) = UPPER(TRIM(p_category))
+    AND COALESCE(e.status, 'published') = 'published'
     AND e.subject IS NOT NULL
     AND TRIM(e.subject) <> ''
     AND e.topic IS NOT NULL

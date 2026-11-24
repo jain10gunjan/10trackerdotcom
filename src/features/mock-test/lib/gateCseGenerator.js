@@ -83,14 +83,14 @@ async function fetchCategoryBank() {
 
   while (true) {
     let { data, error } = await supabase
-      .from('examtracker')
+      .from('examtracker').or('verification_status.is.null,verification_status.not.in.(unpublished_draft,publish_rejected)')
       .select(BANK_SELECT)
       .in('category', variants)
       .range(from, from + page - 1);
 
     if ((error || !data?.length) && from === 0 && !all.length) {
       const retry = await supabase
-        .from('examtracker')
+        .from('examtracker').or('verification_status.is.null,verification_status.not.in.(unpublished_draft,publish_rejected)')
         .select(BANK_SELECT)
         .eq('category', 'GATE-CSE')
         .range(from, from + page - 1);

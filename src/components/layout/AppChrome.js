@@ -10,6 +10,7 @@ import AnalyticsInitializer from '@/components/AnalyticsInitializer';
 import TermsReacceptanceModal from '@/features/profile/components/TermsReacceptanceModal';
 import TermsReacceptanceBanner from '@/features/profile/components/TermsReacceptanceBanner';
 import { useProfileGate } from '@/context/ProfileGateContext';
+import { APP_MOBILE_BOTTOM_CLEARANCE } from '@/lib/appChrome';
 import {
   isImmersiveMobileNavPath,
   isOnboardingBrowsePath,
@@ -56,11 +57,21 @@ export default function AppChrome({ children }) {
     if (termsDockActive) {
       return 'pb-36 lg:pb-28';
     }
-    if (onHome || onBrowsePage) {
+    if (onBrowsePage) {
       return 'pb-16 lg:pb-0';
     }
     return 'pb-16 lg:pb-0';
   })();
+
+  // `/` is both the signed-in home and the guest page. Only the bottom
+  // clearance changes here — guest marketing layout is otherwise untouched.
+  // Length comes from APP_MOBILE_BOTTOM_CLEARANCE; lg:pb-0 wins at desktop.
+  const mainClass = onHome
+    ? 'pb-[var(--app-mobile-bottom-clearance)] lg:pb-0'
+    : mainPadding;
+  const mainStyle = onHome
+    ? { '--app-mobile-bottom-clearance': APP_MOBILE_BOTTOM_CLEARANCE }
+    : undefined;
 
   return (
     <>
@@ -69,7 +80,7 @@ export default function AppChrome({ children }) {
         <AuthModalWrapper />
       </Suspense>
       {!shellHidden && <Navbar />}
-      <div className={mainPadding}>{children}</div>
+      <div className={mainClass} style={mainStyle}>{children}</div>
       {termsDockActive ? <div className="h-20 md:h-16 shrink-0" aria-hidden /> : null}
       {!shellHidden && <Footer />}
       {showMobileBottomMenu ? <MobileBottomMenu /> : null}

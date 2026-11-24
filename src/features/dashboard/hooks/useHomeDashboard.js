@@ -7,6 +7,18 @@ import { parseJsonResponse } from '@/lib/toastAsync';
 import { formatExamSlug } from '@/lib/platformExams';
 
 const DASHBOARD_TOAST_ID = 'home-dashboard-load';
+const HOME_FOCUS_STORAGE_KEY = 'tt_home_focus_exam';
+
+function readStoredFocusExam() {
+  if (typeof window === 'undefined') return '';
+  try {
+    return String(window.localStorage.getItem(HOME_FOCUS_STORAGE_KEY) || '')
+      .trim()
+      .toLowerCase();
+  } catch {
+    return '';
+  }
+}
 
 function examLabelFromSlug(slug) {
   const s = String(slug || '').trim();
@@ -24,12 +36,17 @@ export function useHomeDashboard({ enabled = true, focusExam = '' } = {}) {
   const abortRef = useRef(null);
   const hasLoadedOnceRef = useRef(false);
   const loadedFocusRef = useRef('');
-  const focusSlug = String(focusExam || '').trim().toLowerCase();
+  const heatmapRangeRef = useRef(heatmapRange);
+  const resolvedFocusRef = useRef(null);
+  const appliedFocusRef = useRef('');
+  const propFocus = String(focusExam || '').trim().toLowerCase();
+  heatmapRangeRef.current = heatmapRange;
 
   const loadDashboard = useCallback(
     async (opts = {}) => {
       if (!enabled) return null;
 
+      const focusSlug = propFocus || readStoredFocusExam();
       const reason =
         opts.reason ||
         (!hasLoadedOnceRef.current
@@ -61,6 +78,7 @@ export function useHomeDashboard({ enabled = true, focusExam = '' } = {}) {
       try {
         const params = new URLSearchParams();
         if (focusSlug) params.set('exam', focusSlug);
+        if (heatmapRangeRef.current === '90d') params.set('heatmapRange', '90d');
         const qs = params.toString();
         const res = await fetch(`/api/user/dashboard${qs ? `?${qs}` : ''}`, {
           credentials: 'include',
@@ -74,12 +92,17 @@ export function useHomeDashboard({ enabled = true, focusExam = '' } = {}) {
         if (controller.signal.aborted) return null;
 
         setDashboard(data);
+        appliedFocusRef.current = String(data.focusedExam?.slug || focusSlug || '')
+          .trim()
+          .toLowerCase();
         if (data.heatmap?.range) {
           setHeatmapRange(data.heatmap.range);
         }
         if (data.wallet) {
-          await applyWalletSnapshot(data.wallet);
           walletSeededRef.current = true;
+          // Local credit hydration can flush a sync request. Do not hold the
+          // home skeleton on it — the payload is already rendered.
+          void applyWalletSnapshot(data.wallet);
         }
         if (data.partialErrors?.length) {
           console.warn('dashboard partial errors', data.partialErrors);
@@ -121,17 +144,46 @@ export function useHomeDashboard({ enabled = true, focusExam = '' } = {}) {
         }
       }
     },
-    [enabled, focusSlug, applyWalletSnapshot, refreshWallet]
+    [enabled, propFocus, applyWalletSnapshot, refreshWallet]
   );
 
   useEffect(() => {
-    loadDashboard();
     return () => abortRef.current?.abort();
-  }, [loadDashboard]);
+  }, []);
+
+  useEffect(() => {
+    if (!enabled) {
+      resolvedFocusRef.current = null;
+      abortRef.current?.abort();
+      return undefined;
+    }
+
+    // Prop updates after the homepage reads tt_home_focus_exam. If that slug
+    // is the one already in flight, keep the request and its toast.
+    const resolved = propFocus || readStoredFocusExam();
+    const inFlight =
+      resolvedFocusRef.current === resolved &&
+      abortRef.current &&
+      !abortRef.current.signal.aborted;
+    // Dev strict mode aborts the first request on remount. A matching slug
+    // must not skip the retry when that request is already dead.
+    if (inFlight) return undefined;
+    // The homepage copies focusedExam back into focus state after load.
+    // That slug is already on screen — do not fetch or toast again.
+    if (resolved && appliedFocusRef.current === resolved && hasLoadedOnceRef.current) {
+      resolvedFocusRef.current = resolved;
+      loadedFocusRef.current = resolved;
+      return undefined;
+    }
+    resolvedFocusRef.current = resolved;
+    loadDashboard();
+    return undefined;
+  }, [loadDashboard, enabled, propFocus]);
 
   const changeHeatmapRange = useCallback(
     (nextRange) => {
       if (!enabled || nextRange === heatmapRange) return;
+      heatmapRangeRef.current = nextRange;
       setHeatmapRange(nextRange);
 
       setDashboard((prev) => {

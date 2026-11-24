@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { ArrowRight, ChevronRight } from 'lucide-react';
 import { formatExamSlug, practiceHrefForSlug } from '@/lib/platformExams';
 import { practiceAreaMatchesSlug } from '@/lib/examProfile';
+import HomeBone from '@/features/dashboard/components/studentHome/HomeBone';
+import { homeCard, homePrimaryBtn } from '@/features/dashboard/lib/studentHomeBrand';
 
 function formatTopicLabel(topic) {
   return String(topic || '')
@@ -16,36 +18,37 @@ function formatTopicLabel(topic) {
 function TopicRow({ examArea, topic, isLast }) {
   const accuracy = topic.accuracy ?? 0;
   const completed = topic.completedQuestions ?? 0;
-  const href =
-    topic.href ||
-    (examArea ? `/${examArea}` : '/exams');
+  const href = topic.href || (examArea ? `/${examArea}` : '/exams');
+  const width = `${Math.min(100, Math.max(0, accuracy))}%`;
 
   return (
-    <li className={!isLast ? 'border-b border-neutral-100' : ''}>
+    <li className={isLast ? '' : 'border-b border-black/[0.06]'}>
       <Link
         href={href}
-        className="grid grid-cols-[minmax(0,1fr)_64px_56px_20px] sm:grid-cols-[minmax(0,1fr)_80px_72px_20px] gap-3 sm:gap-4 items-center px-5 py-3.5 hover:bg-neutral-50/80 transition-colors group"
+        className="flex min-h-11 items-center gap-3 px-4 py-3 transition-colors hover:bg-[#E8EDF8]/50 sm:px-5"
       >
-        <div className="min-w-0">
-          <p className="text-sm font-medium text-neutral-900 truncate group-hover:text-neutral-700">
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium text-[#0a0a0a]">
             {formatTopicLabel(topic.topic)}
           </p>
-          <div className="mt-1.5 h-1 rounded-full bg-neutral-100 overflow-hidden sm:hidden">
+          <p className="mt-0.5 text-xs text-neutral-500 sm:hidden">
+            {completed.toLocaleString()} done
+            {completed > 0 ? ` · ${accuracy}%` : ''}
+          </p>
+          <div className="mt-2 h-1 overflow-hidden rounded-full bg-[#E8EDF8]">
             <div
-              className="h-full rounded-full bg-emerald-500/80"
-              style={{ width: `${Math.min(100, accuracy)}%` }}
+              className="h-full rounded-full bg-[#3F5EB9]"
+              style={{ width: completed > 0 ? width : '0%' }}
             />
           </div>
         </div>
-        <span className="text-sm tabular-nums text-neutral-600 text-right">{completed}</span>
-        <span
-          className={`text-sm font-medium tabular-nums text-right ${
-            accuracy >= 70 ? 'text-emerald-700' : accuracy >= 50 ? 'text-amber-700' : 'text-neutral-600'
-          }`}
-        >
+        <span className="hidden w-14 shrink-0 text-right text-sm tabular-nums text-neutral-600 sm:block">
+          {completed.toLocaleString()}
+        </span>
+        <span className="hidden w-14 shrink-0 text-right text-sm font-medium tabular-nums text-[#0a0a0a] sm:block">
           {completed > 0 ? `${accuracy}%` : '—'}
         </span>
-        <ChevronRight className="w-4 h-4 text-neutral-300 group-hover:text-neutral-500 justify-self-end" />
+        <ChevronRight className="h-4 w-4 shrink-0 text-neutral-400" />
       </Link>
     </li>
   );
@@ -57,23 +60,19 @@ export default function DashboardSubjectPractice({
   loading = false,
   embedded = false,
 }) {
+  const shell = `${homeCard} overflow-hidden`;
+
   if (loading) {
     return (
-      <section
-        className={`rounded-2xl border border-neutral-200 bg-white shadow-sm overflow-hidden animate-pulse ${
-          embedded ? '' : ''
-        }`}
-      >
+      <section className={shell} aria-hidden>
         {!embedded ? (
-          <div className="px-5 py-4 border-b border-neutral-100">
-            <div className="h-4 w-32 bg-neutral-200 rounded" />
+          <div className="border-b border-black/[0.06] px-4 py-4 sm:px-5">
+            <HomeBone className="h-4 w-32" />
           </div>
         ) : null}
-        <div className="divide-y divide-neutral-100">
+        <div className="space-y-px px-4 py-3 sm:px-5">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="px-5 py-3.5">
-              <div className="h-4 w-48 bg-neutral-200 rounded" />
-            </div>
+            <HomeBone key={i} className="h-11 w-full" />
           ))}
         </div>
       </section>
@@ -96,20 +95,20 @@ export default function DashboardSubjectPractice({
 
   if (!displayExam || !topics.length) {
     return (
-      <section className="rounded-2xl border border-neutral-200 bg-white shadow-sm overflow-hidden">
-        <div className="px-5 py-10 text-center">
-          <p className="text-sm text-neutral-500">
+      <section className={homeCard}>
+        <div className="px-4 py-8 text-center sm:px-5">
+          <p className="text-sm text-neutral-600">
             {primaryExam?.slug
-              ? `No topic practice yet for ${primaryExam.name}.`
-              : 'No topic practice yet. Pick an exam and start practicing.'}
+              ? `No topics practiced for ${primaryExam.name} yet.`
+              : 'No topics practiced yet. Pick an exam and start.'}
           </p>
           {primaryExam?.slug ? (
             <Link
               href={practiceHrefForSlug(primaryExam.slug)}
-              className="inline-flex items-center gap-1.5 mt-4 text-sm font-semibold text-neutral-900 hover:underline"
+              className={`${homePrimaryBtn} mt-4`}
             >
-              Go to {primaryExam.name}
-              <ArrowRight className="w-4 h-4" />
+              Practice {primaryExam.name}
+              <ArrowRight className="h-4 w-4" />
             </Link>
           ) : null}
         </div>
@@ -118,33 +117,33 @@ export default function DashboardSubjectPractice({
   }
 
   return (
-    <section className="rounded-2xl border border-neutral-200 bg-white shadow-sm overflow-hidden">
+    <section className={shell || undefined}>
       {!embedded ? (
-        <div className="px-5 py-4 border-b border-neutral-100 flex items-center justify-between gap-3">
+        <div className="flex items-center justify-between gap-3 border-b border-black/[0.06] px-4 py-3 sm:px-5">
           <div className="min-w-0">
-            <h2 className="text-sm font-semibold text-neutral-900">Subject practice</h2>
-            <p className="text-xs text-neutral-500 mt-0.5 truncate">
+            <h2 className="text-sm font-semibold text-[#0a0a0a]">Subject practice</h2>
+            <p className="mt-0.5 truncate text-xs text-neutral-500">
               {formatExamSlug(displayExam.area)} · {displayExam.totalCompleted.toLocaleString()}{' '}
               questions · {displayExam.overallAccuracy}% accuracy
             </p>
           </div>
           <Link
             href={practiceHrefForSlug(displayExam.area)}
-            className="text-xs font-medium text-neutral-600 hover:text-neutral-900 shrink-0"
+            className="inline-flex min-h-11 shrink-0 items-center text-sm font-semibold text-[#3F5EB9]"
           >
             All topics
           </Link>
         </div>
       ) : (
-        <div className="px-5 py-3 border-b border-neutral-100 flex items-center justify-between gap-3">
-          <p className="text-xs text-neutral-500 truncate">
+        <div className="border-b border-black/[0.06] px-4 py-3 sm:px-5">
+          <p className="truncate text-xs text-neutral-500">
             {formatExamSlug(displayExam.area)} · {displayExam.totalCompleted.toLocaleString()}{' '}
             questions · {displayExam.overallAccuracy}% accuracy
           </p>
         </div>
       )}
 
-      <div className="hidden sm:grid grid-cols-[minmax(0,1fr)_80px_72px_20px] gap-4 px-5 py-2.5 text-[11px] font-medium uppercase tracking-wide text-neutral-400 border-b border-neutral-100">
+      <div className="hidden grid-cols-[minmax(0,1fr)_3.5rem_3.5rem_1rem] gap-3 border-b border-black/[0.06] px-5 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-500 sm:grid">
         <span>Topic</span>
         <span className="text-right">Done</span>
         <span className="text-right">Accuracy</span>
@@ -161,7 +160,6 @@ export default function DashboardSubjectPractice({
           />
         ))}
       </ul>
-
     </section>
   );
 }

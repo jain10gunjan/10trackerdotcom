@@ -55,42 +55,63 @@ export default function QuestionSolution({
             embedded ? 'text-sm leading-relaxed' : 'text-sm'
           }`}
         >
-          {isGateCategory(category || questionData.category) ? (
-            <>
-              {questionData.solutiontext ? (
-                <div
-                  className="mb-3"
-                  dangerouslySetInnerHTML={{
-                    __html: convertNewlinesToBreaks(
-                      convertLatexTags(convertRelativeImageUrls(questionData.solutiontext)),
-                      normalizeBreaks
+          {(() => {
+            const goUrl = isGateCategory(category || questionData.category)
+              ? normalizeGateOverflowUrl(questionData.solution)
+              : null;
+            // GATE: solutiontext = written solution; solution = GateOverflow URL only.
+            // Generated questions leave solution empty and put detail in solutiontext.
+            const writtenHtml = questionData.solutiontext?.trim()
+              ? questionData.solutiontext
+              : !goUrl && questionData.solution?.trim()
+                ? questionData.solution
+                : '';
+
+            if (isGateCategory(category || questionData.category)) {
+              return (
+                <>
+                  {writtenHtml ? (
+                    <div
+                      className="mb-3"
+                      dangerouslySetInnerHTML={{
+                        __html: convertNewlinesToBreaks(
+                          convertLatexTags(convertRelativeImageUrls(writtenHtml)),
+                          normalizeBreaks
+                        ),
+                      }}
+                    />
+                  ) : (
+                    <p className="text-neutral-500 text-sm mb-2">No written solution yet.</p>
+                  )}
+                  {goUrl ? (
+                    <a
+                      href={goUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-indigo-700 underline text-sm font-medium"
+                    >
+                      Discuss on GateOverflow
+                    </a>
+                  ) : null}
+                </>
+              );
+            }
+
+            return (
+              <p
+                dangerouslySetInnerHTML={{
+                  __html: convertNewlinesToBreaks(
+                    convertLatexTags(
+                      convertRelativeImageUrls(
+                        writtenHtml || questionData.solution || ''
+                      )
                     ),
-                  }}
-                />
-              ) : (
-                <p className="text-neutral-500 text-sm mb-2">No written solution yet.</p>
-              )}
-              {normalizeGateOverflowUrl(questionData.solution) ? (
-                <a
-                  href={convertRelativeImageUrls(questionData.solution)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-indigo-700 underline text-sm font-medium"
-                >
-                  Discuss on GateOverflow
-                </a>
-              ) : null}
-            </>
-          ) : (
-            <p
-              dangerouslySetInnerHTML={{
-                __html: convertNewlinesToBreaks(
-                  convertLatexTags(convertRelativeImageUrls(questionData.solution)),
-                  normalizeBreaks
-                ),
-              }}
-            />
-          )}
+                    normalizeBreaks
+                  ),
+                }}
+              />
+            );
+          })()}
         </div>
       </MathJax>
     </div>

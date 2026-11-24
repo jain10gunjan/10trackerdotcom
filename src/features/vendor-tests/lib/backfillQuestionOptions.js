@@ -31,7 +31,7 @@ export async function backfillMissingOptionsFromPlatform(supabase, questions) {
 
   const sourceIds = [...new Set(needing.map((q) => String(q.source_question_id)))];
   const { data: sources, error } = await supabase
-    .from('examtracker')
+    .from('examtracker').or('verification_status.is.null,verification_status.not.in.(unpublished_draft,publish_rejected)')
     .select('_id, options_A, options_B, options_C, options_D')
     .in('_id', sourceIds);
 

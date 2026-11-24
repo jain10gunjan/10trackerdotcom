@@ -10,7 +10,7 @@ import React, {
   Suspense,
   useRef
 } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { consumeCreditOnClient } from '@/features/credits/lib/consumeCreditClient';
 import { createClient } from "@supabase/supabase-js";
@@ -563,8 +563,28 @@ PreviousAttemptCard.displayName = 'PreviousAttemptCard';
 export default function EnhancedMobileMockTestPage() {
     const { examcategory, testId } = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, loading: authLoading } = useAuth();
   const [state, dispatch] = useReducer(reducer, initialState);
+  const ogReturnQuery = useMemo(() => {
+    const from = searchParams?.get('from');
+    const path = searchParams?.get('path');
+    const rid = searchParams?.get('rid');
+    if (from !== 'og' || !path) return '';
+    const params = new URLSearchParams({ from: 'og', path: String(path) });
+    if (rid) params.set('rid', String(rid));
+    return `?${params.toString()}`;
+  }, [searchParams]);
+  const resultsUrl = useCallback(
+    (id, extra = '') => {
+      const base = `/mock-test/${examcategory}/results/${id}`;
+      if (ogReturnQuery) {
+        return `${base}${ogReturnQuery}${extra ? `&${extra.replace(/^\?/, '')}` : ''}`;
+      }
+      return `${base}${extra ? (extra.startsWith('?') ? extra : `?${extra}`) : ''}`;
+    },
+    [examcategory, ogReturnQuery]
+  );
   const [testInfo, setTestInfo] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showConfirmSubmit, setShowConfirmSubmit] = useState(false);
@@ -1545,7 +1565,7 @@ export default function EnhancedMobileMockTestPage() {
       });
 
       localStorage.removeItem(`test_backup_${attemptId}`);
-      router.push(`/mock-test/${examcategory}/results/${attemptId}`);
+      router.push(resultsUrl(attemptId));
       return message;
     } catch (error) {
       console.error('Submission error:', error);
@@ -1577,7 +1597,7 @@ export default function EnhancedMobileMockTestPage() {
         'Submission failed but data is backed up locally. Please contact support.',
         { duration: 10000, id: 'submit-backup' }
       );
-      router.push(`/mock-test/${examcategory}/results/${attemptId}?backup=true`);
+      router.push(resultsUrl(attemptId, 'backup=true'));
       
     } finally {
       setIsSubmitting(false);
@@ -1598,8 +1618,8 @@ export default function EnhancedMobileMockTestPage() {
 
   // Handle previous attempt actions
   const handleViewResult = useCallback(() => {
-    router.push(`/mock-test/${examcategory}/results/${previousAttempt.id}`);
-  }, [router, previousAttempt]);
+    router.push(resultsUrl(previousAttempt.id));
+  }, [router, previousAttempt, resultsUrl]);
 
   const handleRetakeTest = useCallback(() => {
     setPreviousAttempt(null);

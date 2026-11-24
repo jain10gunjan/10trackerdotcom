@@ -11,7 +11,11 @@ import React, {
 } from 'react';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { CREDIT_COST, SIGNUP_BONUS_CREDITS } from '@/features/credits/lib/constants';
+import {
+  CREDIT_COST,
+  FREE_CREDITS_ENABLED,
+  SIGNUP_BONUS_CREDITS,
+} from '@/features/credits/lib/constants';
 import {
   getLocalCreditBalance,
   loadCreditStore,
@@ -28,6 +32,7 @@ const CreditsContext = createContext({
   loading: true,
   credits: 0,
   unlimited: false,
+  freeCreditsEnabled: FREE_CREDITS_ENABLED,
   subscription: null,
   costs: CREDIT_COST,
   signupBonus: SIGNUP_BONUS_CREDITS,
@@ -208,9 +213,10 @@ export function CreditsProvider({ children }) {
       loading,
       credits: wallet?.credits ?? (userId ? getLocalCreditBalance(userId) : 0),
       unlimited: wallet?.unlimited ?? false,
+      freeCreditsEnabled: wallet?.freeCreditsEnabled ?? FREE_CREDITS_ENABLED,
       subscription: wallet?.subscription ?? null,
       costs: wallet?.costs ?? CREDIT_COST,
-      signupBonus: wallet?.signupBonus ?? SIGNUP_BONUS_CREDITS,
+      signupBonus: wallet?.signupBonus ?? (FREE_CREDITS_ENABLED ? SIGNUP_BONUS_CREDITS : 0),
       signupBonusGranted: wallet?.signupBonusGranted ?? false,
       plans: wallet?.plans,
       planList: wallet?.planList,

@@ -6,6 +6,7 @@ import {
 } from '@/features/og-trackers/lib/examHierarchy';
 import {
   getDashboardStats,
+  listOwnedPaths,
   OG_TRACKERS_SETUP_HINT,
 } from '@/features/og-trackers/lib/ogTrackerService';
 
@@ -14,7 +15,12 @@ export async function GET() {
     const session = await requireSessionEmail();
     const email = session.error ? null : session.email;
 
-    const [hub, catalog, stats] = await Promise.all([
+    const ownedPromise = listOwnedPaths(email).catch((err) => {
+      console.error('og-trackers listOwnedPaths', err);
+      return { paths: [] };
+    });
+
+    const [hub, catalog, stats, owned] = await Promise.all([
       listExamHub(email),
       listPublicPaths(email),
       email
@@ -28,6 +34,7 @@ export async function GET() {
             mocksCompleted: 0,
             isPremium: false,
           }),
+      ownedPromise,
     ]);
 
     if (hub.setupRequired || catalog.setupRequired) {
@@ -35,6 +42,7 @@ export async function GET() {
         success: true,
         exams: [],
         paths: [],
+        mine: owned.paths || [],
         stats,
         isPremium: hub.isPremium ?? catalog.isPremium,
         hierarchyReady: false,
@@ -47,6 +55,7 @@ export async function GET() {
       success: true,
       exams: hub.exams || [],
       paths: catalog.paths || [],
+      mine: owned.paths || [],
       stats,
       isPremium: hub.isPremium,
       hierarchyReady: Boolean(hub.hierarchyReady),

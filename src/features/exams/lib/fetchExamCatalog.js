@@ -123,7 +123,7 @@ async function countSlug(supabase, slug) {
   const variants = countCategoryVariants(slug);
   if (!variants.length) return 0;
   const { count, error } = await supabase
-    .from('examtracker')
+    .from('examtracker').or('verification_status.is.null,verification_status.not.in.(unpublished_draft,publish_rejected)')
     .select('_id', { count: 'exact', head: true })
     .in('category', variants);
   if (error) throw error;

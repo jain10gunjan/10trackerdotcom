@@ -1,8 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
   ArrowLeft,
@@ -19,24 +19,14 @@ import {
   ArrowRight,
   Flame,
   Target,
-  Printer,
-  Download,
   Timer,
   Sparkles,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { OG_PREMIUM_REQUIRED } from '@/lib/siteNav';
 import OgPremiumCheckout from '@/features/og-trackers/components/OgPremiumCheckout';
-import ExtensionSetupModal from '@/features/extension-auth/components/ExtensionSetupModal';
-import {
-  ExtensionStatusBanner,
-  ExtensionStatusChip,
-} from '@/features/extension-auth/components/ExtensionStatus';
-import { useExtensionPresence } from '@/features/extension-auth/hooks/useExtensionPresence';
 import { appendOgReturnParams } from '@/features/og-trackers/lib/platformUrls';
-import {
-  downloadChecklistMarkdown,
-  printChecklist,
-} from '@/features/og-trackers/lib/exportChecklist';
+import { ogWatchPath } from '@/features/og-trackers/lib/watchUrl';
 import { GUEST_BRAND, easeOut } from '@/features/guest/components/guestMotion';
 import { APP_GUTTER, APP_NAV_CONTENT_OFFSET } from '@/lib/appChrome';
 
@@ -109,19 +99,6 @@ function TypeIcon({ type, className = 'w-3 h-3' }) {
   return <Code2 className={className} />;
 }
 
-function youtubeWatchUrl(resource) {
-  if (!resource?.youtubeVideoId) return null;
-  const base = `https://www.youtube.com/watch?v=${resource.youtubeVideoId}`;
-  const percent = resource.progress?.percentWatched || 0;
-  const duration = resource.durationSeconds;
-  if (!duration || percent <= 0) return base;
-  const seconds = Math.max(
-    0,
-    Math.floor((duration * Math.min(percent, 99)) / 100)
-  );
-  return `${base}&t=${seconds}s`;
-}
-
 function isPlatformType(type) {
   return type === 'PRACTICE_CHAPTER' || type === 'MOCK_TEST';
 }
@@ -135,7 +112,11 @@ function isJudgeType(type) {
 }
 
 function ctaLabel(type, status) {
-  if (type === 'VIDEO') return status === 'IN_PROGRESS' ? 'Resume video' : 'Watch on YouTube';
+  if (type === 'VIDEO') {
+    if (status === 'IN_PROGRESS') return 'Resume';
+    if (status === 'COMPLETED') return 'Watch again';
+    return 'Watch';
+  }
   if (type === 'PRACTICE_CHAPTER') {
     return status === 'IN_PROGRESS' ? 'Continue practice' : 'Open practice';
   }
@@ -171,7 +152,10 @@ function isBlocked(resource) {
 
 function resourceHref(resource, pathSlug) {
   if (isBlocked(resource)) return null;
-  if (resource.type === 'VIDEO') return youtubeWatchUrl(resource);
+  if (resource.type === 'VIDEO') {
+    if (!resource.id) return null;
+    return ogWatchPath(pathSlug, resource.id);
+  }
   if (!resource.externalUrl) return null;
   if (isPlatformType(resource.type)) {
     return appendOgReturnParams(resource.externalUrl, {
@@ -245,6 +229,8 @@ function ProgressBar({ percent, done }) {
 
 export default function OgPathViewerPage() {
   const { slug } = useParams();
+  const searchParams = useSearchParams();
+  const syncOnLoad = searchParams?.get('sync') === '1';
   const { user } = useAuth();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -252,58 +238,7 @@ export default function OgPathViewerPage() {
   const [showCheckout, setShowCheckout] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState(null);
-  const [pathSyncing, setPathSyncing] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [showExtSetup, setShowExtSetup] = useState(false);
-  const extPromptedRef = useRef(false);
-
-  const hasVideos = useMemo(
-    () => (data?.resources || []).some((r) => r.type === 'VIDEO' && r.youtubeVideoId),
-    [data?.resources]
-  );
-
-  const {
-    installed: extInstalled,
-    connected: extConnected,
-    needsSetup: extNeedsSetup,
-    needsConnect: extNeedsConnect,
-    mode: extMode,
-    ready: extReady,
-    refresh: refreshExt,
-    dismissSession,
-    wasDismissed,
-    clearDismiss,
-  } = useExtensionPresence({
-    enabled: Boolean(user && hasVideos),
-  });
-
-  useEffect(() => {
-    // Auto-open only when installed but not linked — never re-show install popup
-    if (!user || !hasVideos || !extReady || !extNeedsConnect) return;
-    if (extPromptedRef.current || wasDismissed()) return;
-    extPromptedRef.current = true;
-    setShowExtSetup(true);
-  }, [user, hasVideos, extReady, extNeedsConnect, wasDismissed]);
-
-  const openExtSetup = useCallback(() => {
-    clearDismiss();
-    setShowExtSetup(true);
-  }, [clearDismiss]);
-
-  const closeExtSetup = useCallback(() => {
-    dismissSession();
-    setShowExtSetup(false);
-    void refreshExt();
-  }, [dismissSession, refreshExt]);
-
-  const onWatchVideoClick = useCallback(
-    (event) => {
-      if (!extNeedsSetup) return;
-      event.preventDefault();
-      openExtSetup();
-    },
-    [extNeedsSetup, openExtSetup]
-  );
 
   const load = useCallback(
     async ({ silent = false, sync = false } = {}) => {
@@ -331,8 +266,8 @@ export default function OgPathViewerPage() {
   );
 
   useEffect(() => {
-    load();
-  }, [load]);
+    load({ sync: syncOnLoad });
+  }, [load, syncOnLoad]);
 
   // Light refresh only when tab becomes visible again — no 12s hammering
   useEffect(() => {
@@ -370,32 +305,6 @@ export default function OgPathViewerPage() {
       setSyncMsg(err.message);
     } finally {
       setSyncing(false);
-    }
-  };
-
-  const syncPathProblems = async () => {
-    if (!data?.path?.id || pathSyncing) return;
-    setPathSyncing(true);
-    setSyncMsg(null);
-    try {
-      const res = await fetch('/api/og-trackers/sync/me', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ pathId: data.path.id }),
-      });
-      const json = await res.json();
-      if (!res.ok || !json.success) {
-        throw new Error(json.error || 'Sync failed');
-      }
-      setSyncMsg(
-        `Checked ${json.checked || 0} problems · ${json.updated || 0} newly completed`
-      );
-      await load({ silent: true });
-    } catch (err) {
-      setSyncMsg(err.message);
-    } finally {
-      setPathSyncing(false);
     }
   };
 
@@ -488,36 +397,25 @@ export default function OgPathViewerPage() {
               </div>
             </div>
             <BreakdownStrip breakdown={path.breakdown} />
-            {user && (insights || hasVideos) ? (
+            {user && insights ? (
               <div className="mt-3 flex flex-wrap gap-2">
-                {hasVideos ? (
-                  <ExtensionStatusChip
-                    ready={extReady}
-                    connected={extConnected}
-                    onClick={openExtSetup}
-                  />
-                ) : null}
-                {insights ? (
-                  <>
-                    <span className="inline-flex items-center gap-1.5 rounded-lg border border-orange-200 bg-orange-50 px-2.5 py-1 text-[11px] font-medium text-orange-900">
-                      <Flame className="w-3.5 h-3.5" />
-                      {insights.streakDays || 0} day streak
-                    </span>
-                    <span
-                      className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11px] font-medium ${
-                        insights.weeklyMet
-                          ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
-                          : 'border-neutral-200 bg-white text-neutral-700'
-                      }`}
-                    >
-                      <Target className="w-3.5 h-3.5" />
-                      Week {insights.weeklyCompleted}/{insights.weeklyGoal} steps
-                      {!insights.weeklyMet
-                        ? ` · ${insights.weeklyRemaining} left`
-                        : ' · goal met'}
-                    </span>
-                  </>
-                ) : null}
+                <span className="inline-flex items-center gap-1.5 rounded-lg border border-orange-200 bg-orange-50 px-2.5 py-1 text-[11px] font-medium text-orange-900">
+                  <Flame className="w-3.5 h-3.5" />
+                  {insights.streakDays || 0} day streak
+                </span>
+                <span
+                  className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11px] font-medium ${
+                    insights.weeklyMet
+                      ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
+                      : 'border-neutral-200 bg-white text-neutral-700'
+                  }`}
+                >
+                  <Target className="w-3.5 h-3.5" />
+                  Week {insights.weeklyCompleted}/{insights.weeklyGoal} steps
+                  {!insights.weeklyMet
+                    ? ` · ${insights.weeklyRemaining} left`
+                    : ' · goal met'}
+                </span>
                 {path.sequentialUnlock ? (
                   <span className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-2.5 py-1 text-[11px] font-medium text-neutral-600">
                     <Lock className="w-3.5 h-3.5" />
@@ -530,22 +428,6 @@ export default function OgPathViewerPage() {
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
-              onClick={() => printChecklist(path, resources)}
-              className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm font-medium text-neutral-800 hover:bg-neutral-50 shadow-sm"
-            >
-              <Printer className="w-4 h-4" />
-              Print
-            </button>
-            <button
-              type="button"
-              onClick={() => downloadChecklistMarkdown(path, resources)}
-              className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm font-medium text-neutral-800 hover:bg-neutral-50 shadow-sm"
-            >
-              <Download className="w-4 h-4" />
-              Export
-            </button>
-            <button
-              type="button"
               onClick={() => load({ silent: true, sync: true })}
               disabled={refreshing}
               className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm font-medium text-neutral-800 hover:bg-neutral-50 disabled:opacity-50 shadow-sm"
@@ -553,7 +435,7 @@ export default function OgPathViewerPage() {
               <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
               Refresh
             </button>
-            {path.locked ? (
+            {OG_PREMIUM_REQUIRED && path.locked ? (
               <button
                 type="button"
                 onClick={() => setShowCheckout(true)}
@@ -562,16 +444,6 @@ export default function OgPathViewerPage() {
               >
                 <Crown className="w-4 h-4 text-amber-300" />
                 Unlock premium
-              </button>
-            ) : isPremium && user ? (
-              <button
-                type="button"
-                onClick={syncPathProblems}
-                disabled={pathSyncing}
-                className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 py-2.5 text-sm font-medium text-neutral-800 hover:bg-neutral-50 disabled:opacity-50 shadow-sm"
-              >
-                <RefreshCw className={`w-4 h-4 ${pathSyncing ? 'animate-spin' : ''}`} />
-                {pathSyncing ? 'Checking…' : 'Sync coding'}
               </button>
             ) : null}
           </div>
@@ -583,18 +455,8 @@ export default function OgPathViewerPage() {
 
         {!user ? (
           <p className="mb-5 text-sm text-amber-800 bg-amber-50 border border-amber-100 rounded-xl px-3.5 py-2.5">
-            Sign in to sync YouTube, practice, and mock progress into this path.
+            Sign in to save watch, practice, and mock progress on this path.
           </p>
-        ) : null}
-
-        {user && hasVideos ? (
-          <ExtensionStatusBanner
-            ready={extReady}
-            connected={extConnected}
-            needsConnect={extNeedsConnect}
-            onConnect={openExtSetup}
-            className="mb-5"
-          />
         ) : null}
 
         {missingJudge &&
@@ -604,7 +466,7 @@ export default function OgPathViewerPage() {
             <Link href="/og-trackers/settings" className="font-semibold underline underline-offset-2">
               Add judge usernames
             </Link>{' '}
-            then use Sync coding.
+            in settings to auto-check progress.
           </p>
         ) : null}
 
@@ -682,7 +544,7 @@ export default function OgPathViewerPage() {
                       (r.type === 'VIDEO' ||
                         r.type === 'PRACTICE_CHAPTER' ||
                         (r.type === 'MOCK_TEST' && percent > 0));
-                    const openExternal = r.type === 'VIDEO' || isJudgeType(r.type);
+                    const openExternal = isJudgeType(r.type);
 
                     return (
                       <li
@@ -751,17 +613,23 @@ export default function OgPathViewerPage() {
                               </span>
                             ) : href ? (
                               <>
-                                {openExternal ? (
+                                {r.type === 'VIDEO' ? (
                                   <a
                                     href={href}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="inline-flex items-center gap-1.5 rounded-xl bg-neutral-900 px-3 py-2 text-xs font-medium text-white hover:bg-neutral-800"
-                                    onClick={(event) => {
-                                      if (r.type === 'VIDEO' && extNeedsSetup) {
-                                        onWatchVideoClick(event);
-                                        return;
-                                      }
+                                  >
+                                    {ctaLabel(r.type, r.progress?.status)}
+                                    <Play className="w-3.5 h-3.5" />
+                                  </a>
+                                ) : openExternal ? (
+                                  <a
+                                    href={href}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1.5 rounded-xl bg-neutral-900 px-3 py-2 text-xs font-medium text-white hover:bg-neutral-800"
+                                    onClick={() => {
                                       if (isJudgeType(r.type) && isPremium) syncResource(r.id);
                                     }}
                                   >
@@ -810,29 +678,8 @@ export default function OgPathViewerPage() {
         ) : null}
 
         <p className="mt-4 text-xs text-neutral-500">
-          YouTube sync:{' '}
-          {user && hasVideos && extReady ? (
-            extConnected ? (
-              <span className="font-semibold text-emerald-700">connected</span>
-            ) : (
-              <>
-                <span className="font-semibold text-amber-800">not connected</span>
-                {' · '}
-                <button
-                  type="button"
-                  onClick={openExtSetup}
-                  className="font-semibold underline underline-offset-2"
-                  style={{ color: GUEST_BRAND.blue }}
-                >
-                  Connect
-                </button>
-              </>
-            )
-          ) : (
-            'browser extension'
-          )}
-          . Practice and mock progress are pulled from your 10Tracker activity when this page
-          loads.
+          Watch progress saves in the player. Practice and mock progress update when you refresh
+          this page.
         </p>
       </div>
 
@@ -855,7 +702,7 @@ export default function OgPathViewerPage() {
                 {continueResource.title}
               </p>
             </div>
-            {continueResource.type === 'VIDEO' || isJudgeType(continueResource.type) ? (
+            {continueResource.type === 'VIDEO' ? (
               <a
                 href={continueHref}
                 target="_blank"
@@ -865,11 +712,20 @@ export default function OgPathViewerPage() {
                   backgroundColor: GUEST_BRAND.blue,
                   boxShadow: `0 12px 24px -12px ${GUEST_BRAND.blue}aa`,
                 }}
-                onClick={
-                  continueResource.type === 'VIDEO' && extNeedsSetup
-                    ? onWatchVideoClick
-                    : undefined
-                }
+              >
+                {ctaLabel(continueResource.type, continueResource.progress?.status)}
+                <Play className="w-4 h-4" />
+              </a>
+            ) : isJudgeType(continueResource.type) ? (
+              <a
+                href={continueHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-semibold text-white shrink-0"
+                style={{
+                  backgroundColor: GUEST_BRAND.blue,
+                  boxShadow: `0 12px 24px -12px ${GUEST_BRAND.blue}aa`,
+                }}
               >
                 {ctaLabel(continueResource.type, continueResource.progress?.status)}
                 <ExternalLink className="w-4 h-4" />
@@ -891,7 +747,7 @@ export default function OgPathViewerPage() {
         </motion.div>
       ) : null}
 
-      {showCheckout ? (
+      {OG_PREMIUM_REQUIRED && showCheckout ? (
         <OgPremiumCheckout
           onClose={() => setShowCheckout(false)}
           onSuccess={() => {
@@ -900,19 +756,6 @@ export default function OgPathViewerPage() {
           }}
         />
       ) : null}
-
-      <ExtensionSetupModal
-        open={showExtSetup}
-        onClose={closeExtSetup}
-        installed={extInstalled}
-        connected={extConnected}
-        mode={extMode}
-        pathTitle={path.title}
-        onConnected={() => {
-          clearDismiss();
-          void refreshExt();
-        }}
-      />
     </div>
   );
 }

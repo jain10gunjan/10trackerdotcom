@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="300" viewBox="0 0 720 300">
+  <rect width="720" height="300" fill="#f8fafc"/>
+  <text x="24" y="28" font-family="Segoe UI, Arial, sans-serif" font-size="14" fill="#0f172a" font-weight="600">IPv4 datagram path (no options, DF=0)</text>
+
+  <rect x="40" y="70" width="130" height="60" rx="10" fill="#fff" stroke="#0f172a" stroke-width="2"/>
+  <text x="105" y="95" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="600" fill="#0f172a">Sender</text>
+  <text x="105" y="115" text-anchor="middle" font-family="Consolas, monospace" font-size="11" fill="#334155">payload 3000 B</text>
+
+  <rect x="220" y="70" width="130" height="60" rx="10" fill="#e2e8f0" stroke="#0f172a" stroke-width="2"/>
+  <text x="285" y="95" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="600" fill="#0f172a">Link 1</text>
+  <text x="285" y="115" text-anchor="middle" font-family="Consolas, monospace" font-size="11" fill="#334155">MTU = 1500</text>
+
+  <rect x="400" y="70" width="130" height="60" rx="10" fill="#e2e8f0" stroke="#0f172a" stroke-width="2"/>
+  <text x="465" y="95" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="600" fill="#0f172a">Link 2</text>
+  <text x="465" y="115" text-anchor="middle" font-family="Consolas, monospace" font-size="11" fill="#334155">MTU = 820</text>
+
+  <rect x="560" y="70" width="120" height="60" rx="10" fill="#fff" stroke="#0f172a" stroke-width="2"/>
+  <text x="620" y="105" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="600" fill="#0f172a">Receiver</text>
+
+  <line x1="170" y1="100" x2="220" y2="100" stroke="#0f172a" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="350" y1="100" x2="400" y2="100" stroke="#0f172a" stroke-width="2"/>
+  <line x1="530" y1="100" x2="560" y2="100" stroke="#0f172a" stroke-width="2"/>
+
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="#0f172a"/>
+    </marker>
+  </defs>
+
+  <rect x="80" y="170" width="560" height="100" rx="10" fill="#fff" stroke="#64748b"/>
+  <text x="100" y="200" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#0f172a" font-weight="600">Notes</text>
+  <text x="100" y="226" font-family="Segoe UI, Arial, sans-serif" font-size="12" fill="#334155">• IP header = 20 bytes on every fragment</text>
+  <text x="100" y="248" font-family="Segoe UI, Arial, sans-serif" font-size="12" fill="#334155">• Fragment payload length (except last) is a multiple of 8 bytes</text>
+</svg>

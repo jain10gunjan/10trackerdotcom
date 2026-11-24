@@ -222,7 +222,7 @@ const Pagetracker = memo(() => {
     try {
       // Fetch all difficulties in one query, count in database
       const { data, error } = await supabase
-        .from("examtracker")
+        .from("examtracker").or('verification_status.is.null,verification_status.not.in.(unpublished_draft,publish_rejected)')
         .select("difficulty")
         .eq("topic", pagetopic)
         .eq("category", category.toUpperCase());
@@ -260,7 +260,7 @@ const Pagetracker = memo(() => {
 
     try {
       const { data, error } = await supabase
-        .from("examtracker")
+        .from("examtracker").or('verification_status.is.null,verification_status.not.in.(unpublished_draft,publish_rejected)')
         .select("_id")
         .eq("topic", pagetopic)
         .eq("category", category.toUpperCase())
@@ -292,7 +292,7 @@ const Pagetracker = memo(() => {
     setIsLoadingQuestions(true);
     try {
       const { data, error } = await supabase
-        .from("examtracker")
+        .from("examtracker").or('verification_status.is.null,verification_status.not.in.(unpublished_draft,publish_rejected)')
         .select("_id, question, options_A, options_B, options_C, options_D, correct_option, solution, solutiontext, difficulty, year, subject, order_index, directionHTML, topic")
         .eq("topic", pagetopic)
         .eq("category", category.toUpperCase())

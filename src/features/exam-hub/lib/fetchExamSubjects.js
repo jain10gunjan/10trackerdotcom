@@ -125,7 +125,7 @@ async function loadSyllabusViaCappedPage(dbCategory) {
 
   for (const variant of variants) {
     const { data, error } = await supabase
-      .from('examtracker')
+      .from('examtracker').or('verification_status.is.null,verification_status.not.in.(unpublished_draft,publish_rejected)')
       .select('subject, topic, category, chapter')
       .eq('category', variant)
       .range(0, pageSize - 1);

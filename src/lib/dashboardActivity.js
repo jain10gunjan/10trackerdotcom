@@ -290,7 +290,7 @@ export function buildRecentPractice(rows, limit = RECENT_ACTIVITY_LIMIT, catalog
         title: formatTopicLabel(topic),
         subtitle:
           completedQuestions > 0
-            ? `${formatExamSlug(area)} · ${completedQuestions} questions`
+            ? `${formatExamSlug(area)} · ${completedQuestions} ${completedQuestions === 1 ? 'question' : 'questions'}`
             : formatExamSlug(area),
         at: r.updated_at || r.created_at || null,
         href: resolveChapterPracticeHref(area, topic, catalog),

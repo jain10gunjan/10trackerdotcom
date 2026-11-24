@@ -63,7 +63,7 @@ async function fetchSubjectBank(subject) {
 
   while (true) {
     let query = supabase
-      .from('examtracker')
+      .from('examtracker').or('verification_status.is.null,verification_status.not.in.(unpublished_draft,publish_rejected)')
       .select(BANK_SELECT)
       .in('category', variants)
       .ilike('subject', subject)
@@ -74,7 +74,7 @@ async function fetchSubjectBank(subject) {
       // fallback single category
       if (!all.length) {
         const retry = await supabase
-          .from('examtracker')
+          .from('examtracker').or('verification_status.is.null,verification_status.not.in.(unpublished_draft,publish_rejected)')
           .select(BANK_SELECT)
           .eq('category', 'JEE-MAIN')
           .ilike('subject', subject)

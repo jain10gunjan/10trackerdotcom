@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Instagram, Mail, MapPin, Twitter } from 'lucide-react';
@@ -13,10 +13,13 @@ import {
   FOOTER_PRODUCT_LINKS,
 } from '@/lib/siteNav';
 
+const BRAND_BLUE = '#3F5EB9';
+const BRAND_SOFT = '#E8EDF8';
+
 function SocialLinks({ compact = false }) {
   const btnClass = compact
-    ? 'inline-flex h-8 w-8 items-center justify-center rounded-lg border border-neutral-200 bg-white text-neutral-600 transition-colors hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-800'
-    : 'inline-flex h-9 w-9 items-center justify-center rounded-xl border border-neutral-200 bg-white text-neutral-600 transition-colors hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-800';
+    ? 'inline-flex h-8 w-8 items-center justify-center rounded-lg border border-neutral-200 bg-white text-neutral-600 transition-colors hover:border-[#3F5EB9]/30 hover:bg-[#E8EDF8]/80 hover:text-[#1e2f6b]'
+    : 'inline-flex h-9 w-9 items-center justify-center rounded-xl border border-neutral-200 bg-white text-neutral-600 transition-colors hover:border-[#3F5EB9]/30 hover:bg-[#E8EDF8]/80 hover:text-[#1e2f6b]';
 
   const iconSize = compact ? 14 : 16;
 
@@ -72,7 +75,11 @@ function FooterColumn({ title, links }) {
 export default function Footer() {
   const pathname = usePathname();
   const isAuthPage = pathname === '/sign-up' || pathname === '/sign-in';
-  const year = new Date().getFullYear();
+  const [year, setYear] = useState(null);
+
+  useEffect(() => {
+    setYear(new Date().getFullYear());
+  }, []);
 
   useEffect(() => {
     if (!isAuthPage && typeof window !== 'undefined') {
@@ -92,7 +99,7 @@ export default function Footer() {
   ];
 
   return (
-    <footer className="relative border-t border-neutral-200/90 bg-[radial-gradient(ellipse_at_bottom,_var(--tw-gradient-stops))] from-emerald-50/50 via-white to-white">
+    <footer className="relative border-t border-neutral-200/90 bg-[radial-gradient(ellipse_at_bottom,_var(--tw-gradient-stops))] from-[#E8EDF8]/45 via-white to-white">
       {/* Mobile */}
       <div className="md:hidden px-4 pt-6 pb-24">
         <div className="mx-auto max-w-lg">
@@ -110,7 +117,7 @@ export default function Footer() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="rounded-full border border-neutral-200 bg-neutral-50 px-2.5 py-1 text-[11px] font-semibold text-neutral-700 transition-colors hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-900"
+                  className="rounded-full border border-neutral-200 bg-neutral-50 px-2.5 py-1 text-[11px] font-semibold text-neutral-700 transition-colors hover:border-[#3F5EB9]/30 hover:bg-[#E8EDF8]/70 hover:text-[#1e2f6b]"
                 >
                   {link.label}
                 </Link>
@@ -133,7 +140,7 @@ export default function Footer() {
           </div>
 
           <p className="mt-3 text-center text-[11px] text-neutral-400" suppressHydrationWarning>
-            &copy; {year} 10tracker. All rights reserved.
+            &copy; {year ?? ''} 10tracker. All rights reserved.
           </p>
         </div>
       </div>
@@ -148,7 +155,14 @@ export default function Footer() {
                 Topic-wise MCQs, mock tests, jobs, and exam updates — built for competitive prep
                 in India.
               </p>
-              <div className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-emerald-100 bg-emerald-50/80 px-2.5 py-1 text-[11px] font-semibold text-emerald-800">
+              <div
+                className="mt-4 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold"
+                style={{
+                  borderColor: `${BRAND_BLUE}22`,
+                  backgroundColor: `${BRAND_SOFT}cc`,
+                  color: '#1e2f6b',
+                }}
+              >
                 <MapPin className="h-3.5 w-3.5" />
                 Made with care in India
               </div>
@@ -173,7 +187,7 @@ export default function Footer() {
 
           <div className="mt-8 flex flex-col gap-3 border-t border-neutral-200/90 pt-6 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-neutral-500" suppressHydrationWarning>
-              &copy; {year} 10tracker. All rights reserved.
+              &copy; {year ?? ''} 10tracker. All rights reserved.
             </p>
             <p className="text-xs text-neutral-400">
               <a

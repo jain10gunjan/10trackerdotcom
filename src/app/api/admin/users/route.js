@@ -18,6 +18,7 @@ import {
   fetchWalletsByEmail,
   mapClerkUser,
   mergeAdminUsers,
+  fetchSubscriptionReport,
   summarizeBilling,
   summarizeBillingAcrossUsers,
 } from '@/lib/adminUserSources';
@@ -165,6 +166,7 @@ export async function GET() {
 
     const engagementSummary = summarizeEngagement(users);
     const billingSummary = summarizeBillingAcrossUsers(users);
+    const subscriptionReport = await fetchSubscriptionReport(supabaseAdmin);
 
     return NextResponse.json({
       success: true,
@@ -172,6 +174,7 @@ export async function GET() {
       summary: {
         ...engagementSummary,
         ...billingSummary,
+        subscriptionReport,
       },
       counts: {
         total: users.length,

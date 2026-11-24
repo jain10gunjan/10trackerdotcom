@@ -1164,7 +1164,6 @@ const Examtracker = () => {
                           progressPercentage={cp.progressPercentage}
                           isCompleted={cp.isCompleted}
                           accuracy={cp.accuracy}
-                          detailsHref={`/${category}/${subject}/${chapterSlug}`}
                           href={`/${category}/${subject}/${chapterSlug}/practice`}
                           extra={
                             cp.completedQuestions > 0 && (
@@ -1265,7 +1264,7 @@ const TopicCard = React.memo(({
   title, subtitle,
   completedCount, totalCount,
   progressPercentage, isCompleted, accuracy,
-  href, detailsHref,
+  href,
   extra,
 }) => (
   <div
@@ -1320,15 +1319,7 @@ const TopicCard = React.memo(({
         {extra && <div className="pt-0.5">{extra}</div>}
       </div>
 
-      <div className={`grid gap-2 mt-4 ${detailsHref ? "grid-cols-2" : "grid-cols-1"}`}>
-        {detailsHref && (
-          <Link
-            href={detailsHref}
-            className="block text-center py-2 rounded-xl border border-neutral-200 text-neutral-700 hover:bg-neutral-50 transition-colors text-xs font-semibold"
-          >
-            Details
-          </Link>
-        )}
+      <div className="grid grid-cols-1 gap-2 mt-4">
         <Link
           href={href}
           className={`block text-center py-2 rounded-xl text-xs font-semibold transition-colors ${

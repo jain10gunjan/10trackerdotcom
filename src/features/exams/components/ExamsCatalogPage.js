@@ -38,17 +38,17 @@ export default function ExamsCatalogPage({ initialExams = [], totalQuestions = 0
   );
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-50/70 via-neutral-50 to-neutral-100 text-neutral-900">
+    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#E8EDF8]/80 via-neutral-50 to-neutral-100 text-neutral-900">
       <section className="pt-24 pb-5 sm:pb-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-5 items-start">
             <div className="lg:col-span-7">
               <header className="relative overflow-hidden rounded-2xl border border-neutral-200/90 bg-white/95 shadow-sm">
-                <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(16,185,129,0.08),transparent_45%,rgba(139,92,246,0.04))] pointer-events-none" />
-                <div className="absolute -top-16 -right-12 h-40 w-40 rounded-full bg-emerald-200/35 blur-3xl pointer-events-none" />
+                <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(63,94,185,0.10),transparent_45%,rgba(75,107,199,0.06))] pointer-events-none" />
+                <div className="absolute -top-16 -right-12 h-40 w-40 rounded-full bg-[#3F5EB9]/20 blur-3xl pointer-events-none" />
                 <div className="relative p-5 sm:p-6">
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-100 bg-emerald-50/90 px-2.5 py-1 text-[11px] font-semibold text-emerald-800">
-                    <Sparkles className="h-3.5 w-3.5 text-emerald-600" />
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-[#3F5EB9]/20 bg-[#E8EDF8]/90 px-2.5 py-1 text-[11px] font-semibold text-[#1e2f6b]">
+                    <Sparkles className="h-3.5 w-3.5 text-[#3F5EB9]" />
                     Exam catalog
                   </span>
                   <h1 className="mt-3 text-2xl sm:text-3xl font-bold tracking-tight text-neutral-900 leading-tight">
@@ -99,11 +99,11 @@ export default function ExamsCatalogPage({ initialExams = [], totalQuestions = 0
       <section className="py-6 sm:py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-3.5 flex items-center gap-2">
-            <span className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-emerald-100 bg-emerald-50 text-[10px] font-bold text-emerald-800">
+            <span className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-[#3F5EB9]/20 bg-[#E8EDF8] text-[10px] font-bold text-[#1e2f6b]">
               01
             </span>
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-700">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-[#3F5EB9]">
                 Browse
               </p>
               <h2 className="text-sm font-bold text-neutral-900 leading-none mt-0.5">All exams</h2>
@@ -144,10 +144,10 @@ export default function ExamsCatalogPage({ initialExams = [], totalQuestions = 0
       <section className="pb-14 sm:pb-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="relative overflow-hidden rounded-2xl border border-neutral-200/90 bg-neutral-900 text-white p-6 sm:p-8">
-            <div className="absolute -top-16 -right-12 h-48 w-48 rounded-full bg-emerald-500/20 blur-3xl pointer-events-none" />
+            <div className="absolute -top-16 -right-12 h-48 w-48 rounded-full bg-[#E8EDF8]0/20 blur-3xl pointer-events-none" />
             <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div className="min-w-0">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-300">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-[#A8B8E8]">
                   Next step
                 </p>
                 <h2 className="mt-1 text-xl sm:text-2xl font-bold tracking-tight">

@@ -127,7 +127,7 @@ export async function fetchMhtCetBank() {
   try {
     const examRows = await fetchAllPages((from, to) =>
       supabase
-        .from('examtracker')
+        .from('examtracker').or('verification_status.is.null,verification_status.not.in.(unpublished_draft,publish_rejected)')
         .select(EXAM_SELECT)
         .in('category', variants)
         .range(from, to)

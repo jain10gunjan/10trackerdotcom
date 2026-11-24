@@ -14,6 +14,7 @@ AS $$
   FROM public.examtracker
   WHERE category IS NOT NULL
     AND trim(category) <> ''
+    AND COALESCE(status, 'published') = 'published'
   GROUP BY 1
   ORDER BY 2 DESC;
 $$;

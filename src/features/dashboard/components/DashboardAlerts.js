@@ -5,14 +5,14 @@ import { AlertCircle, ArrowRight, RefreshCw } from 'lucide-react';
 
 function AlertBanner({ children, tone = 'amber', action }) {
   const tones = {
-    amber: 'border-amber-200 bg-amber-50 text-amber-900',
-    emerald: 'border-emerald-100 bg-emerald-50 text-emerald-800',
-    red: 'border-red-100 bg-red-50 text-red-700',
+    amber: 'border-amber-200 bg-amber-50 text-amber-950',
+    emerald: 'border-emerald-200 bg-emerald-50 text-emerald-950',
+    red: 'border-red-200 bg-red-50 text-red-900',
   };
 
   return (
     <div
-      className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 text-sm ${tones[tone] || tones.amber}`}
+      className={`flex flex-wrap items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-sm ${tones[tone] || tones.amber}`}
     >
       <div className="min-w-0 flex-1">{children}</div>
       {action}
@@ -33,8 +33,7 @@ export default function DashboardAlerts({
   if (partialErrors.length > 0) {
     items.push(
       <AlertBanner key="partial-errors" tone="amber">
-        Some sections could not load: {partialErrors.join(', ')}. Other data is still shown
-        below.
+        Couldn’t load {partialErrors.join(', ')}. The rest of this page is still here.
       </AlertBanner>
     );
   }
@@ -48,14 +47,14 @@ export default function DashboardAlerts({
           <button
             type="button"
             onClick={onRetry}
-            className="inline-flex items-center gap-1.5 font-semibold underline shrink-0"
+            className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl bg-white px-3 text-sm font-semibold"
           >
-            <RefreshCw className="w-3.5 h-3.5" />
+            <RefreshCw className="h-4 w-4" />
             Retry
           </button>
         }
       >
-        Some dashboard data could not be refreshed.
+        Some of this page could not be refreshed.
       </AlertBanner>
     );
   }
@@ -63,7 +62,7 @@ export default function DashboardAlerts({
   if (subscribed) {
     items.push(
       <AlertBanner key="subscribed" tone="emerald">
-        Subscription active — enjoy unlimited practice and mock tests.
+        Unlimited practice is on.
       </AlertBanner>
     );
   }
@@ -84,18 +83,19 @@ export default function DashboardAlerts({
         action={
           <Link
             href="/profile?redirect=/"
-            className="inline-flex items-center gap-1 font-semibold underline shrink-0"
+            className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl bg-white px-3 text-sm font-semibold"
           >
-            Edit profile <ArrowRight className="w-4 h-4" />
+            Edit profile
+            <ArrowRight className="h-4 w-4" />
           </Link>
         }
       >
         <span className="inline-flex items-start gap-2">
-          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
           <span>
-            <span className="font-medium">Update your exam selection</span>
-            <span className="block text-amber-800/90 mt-0.5">
-              Choose your exam(s) from the active list so your dashboard stays accurate.
+            <span className="font-semibold">Update your exams</span>
+            <span className="mt-0.5 block text-amber-950/80">
+              Pick from the active list so this page stays accurate.
             </span>
           </span>
         </span>

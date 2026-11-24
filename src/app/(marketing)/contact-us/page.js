@@ -9,13 +9,15 @@ import {
 } from '@/features/billing/lib/legal';
 
 export const metadata = {
-  title: 'Contact Us - 10tracker',
+  title: 'Contact Us',
   description:
     'Contact 10Tracker.com for support, feedback, billing, and account help.',
+  alternates: { canonical: '/contact-us' },
   openGraph: {
-    title: 'Contact Us - 10tracker',
+    title: 'Contact Us',
     description: 'Get in touch with the 10Tracker.com team.',
     type: 'website',
+    url: '/contact-us',
   },
 };
 

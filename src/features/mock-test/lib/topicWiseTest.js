@@ -11,6 +11,8 @@ export function isTopicWiseCreationMode(mode, description = '', name = '') {
   if (
     normalizedMode === 'topic_auto' ||
     normalizedMode === 'topic_wise' ||
+    normalizedMode === 'gate_chapter' ||
+    normalizedMode.endsWith('_chapter') ||
     normalizedMode.includes('topic')
   ) {
     return true;

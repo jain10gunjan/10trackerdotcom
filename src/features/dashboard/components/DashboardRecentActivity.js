@@ -52,14 +52,14 @@ const TYPE_META = {
   practice: {
     icon: BookOpen,
     label: 'Practice',
-    iconBg: 'bg-emerald-50 text-emerald-700',
-    badge: 'bg-emerald-50 text-emerald-700 border-emerald-100',
+    iconBg: 'bg-[#E8EDF8] text-[#3F5EB9]',
+    badge: 'bg-[#E8EDF8] text-[#3F5EB9] border-transparent',
   },
   mock: {
     icon: ClipboardList,
     label: 'Mock',
-    iconBg: 'bg-indigo-50 text-indigo-700',
-    badge: 'bg-indigo-50 text-indigo-700 border-indigo-100',
+    iconBg: 'bg-[#E8EDF8] text-[#3F5EB9]',
+    badge: 'bg-[#E8EDF8] text-[#3F5EB9] border-transparent',
   },
 };
 
@@ -71,7 +71,7 @@ function ActivityRow({ item }) {
     <li className="border-b border-neutral-100 last:border-0">
       <Link
         href={item.href || '#'}
-        className="flex items-center gap-3 px-5 py-3.5 hover:bg-neutral-50/80 transition-colors group"
+        className="flex min-h-11 items-center gap-3 px-4 py-3 transition-colors hover:bg-[#E8EDF8]/50 group sm:px-5"
       >
         <div
           className={`w-9 h-9 rounded-lg border border-neutral-100 flex items-center justify-center shrink-0 ${meta.iconBg}`}
@@ -173,7 +173,7 @@ export default function DashboardRecentActivity({
       <div
         role="tablist"
         aria-label="Activity type"
-        className="flex flex-wrap gap-1.5 px-5 pt-4 pb-3 border-b border-neutral-100"
+        className="grid grid-cols-3 gap-1.5 border-b border-black/[0.06] px-3 py-3"
       >
         {tabs.map((t) => {
           const active = tab === t.id;
@@ -184,17 +184,17 @@ export default function DashboardRecentActivity({
               role="tab"
               aria-selected={active}
               onClick={() => setTab(t.id)}
-              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+              className={`inline-flex min-h-11 items-center justify-center gap-1 rounded-xl px-2 text-sm font-semibold transition-colors ${
                 active
-                  ? 'bg-neutral-900 text-white'
-                  : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900'
+                  ? 'bg-[#3F5EB9] text-white'
+                  : 'text-neutral-600 hover:bg-[#E8EDF8] hover:text-[#0a0a0a]'
               }`}
             >
               <t.icon className="w-3.5 h-3.5" />
               {t.label}
               <span
                 className={`min-w-[1.1rem] rounded-md px-1 py-0.5 text-[10px] font-bold tabular-nums ${
-                  active ? 'bg-white/20 text-white' : 'bg-neutral-200/80 text-neutral-600'
+                  active ? 'bg-white/20 text-white' : 'bg-[#E8EDF8] text-[#3F5EB9]'
                 }`}
               >
                 {t.count}

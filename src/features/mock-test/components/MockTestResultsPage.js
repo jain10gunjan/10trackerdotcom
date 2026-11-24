@@ -36,6 +36,7 @@ import MockTestSubpageHeader from '@/features/mock-test-hub/components/MockTestS
 import MockTestBreadcrumb from '@/features/mock-test/components/MockTestBreadcrumb';
 import ShareResultsCard from '@/features/mock-test/components/ShareResultsCard';
 import TestRankSummary from '@/features/mock-test/components/TestRankSummary';
+import BackToOgPathChip from '@/features/og-trackers/components/BackToOgPathChip';
 
 // MathJax 3 config (same as attempt page) so $...$ and $$...$$ are processed
 const MATHJAX_CONFIG = {
@@ -547,6 +548,9 @@ export default function TestResultPage() {
             title={testName}
             description={`${categoryLabel} · ${testInfo.difficulty || 'Mixed'} difficulty`}
           />
+          <div className="mb-3">
+            <BackToOgPathChip />
+          </div>
 
             {/* Score hero */}
             <div className="bg-white rounded-2xl shadow-sm border border-neutral-200/90 mb-4 sm:mb-5 overflow-hidden">

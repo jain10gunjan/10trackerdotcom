@@ -28,7 +28,8 @@ const SAMPLE_JSON = `[
     "options_C": "O(n²)",
     "options_D": "O(log n)",
     "correct_option": "B",
-    "solution": "Merge sort divides and merges in O(n log n) time."
+    "solution": "Merge sort divides and merges in O(n log n) time.",
+    "status": "draft"
   }
 ]`;
 

@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { auth } from "@/auth";
 import { normalizeRow } from "@/lib/examtrackerNormalize";
+import { toRestInsertRow } from "@/lib/question-gen/generateExamQuestions";
 import { isAdminEmail } from "@/features/mock-test/lib/mockTestUtils";
+import { PUBLISH_VERIFICATION } from "@/lib/examtrackerStatus";
 
 function isAdminUser(user) {
   return isAdminEmail(user?.email);
@@ -64,12 +66,22 @@ export async function POST(request) {
     const rows = [];
     const rowErrors = [];
 
+    // New bulk imports default to draft unless the row/defaults set status.
     for (let i = 0; i < list.length; i++) {
-      const n = normalizeRow(list[i], defaults);
+      const n = normalizeRow(list[i], defaults, { defaultStatus: "draft" });
       if (!n.ok) {
         rowErrors.push({ index: i, error: n.error });
       } else {
-        rows.push(n.row);
+        // Strip `status` for PostgREST; keep verification_status mirror.
+        const restRow = toRestInsertRow(n.row);
+        if (n.row.status === "published") {
+          restRow.verification_status = null;
+        } else if (n.row.status === "rejected") {
+          restRow.verification_status = PUBLISH_VERIFICATION.REJECTED;
+        } else {
+          restRow.verification_status = PUBLISH_VERIFICATION.DRAFT;
+        }
+        rows.push(restRow);
       }
     }
 

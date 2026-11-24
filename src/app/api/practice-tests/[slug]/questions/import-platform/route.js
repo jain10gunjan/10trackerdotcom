@@ -35,7 +35,7 @@ export async function GET(request, { params }) {
   const offset = Math.max(0, Number(searchParams.get('offset')) || 0);
 
   let query = ctx.supabase
-    .from('examtracker')
+    .from('examtracker').or('verification_status.is.null,verification_status.not.in.(unpublished_draft,publish_rejected)')
     .select(EXAMTRACKER_LIST_COLUMNS, { count: 'exact' })
     .order('year', { ascending: false, nullsFirst: false })
     .range(offset, offset + limit - 1);
@@ -86,7 +86,7 @@ export async function POST(request, { params }) {
         );
       }
       const { data, error: fetchError } = await ctx.supabase
-        .from('examtracker')
+        .from('examtracker').or('verification_status.is.null,verification_status.not.in.(unpublished_draft,publish_rejected)')
         .select(EXAMTRACKER_LIST_COLUMNS)
         .in('_id', body.ids.map(String));
       if (fetchError) {
@@ -96,7 +96,7 @@ export async function POST(request, { params }) {
     } else if (body.filters && typeof body.filters === 'object') {
       const limit = Math.min(MAX_IMPORT, Math.max(1, Number(body.limit) || 20));
       let query = ctx.supabase
-        .from('examtracker')
+        .from('examtracker').or('verification_status.is.null,verification_status.not.in.(unpublished_draft,publish_rejected)')
         .select(EXAMTRACKER_LIST_COLUMNS)
         .limit(limit);
       const f = body.filters;

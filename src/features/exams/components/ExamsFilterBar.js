@@ -27,7 +27,7 @@ export default function ExamsFilterBar({
               value={searchTerm}
               onChange={(e) => onSearchChange(e.target.value)}
               placeholder="Search exams…"
-              className="w-full pl-9 pr-9 py-2 rounded-xl border border-neutral-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400"
+              className="w-full pl-9 pr-9 py-2 rounded-xl border border-neutral-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#3F5EB9]/20 focus:border-[#3F5EB9]"
             />
             {searchTerm ? (
               <button
@@ -53,7 +53,7 @@ export default function ExamsFilterBar({
             <select
               value={sortBy}
               onChange={(e) => onSortChange(e.target.value)}
-              className="hidden sm:block px-3 py-2 rounded-xl border border-neutral-200 bg-white text-sm font-medium text-neutral-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+              className="hidden sm:block px-3 py-2 rounded-xl border border-neutral-200 bg-white text-sm font-medium text-neutral-700 focus:outline-none focus:ring-2 focus:ring-[#3F5EB9]/20"
               aria-label="Sort exams"
             >
               <option value="popular">Most popular</option>
@@ -115,7 +115,7 @@ export default function ExamsFilterBar({
                 onCategoryChange('All');
                 onSortChange('popular');
               }}
-              className="font-semibold text-emerald-700 hover:text-emerald-900"
+              className="font-semibold text-[#3F5EB9] hover:text-[#1e2f6b]"
             >
               Reset filters
             </button>

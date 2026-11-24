@@ -16,7 +16,7 @@ const getCachedYears = unstable_cache(
   async (category, pagetopic, difficulty) => {
     try {
       const { data, error } = await supabase
-        .from('examtracker')
+        .from('examtracker').or('verification_status.is.null,verification_status.not.in.(unpublished_draft,publish_rejected)')
         .select('year')
         .eq('topic', pagetopic)
         .eq('category', category.toUpperCase())

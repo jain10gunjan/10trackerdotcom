@@ -44,7 +44,7 @@ function DayPath({ totalDays = 0, freePreviewDays = 0, animate, show }) {
 }
 
 function PlanCard({ roadmap, index, animate, show }) {
-  const href = `/roadmaps/${roadmap.slug}`;
+  const href = `/og-trackers/${roadmap.slug}`;
 
   return (
     <motion.article
@@ -145,7 +145,7 @@ function ComingSoon() {
       </span>
       <h3 className="mt-4 text-lg font-bold text-neutral-900">OG Trackers</h3>
       <p className="mt-2 text-sm text-neutral-600 max-w-md mx-auto leading-relaxed">
-        Structured paths with YouTube lessons and coding practice will launch here. Until then,
+        Structured paths with video lessons and coding practice will launch here. Until then,
         keep grinding exams and mocks.
       </p>
       <Link
@@ -184,7 +184,7 @@ export default function GuestHomePlanTimeline({ roadmaps = [] }) {
             </h2>
             <p className="mt-2 text-sm sm:text-base text-neutral-600 max-w-xl leading-relaxed">
               {SHOW_OG_TRACKERS
-                ? 'YouTube lessons + coding practice on a day path. Preview free days, then unlock — progress syncs from the Chrome extension.'
+                ? 'Video lessons + coding practice on a day path. Preview free days, then unlock — watch progress is tracked in-app.'
                 : 'Day-by-day learning paths with videos and coding practice are on the way. Practice exams are live today.'}
             </p>
           </motion.div>

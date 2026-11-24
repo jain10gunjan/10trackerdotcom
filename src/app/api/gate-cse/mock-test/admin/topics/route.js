@@ -15,7 +15,7 @@ export async function GET() {
     const supabase = getSupabaseAdmin();
 
     const { data: subjects, error: subjectsError } = await supabase
-      .from('examtracker')
+      .from('examtracker').or('verification_status.is.null,verification_status.not.in.(unpublished_draft,publish_rejected)')
       .select('subject')
       .eq('category', 'GATE-CSE')
       .not('subject', 'is', null);
@@ -26,7 +26,7 @@ export async function GET() {
     }
 
     const { data: topics, error: topicsError } = await supabase
-      .from('examtracker')
+      .from('examtracker').or('verification_status.is.null,verification_status.not.in.(unpublished_draft,publish_rejected)')
       .select('topic')
       .eq('category', 'GATE-CSE')
       .not('topic', 'is', null);

@@ -7,13 +7,15 @@ import {
 } from '@/features/billing/lib/legal';
 
 export const metadata = {
-  title: 'About Us - 10tracker',
+  title: 'About Us',
   description:
     'About 10Tracker.com — MCQ practice, mock tests, and exam prep for competitive exams in India.',
+  alternates: { canonical: '/about-us' },
   openGraph: {
-    title: 'About Us - 10tracker',
+    title: 'About Us',
     description: 'Learn about 10Tracker.com and what we offer exam aspirants.',
     type: 'website',
+    url: '/about-us',
   },
 };
 

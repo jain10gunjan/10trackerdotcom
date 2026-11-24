@@ -1,25 +1,25 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
-import { APP_GUTTER } from '@/lib/appChrome';
+import { useEffect, useState } from 'react';
+import HomeBone from '@/features/dashboard/components/studentHome/HomeBone';
 import {
   STUDENT_BRAND,
   useStudentMotion,
-  useReveal,
-  staggerContainer,
-  staggerItem,
 } from '@/features/dashboard/lib/studentHomeBrand';
 
-function useCountUp(target, active, duration = 1000) {
-  const [value, setValue] = useState(0);
+function useCountUp(target, active, duration = 900) {
+  const [value, setValue] = useState(() =>
+    typeof target === 'number' ? target : 0
+  );
   const numeric = typeof target === 'number' ? target : null;
 
   useEffect(() => {
-    if (!active || numeric == null) {
-      if (numeric != null) setValue(numeric);
+    if (numeric == null) return undefined;
+    if (!active) {
+      setValue(numeric);
       return undefined;
     }
+    setValue(0);
     let frame;
     const start = performance.now();
     const tick = (now) => {
@@ -32,33 +32,31 @@ function useCountUp(target, active, duration = 1000) {
     return () => cancelAnimationFrame(frame);
   }, [active, numeric, duration]);
 
-  return numeric == null ? target : value;
+  if (numeric == null) return target;
+  return value;
 }
 
-function StatCell({ label, target, animate, show, index }) {
-  const counted = useCountUp(typeof target === 'number' ? target : 0, show && animate);
+function Stat({ label, value, accent = false, animate }) {
+  const counted = useCountUp(typeof value === 'number' ? value : 0, animate);
   const display =
-    typeof target === 'number' ? counted.toLocaleString() : String(target ?? '—');
+    typeof value === 'number' ? counted.toLocaleString() : String(value ?? '—');
 
   return (
-    <motion.div
-      custom={index}
-      variants={staggerItem}
-      className="relative flex flex-col items-center justify-center px-3 py-5 sm:py-6 text-center"
-    >
+    <div className="relative flex flex-col items-center justify-center px-3 py-5 text-center sm:py-6">
       <p
-        className="text-2xl sm:text-3xl font-black tracking-tight tabular-nums text-neutral-950 leading-none"
-        style={{ color: index === 0 ? STUDENT_BRAND.blue : undefined }}
+        className="text-2xl font-black tabular-nums leading-none tracking-tight text-neutral-950 sm:text-3xl"
+        style={accent ? { color: STUDENT_BRAND.blue } : undefined}
       >
         {display}
       </p>
-      <p className="mt-2 text-[11px] sm:text-xs font-medium uppercase tracking-[0.14em] text-neutral-500">
+      <p className="mt-2 text-[11px] font-medium uppercase tracking-[0.14em] text-neutral-500 sm:text-xs">
         {label}
       </p>
-    </motion.div>
+    </div>
   );
 }
 
+/** Personal study snapshot — always visible (no opacity-0 reveal traps). */
 export default function StudentHomePulse({
   streak = 0,
   questions = 0,
@@ -66,56 +64,49 @@ export default function StudentHomePulse({
   topics = 0,
   loading = false,
 }) {
-  const ref = useRef(null);
   const { animate } = useStudentMotion();
-  const show = useReveal(ref, { animate, amount: 0.35 });
 
   if (loading) {
     return (
-      <section className="relative pb-8 sm:pb-10 -mt-1">
-        <div className={`relative max-w-7xl mx-auto ${APP_GUTTER}`}>
-          <div className="h-[5.5rem] rounded-2xl border border-neutral-200 bg-white animate-pulse" />
-        </div>
-      </section>
+      <div
+        className="grid grid-cols-2 overflow-hidden rounded-2xl border border-neutral-200/90 bg-white lg:grid-cols-4"
+        aria-hidden
+      >
+        {[1, 2, 3, 4].map((i) => (
+          <HomeBone key={i} className="m-4 h-14" />
+        ))}
+      </div>
     );
   }
 
-  const stats = [
-    { label: 'Day streak', target: streak },
-    { label: 'Questions', target: questions },
-    { label: 'Mocks', target: mocks },
-    { label: 'Topics', target: topics },
+  const cells = [
+    { label: 'Day streak', value: streak, accent: true },
+    { label: 'Questions done', value: questions },
+    { label: 'Mocks done', value: mocks },
+    { label: 'Topics touched', value: topics },
   ];
 
   return (
-    <section ref={ref} className="relative pb-8 sm:pb-10 -mt-1">
-      <div className={`relative max-w-7xl mx-auto ${APP_GUTTER}`}>
-        <motion.div
-          variants={staggerContainer(show, animate)}
-          initial="hidden"
-          animate={show || !animate ? 'show' : 'hidden'}
-          className="relative overflow-hidden rounded-2xl border border-neutral-200/90 bg-white/90 backdrop-blur-sm shadow-[0_20px_50px_-28px_rgba(63,94,185,0.35)]"
-        >
-          <div
-            className="absolute inset-x-0 bottom-0 h-1/2 pointer-events-none opacity-70"
-            style={{
-              background: `radial-gradient(ellipse 70% 100% at 50% 120%, ${STUDENT_BRAND.soft} 0%, transparent 70%)`,
-            }}
-            aria-hidden
-          />
-          <div className="relative grid grid-cols-2 lg:grid-cols-4 divide-x divide-y lg:divide-y-0 divide-neutral-100">
-            {stats.map((s, i) => (
-              <StatCell
-                key={s.label}
-                label={s.label}
-                target={s.target}
-                animate={animate}
-                show={show}
-                index={i}
-              />
-            ))}
-          </div>
-        </motion.div>
+    <section aria-label="Your study snapshot" className="relative -mt-1 sm:-mt-2">
+      <div className="relative overflow-hidden rounded-2xl border border-neutral-200/90 bg-white shadow-[0_20px_50px_-28px_rgba(63,94,185,0.35)]">
+        <div
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 opacity-80"
+          style={{
+            background: `radial-gradient(ellipse 70% 100% at 50% 120%, ${STUDENT_BRAND.soft} 0%, transparent 70%)`,
+          }}
+          aria-hidden
+        />
+        <dl className="relative grid grid-cols-2 divide-y divide-neutral-100 lg:grid-cols-4 lg:divide-x lg:divide-y-0">
+          {cells.map((cell) => (
+            <Stat
+              key={cell.label}
+              label={cell.label}
+              value={cell.value}
+              accent={cell.accent}
+              animate={animate}
+            />
+          ))}
+        </dl>
       </div>
     </section>
   );

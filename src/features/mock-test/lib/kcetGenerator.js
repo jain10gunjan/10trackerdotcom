@@ -81,7 +81,7 @@ async function fetchFilter(categories, subjectLike) {
   const page = 1000;
   while (true) {
     const { data, error } = await supabase
-      .from('examtracker')
+      .from('examtracker').or('verification_status.is.null,verification_status.not.in.(unpublished_draft,publish_rejected)')
       .select(BANK_SELECT)
       .in('category', variants)
       .ilike('subject', subjectLike)

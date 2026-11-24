@@ -32,7 +32,7 @@ const TIER_META = {
   never: { label: "No activity", className: "bg-neutral-50 text-neutral-500 border-neutral-200" },
 };
 
-const PURCHASE_RANK = { purchased: 2, tried: 1, none: 0 };
+const PURCHASE_RANK = { purchased: 3, assigned: 2, tried: 1, none: 0 };
 
 function formatRelativeTime(iso) {
   if (!iso) return "—";
@@ -139,6 +139,40 @@ function filterAndSortUsers(
   return sorted;
 }
 
+function reportLine(bucket) {
+  const paid = formatMoneyPaise(bucket?.paidPaise || 0);
+  const grants = bucket?.grantCount || 0;
+  const list = formatMoneyPaise(bucket?.grantListPaise || 0);
+  return `${paid} paid · ${bucket?.paidCount || 0} checkouts · ${grants} admin grant${grants === 1 ? "" : "s"} (list ${list}, not revenue)`;
+}
+
+function SubscriptionReport({ report }) {
+  if (!report) return null;
+  return (
+    <div className="mb-6 rounded-2xl border border-neutral-200 bg-white p-4">
+      <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+        Subscription report · Asia/Kolkata
+      </p>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <div>
+          <p className="text-sm font-medium text-neutral-900">This month · {report.monthLabel}</p>
+          <p className="mt-1 text-sm text-neutral-600">{reportLine(report.month)}</p>
+        </div>
+        <div>
+          <p className="text-sm font-medium text-neutral-900">This year · {report.yearLabel}</p>
+          <p className="mt-1 text-sm text-neutral-600">{reportLine(report.year)}</p>
+        </div>
+      </div>
+      {report.grantsAvailable === false ? (
+        <p className="mt-3 text-xs text-amber-800">
+          Admin grant columns are not installed yet. Re-run supabase/migrations/setup_credits_subscriptions.sql
+          so assigned plans are logged separately from paid revenue.
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 function StatCard({ icon: Icon, label, value, hint, tone = "neutral" }) {
   const tones = {
     neutral: "border-neutral-200 bg-white",
@@ -167,6 +201,7 @@ export default function AdminUsersDashboard({
   error,
   clerkWarning,
   onAdjustCredits,
+  onAssignSubscription,
   onRefresh,
 }) {
   const [search, setSearch] = useState("");
@@ -287,10 +322,12 @@ export default function AdminUsersDashboard({
           icon={CircleDollarSign}
           label="Revenue"
           value={formatMoneyPaise(summary?.revenuePaise ?? 0)}
-          hint="Completed orders only"
+          hint="Paid checkouts only"
           tone="sky"
         />
       </div>
+
+      <SubscriptionReport report={summary?.subscriptionReport} />
 
       <div className="mb-4 flex flex-wrap gap-2 text-xs">
         <span className="rounded-full bg-violet-50 text-violet-800 px-2.5 py-1 border border-violet-100">
@@ -321,6 +358,7 @@ export default function AdminUsersDashboard({
         >
           <option value="all">All purchase status</option>
           <option value="purchased">Purchased</option>
+          <option value="assigned">Assigned (no payment)</option>
           <option value="tried">Tried checkout</option>
           <option value="none">No purchase</option>
         </select>
@@ -427,6 +465,10 @@ export default function AdminUsersDashboard({
         onAdjustCredits={(u) => {
           setSelectedUser(null);
           onAdjustCredits?.(u);
+        }}
+        onAssignSubscription={(u) => {
+          setSelectedUser(null);
+          onAssignSubscription?.(u);
         }}
         formatRelativeTime={formatRelativeTime}
       />

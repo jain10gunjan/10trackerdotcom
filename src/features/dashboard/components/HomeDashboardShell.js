@@ -3,10 +3,10 @@
 import { APP_GUTTER, APP_NAV_CONTENT_OFFSET } from '@/lib/appChrome';
 
 function Bone({ className = '' }) {
-  return <div className={`animate-pulse rounded-xl bg-neutral-200/90 ${className}`} aria-hidden />;
+  return <div className={`rounded-xl bg-[#E8EDF8] ${className}`} aria-hidden />;
 }
 
-/** Loading shell aligned with guest homepage + student hero chrome. */
+/** Loading shell aligned with the signed-in home: neutral page, white cards, brand soft. */
 export default function HomeDashboardShell() {
   return (
     <div className="min-h-screen bg-neutral-50">
@@ -15,36 +15,37 @@ export default function HomeDashboardShell() {
         style={{ paddingTop: APP_NAV_CONTENT_OFFSET }}
       >
         <div
-          className="absolute inset-0 pointer-events-none"
+          className="pointer-events-none absolute inset-0"
           style={{
             background:
-              'radial-gradient(ellipse 80% 55% at 85% 15%, #E8EDF8 0%, transparent 55%), linear-gradient(180deg, #F8FAFC 0%, #F5F5F5 100%)',
+              'radial-gradient(ellipse 80% 55% at 85% 15%, #E8EDF8 0%, transparent 55%)',
           }}
+          aria-hidden
         />
-        <div className={`relative max-w-7xl mx-auto ${APP_GUTTER} pt-5 sm:pt-7 space-y-4`}>
-          <Bone className="h-5 w-40 rounded-full" />
-          <Bone className="h-12 w-72 max-w-full" />
+        <div className={`relative mx-auto max-w-7xl space-y-4 pt-5 sm:pt-7 ${APP_GUTTER}`}>
+          <Bone className="h-4 w-28 rounded-full bg-[#E8EDF8]" />
+          <Bone className="h-10 w-64 max-w-full" />
           <Bone className="h-4 w-full max-w-md" />
-          <Bone className="h-28 w-full rounded-2xl bg-white border border-neutral-200" />
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-            <Bone className="h-36 rounded-2xl bg-white border border-neutral-200" />
-            <Bone className="h-36 rounded-2xl bg-white border border-neutral-200 hidden sm:block" />
-            <Bone className="h-36 rounded-2xl bg-white border border-neutral-200 hidden sm:block" />
+          <Bone className="h-28 w-full rounded-2xl border border-neutral-200 bg-white" />
+          <div className="grid grid-cols-1 gap-3 pt-2 sm:grid-cols-3">
+            <Bone className="h-32 rounded-2xl border border-neutral-200 bg-white" />
+            <Bone className="hidden h-32 rounded-2xl border border-neutral-200 bg-white sm:block" />
+            <Bone className="hidden h-32 rounded-2xl border border-neutral-200 bg-white sm:block" />
           </div>
         </div>
       </section>
 
-      <div className={`max-w-7xl mx-auto ${APP_GUTTER} space-y-8 pb-16`}>
-        <Bone className="h-[5.5rem] w-full rounded-2xl" />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <Bone className="h-36 rounded-2xl" />
-          <Bone className="h-36 rounded-2xl" />
+      <div className={`mx-auto max-w-7xl space-y-8 pb-12 sm:pb-16 ${APP_GUTTER}`}>
+        <Bone className="h-[5.5rem] w-full rounded-2xl border border-neutral-200 bg-white" />
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <Bone className="h-36 rounded-2xl border border-neutral-200 bg-white" />
+          <Bone className="h-36 rounded-2xl border border-neutral-200 bg-white" />
         </div>
         {[1, 2, 3].map((i) => (
           <div key={i} className="space-y-3">
             <Bone className="h-3 w-24 bg-[#E8EDF8]" />
-            <Bone className="h-7 w-48" />
-            <Bone className="h-32 rounded-2xl" />
+            <Bone className="h-7 w-48 max-w-full" />
+            <Bone className="h-32 rounded-2xl border border-neutral-200 bg-white" />
           </div>
         ))}
       </div>

@@ -226,7 +226,8 @@ export default function AdminUsersTable({
                   <PurchaseBadge status={billing.purchaseStatus || "none"} />
                   {(billing.totals?.orderCount || 0) > 0 ? (
                     <p className="text-[11px] text-neutral-500 mt-1 tabular-nums">
-                      {billing.totals.completedCount} paid · {billing.totals.pendingCount} tried
+                      {billing.totals.completedCount} paid · {billing.totals.grantCount || 0} assigned ·{" "}
+                      {billing.totals.pendingCount} tried
                     </p>
                   ) : null}
                 </td>
@@ -240,7 +241,9 @@ export default function AdminUsersTable({
                         Until {formatShortDate(activeSub.expiresAt)}
                       </p>
                       <p className="text-[11px] text-neutral-500 tabular-nums">
-                        {formatMoneyPaise(activeSub.amountPaise)}
+                        {activeSub.source === "admin"
+                          ? "Assigned"
+                          : formatMoneyPaise(activeSub.amountPaise)}
                       </p>
                     </>
                   ) : (
